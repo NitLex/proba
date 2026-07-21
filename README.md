@@ -12,7 +12,7 @@
 - **Статистика**: клики, cost, revenue, profit, ROI, CR, EPC — по кампаниям / офферам / источникам / дням
 - **UI-дашборд** на React
 
-## Быстрый старт
+## Быстрый старт (на своём компьютере)
 
 ```bash
 npm install
@@ -24,12 +24,21 @@ npm run dev
 - UI: http://localhost:5173  
 - API / трекинг: http://localhost:3001  
 
-Production (один процесс после сборки UI):
+## Запуск 24/7 на сервере (VPS)
+
+Подробная инструкция для новичка: **[DEPLOY.md](./DEPLOY.md)**
+
+Кратко на Ubuntu-сервере:
 
 ```bash
+npm install && npm run install:all
+npm run seed --prefix server
 npm run build
-npm start --prefix server
+pm2 start ecosystem.config.cjs
+pm2 save && pm2 startup
 ```
+
+После сборки UI и API работают вместе на порту **3001** (или через домен + nginx).
 
 ## Как пользоваться
 
