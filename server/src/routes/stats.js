@@ -1,0 +1,281 @@
+import { Router } from 'express';
+import { db } from '../db.js';
+
+const router = Router();
+
+function dateFilter(from, to, column = 'created_at') {
+  const clauses = [];
+  const params = [];
+  if (from) {
+    clauses.push(`${column} >= ?`);
+    params.push(from.length === 10 ? `${from} 00:00:00` : from);
+  }
+  if (to) {
+    clauses.push(`${column} <= ?`);
+    params.push(to.length === 10 ? `${to} 23:59:59` : to);
+  }
+  return { sql: clauses.length ? clauses.join(' AND ') : '1=1', params };
+}
+
+router.get('/overview', (req, res) => {
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const clicks = db
+    .prepare(
+      `SELECT
+        COUNT(*) AS clicks,
+        COALESCE(SUM(is_unique), 0) AS uniques,
+        COALESCE(SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END), 0) AS real_clicks,
+        COALESCE(SUM(cost), 0) AS cost
+       FROM clicks cl
+       WHERE ${cf.sql}`
+    )
+    .get(...cf.params);
+
+  const conv = db
+    .prepare(
+      `SELECT
+        COUNT(*) AS conversions,
+        COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
+        COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END), 0) AS revenue
+       FROM conversions cv
+       WHERE ${vf.sql}`
+    )
+    .get(...vf.params);
+
+  const cost = Number(clicks.cost || 0);
+  const revenue = Number(conv.revenue || 0);
+  const profit = revenue - cost;
+  const clickCount = Number(clicks.clicks || 0);
+  const conversions = Number(conv.conversions || 0);
+
+  res.json({
+    clicks: clickCount,
+    uniques: Number(clicks.uniques || 0),
+    real_clicks: Number(clicks.real_clicks || 0),
+    conversions,
+    sales: Number(conv.sales || 0),
+    cost: round(cost),
+    revenue: round(revenue),
+    profit: round(profit),
+    roi: cost > 0 ? round((profit / cost) * 100) : null,
+    cr: clickCount > 0 ? round((conversions / clickCount) * 100) : 0,
+    epc: clickCount > 0 ? round(revenue / clickCount) : 0,
+  });
+});
+
+router.get('/by-campaign', (req, res) => {
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const rows = db
+    .prepare(
+      `SELECT
+        c.id,
+        c.name,
+        c.key,
+        c.status,
+        COALESCE(s.name, '—') AS source_name,
+        COALESCE(o.name, '—') AS offer_name,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.is_unique), 0) AS uniques,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(cv.conversions, 0) AS conversions,
+        COALESCE(cv.sales, 0) AS sales,
+        COALESCE(cv.revenue, 0) AS revenue
+      FROM campaigns c
+      LEFT JOIN traffic_sources s ON s.id = c.traffic_source_id
+      LEFT JOIN offers o ON o.id = c.offer_id
+      LEFT JOIN clicks cl ON cl.campaign_id = c.id AND ${cf.sql}
+      LEFT JOIN (
+        SELECT campaign_id,
+          COUNT(*) AS conversions,
+          SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END) AS sales,
+          SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END) AS revenue
+        FROM conversions cv
+        WHERE ${vf.sql}
+        GROUP BY campaign_id
+      ) cv ON cv.campaign_id = c.id
+      GROUP BY c.id
+      ORDER BY clicks DESC, c.id DESC`
+    )
+    .all(...cf.params, ...vf.params);
+
+  res.json(rows.map(enrichRow));
+});
+
+router.get('/by-offer', (req, res) => {
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const rows = db
+    .prepare(
+      `SELECT
+        o.id,
+        o.name,
+        o.network,
+        o.geo,
+        o.payout,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(cv.conversions, 0) AS conversions,
+        COALESCE(cv.revenue, 0) AS revenue
+      FROM offers o
+      LEFT JOIN clicks cl ON cl.offer_id = o.id AND ${cf.sql}
+      LEFT JOIN (
+        SELECT offer_id,
+          COUNT(*) AS conversions,
+          SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END) AS revenue
+        FROM conversions cv
+        WHERE ${vf.sql}
+        GROUP BY offer_id
+      ) cv ON cv.offer_id = o.id
+      GROUP BY o.id
+      ORDER BY clicks DESC`
+    )
+    .all(...cf.params, ...vf.params);
+
+  res.json(rows.map(enrichRow));
+});
+
+router.get('/by-source', (req, res) => {
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const rows = db
+    .prepare(
+      `SELECT
+        s.id,
+        s.name,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(cv.conversions, 0) AS conversions,
+        COALESCE(cv.revenue, 0) AS revenue
+      FROM traffic_sources s
+      LEFT JOIN clicks cl ON cl.traffic_source_id = s.id AND ${cf.sql}
+      LEFT JOIN (
+        SELECT cl2.traffic_source_id AS source_id,
+          COUNT(cv.id) AS conversions,
+          SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END) AS revenue
+        FROM conversions cv
+        JOIN clicks cl2 ON cl2.clickid = cv.clickid
+        WHERE ${vf.sql}
+        GROUP BY cl2.traffic_source_id
+      ) cv ON cv.source_id = s.id
+      GROUP BY s.id
+      ORDER BY clicks DESC`
+    )
+    .all(...cf.params, ...vf.params);
+
+  res.json(rows.map(enrichRow));
+});
+
+router.get('/by-day', (req, res) => {
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const clickDays = db
+    .prepare(
+      `SELECT date(cl.created_at) AS day,
+        COUNT(*) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost
+       FROM clicks cl
+       WHERE ${cf.sql}
+       GROUP BY date(cl.created_at)
+       ORDER BY day`
+    )
+    .all(...cf.params);
+
+  const convDays = db
+    .prepare(
+      `SELECT date(cv.created_at) AS day,
+        COUNT(*) AS conversions,
+        COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END), 0) AS revenue
+       FROM conversions cv
+       WHERE ${vf.sql}
+       GROUP BY date(cv.created_at)`
+    )
+    .all(...vf.params);
+
+  const map = new Map();
+  for (const r of clickDays) {
+    map.set(r.day, {
+      day: r.day,
+      clicks: r.clicks,
+      cost: Number(r.cost),
+      conversions: 0,
+      revenue: 0,
+    });
+  }
+  for (const r of convDays) {
+    const cur = map.get(r.day) || { day: r.day, clicks: 0, cost: 0, conversions: 0, revenue: 0 };
+    cur.conversions = r.conversions;
+    cur.revenue = Number(r.revenue);
+    map.set(r.day, cur);
+  }
+
+  res.json([...map.values()].sort((a, b) => a.day.localeCompare(b.day)).map(enrichRow));
+});
+
+router.get('/recent-clicks', (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const rows = db
+    .prepare(
+      `SELECT cl.*, c.name AS campaign_name, o.name AS offer_name, s.name AS source_name
+       FROM clicks cl
+       LEFT JOIN campaigns c ON c.id = cl.campaign_id
+       LEFT JOIN offers o ON o.id = cl.offer_id
+       LEFT JOIN traffic_sources s ON s.id = cl.traffic_source_id
+       ORDER BY cl.id DESC
+       LIMIT ?`
+    )
+    .all(limit);
+  res.json(rows);
+});
+
+router.get('/recent-conversions', (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const rows = db
+    .prepare(
+      `SELECT cv.*, c.name AS campaign_name, o.name AS offer_name
+       FROM conversions cv
+       LEFT JOIN campaigns c ON c.id = cv.campaign_id
+       LEFT JOIN offers o ON o.id = cv.offer_id
+       ORDER BY cv.id DESC
+       LIMIT ?`
+    )
+    .all(limit);
+  res.json(rows);
+});
+
+function round(n, d = 2) {
+  const p = 10 ** d;
+  return Math.round((Number(n) + Number.EPSILON) * p) / p;
+}
+
+function enrichRow(row) {
+  const clicks = Number(row.clicks || 0);
+  const cost = Number(row.cost || 0);
+  const revenue = Number(row.revenue || 0);
+  const conversions = Number(row.conversions || 0);
+  const profit = revenue - cost;
+  return {
+    ...row,
+    clicks,
+    cost: round(cost),
+    revenue: round(revenue),
+    conversions,
+    profit: round(profit),
+    roi: cost > 0 ? round((profit / cost) * 100) : null,
+    cr: clicks > 0 ? round((conversions / clicks) * 100) : 0,
+    epc: clicks > 0 ? round(revenue / clicks) : 0,
+  };
+}
+
+export default router;
