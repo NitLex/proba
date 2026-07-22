@@ -23,7 +23,7 @@ export default function Layout() {
           <div className="brand-mark">
             Arb<span>Track</span>
           </div>
-          <div className="brand-sub">Binom-style tracker</div>
+          <div className="brand-sub">arbitrage tracker</div>
         </div>
         <nav className="nav">
           {links.map((l) => (

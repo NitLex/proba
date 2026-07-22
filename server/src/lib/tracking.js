@@ -27,7 +27,7 @@ export function pickWeighted(items) {
 }
 
 /**
- * Replace Binom-style macros in destination URLs.
+ * Replace tracking macros in destination URLs.
  */
 export function applyMacros(template, ctx = {}) {
   if (!template) return template;

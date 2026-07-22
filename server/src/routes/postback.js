@@ -5,7 +5,7 @@ import { parseCost } from '../lib/tracking.js';
 const router = Router();
 
 /**
- * Network postback endpoint (Binom-style).
+ * Network postback endpoint.
  * Example: /postback?clickid={clickid}&payout={payout}&status=approved&txid={txid}
  */
 router.get('/postback', (req, res) => {
