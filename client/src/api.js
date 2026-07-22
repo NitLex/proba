@@ -1,9 +1,29 @@
 const BASE = '';
+const TOKEN_KEY = 'arbtrack_token';
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+export function setAuthToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request(path, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+  const token = getAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
+    headers,
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -12,6 +32,9 @@ async function request(path, options = {}) {
       msg = j.error || msg;
     } catch {
       /* ignore */
+    }
+    if (res.status === 401 && !path.startsWith('/api/auth/login') && !path.startsWith('/api/auth/register')) {
+      clearAuthToken();
     }
     throw new Error(msg);
   }

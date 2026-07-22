@@ -8,7 +8,9 @@ import trackRouter from './routes/track.js';
 import postbackRouter from './routes/postback.js';
 import campaignsRouter from './routes/campaigns.js';
 import statsRouter from './routes/stats.js';
+import authRouter from './routes/auth.js';
 import { crudRouter } from './routes/crud.js';
+import { requireAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,6 +25,14 @@ export function createApp() {
     res.json({ ok: true, name: 'ArbTrack', version: '1.0.0' });
   });
 
+  app.use('/api/auth', authRouter);
+
+  // Public tracking endpoints (must stay open for ads & affiliate networks)
+  app.use(trackRouter);
+  app.use(postbackRouter);
+
+  // Protected dashboard API
+  app.use('/api', requireAuth);
   app.use('/api/campaigns', campaignsRouter);
   app.use(
     '/api/offers',
@@ -68,9 +78,6 @@ export function createApp() {
     })
   );
   app.use('/api/stats', statsRouter);
-
-  app.use(trackRouter);
-  app.use(postbackRouter);
 
   const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
   if (fs.existsSync(clientDist)) {

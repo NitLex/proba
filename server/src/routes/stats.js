@@ -18,6 +18,7 @@ function dateFilter(from, to, column = 'created_at') {
 }
 
 router.get('/overview', (req, res) => {
+  const uid = req.user.id;
   const { from, to } = req.query;
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
@@ -26,24 +27,26 @@ router.get('/overview', (req, res) => {
     .prepare(
       `SELECT
         COUNT(*) AS clicks,
-        COALESCE(SUM(is_unique), 0) AS uniques,
-        COALESCE(SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END), 0) AS real_clicks,
-        COALESCE(SUM(cost), 0) AS cost
+        COALESCE(SUM(cl.is_unique), 0) AS uniques,
+        COALESCE(SUM(CASE WHEN cl.is_bot = 0 THEN 1 ELSE 0 END), 0) AS real_clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost
        FROM clicks cl
-       WHERE ${cf.sql}`
+       JOIN campaigns c ON c.id = cl.campaign_id
+       WHERE c.user_id = ? AND ${cf.sql}`
     )
-    .get(...cf.params);
+    .get(uid, ...cf.params);
 
   const conv = db
     .prepare(
       `SELECT
         COUNT(*) AS conversions,
-        COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
-        COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END), 0) AS revenue
+        COALESCE(SUM(CASE WHEN cv.status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
+        COALESCE(SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END), 0) AS revenue
        FROM conversions cv
-       WHERE ${vf.sql}`
+       JOIN campaigns c ON c.id = cv.campaign_id
+       WHERE c.user_id = ? AND ${vf.sql}`
     )
-    .get(...vf.params);
+    .get(uid, ...vf.params);
 
   const cost = Number(clicks.cost || 0);
   const revenue = Number(conv.revenue || 0);
@@ -67,6 +70,7 @@ router.get('/overview', (req, res) => {
 });
 
 router.get('/by-campaign', (req, res) => {
+  const uid = req.user.id;
   const { from, to } = req.query;
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
@@ -99,15 +103,17 @@ router.get('/by-campaign', (req, res) => {
         WHERE ${vf.sql}
         GROUP BY campaign_id
       ) cv ON cv.campaign_id = c.id
+      WHERE c.user_id = ?
       GROUP BY c.id
       ORDER BY clicks DESC, c.id DESC`
     )
-    .all(...cf.params, ...vf.params);
+    .all(...cf.params, ...vf.params, uid);
 
   res.json(rows.map(enrichRow));
 });
 
 router.get('/by-offer', (req, res) => {
+  const uid = req.user.id;
   const { from, to } = req.query;
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
@@ -134,15 +140,17 @@ router.get('/by-offer', (req, res) => {
         WHERE ${vf.sql}
         GROUP BY offer_id
       ) cv ON cv.offer_id = o.id
+      WHERE o.user_id = ?
       GROUP BY o.id
       ORDER BY clicks DESC`
     )
-    .all(...cf.params, ...vf.params);
+    .all(...cf.params, ...vf.params, uid);
 
   res.json(rows.map(enrichRow));
 });
 
 router.get('/by-source', (req, res) => {
+  const uid = req.user.id;
   const { from, to } = req.query;
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
@@ -167,15 +175,17 @@ router.get('/by-source', (req, res) => {
         WHERE ${vf.sql}
         GROUP BY cl2.traffic_source_id
       ) cv ON cv.source_id = s.id
+      WHERE s.user_id = ?
       GROUP BY s.id
       ORDER BY clicks DESC`
     )
-    .all(...cf.params, ...vf.params);
+    .all(...cf.params, ...vf.params, uid);
 
   res.json(rows.map(enrichRow));
 });
 
 router.get('/by-day', (req, res) => {
+  const uid = req.user.id;
   const { from, to } = req.query;
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
@@ -186,22 +196,24 @@ router.get('/by-day', (req, res) => {
         COUNT(*) AS clicks,
         COALESCE(SUM(cl.cost), 0) AS cost
        FROM clicks cl
-       WHERE ${cf.sql}
+       JOIN campaigns c ON c.id = cl.campaign_id
+       WHERE c.user_id = ? AND ${cf.sql}
        GROUP BY date(cl.created_at)
        ORDER BY day`
     )
-    .all(...cf.params);
+    .all(uid, ...cf.params);
 
   const convDays = db
     .prepare(
       `SELECT date(cv.created_at) AS day,
         COUNT(*) AS conversions,
-        COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END), 0) AS revenue
+        COALESCE(SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END), 0) AS revenue
        FROM conversions cv
-       WHERE ${vf.sql}
+       JOIN campaigns c ON c.id = cv.campaign_id
+       WHERE c.user_id = ? AND ${vf.sql}
        GROUP BY date(cv.created_at)`
     )
-    .all(...vf.params);
+    .all(uid, ...vf.params);
 
   const map = new Map();
   for (const r of clickDays) {
@@ -229,13 +241,14 @@ router.get('/recent-clicks', (req, res) => {
     .prepare(
       `SELECT cl.*, c.name AS campaign_name, o.name AS offer_name, s.name AS source_name
        FROM clicks cl
-       LEFT JOIN campaigns c ON c.id = cl.campaign_id
+       JOIN campaigns c ON c.id = cl.campaign_id
        LEFT JOIN offers o ON o.id = cl.offer_id
        LEFT JOIN traffic_sources s ON s.id = cl.traffic_source_id
+       WHERE c.user_id = ?
        ORDER BY cl.id DESC
        LIMIT ?`
     )
-    .all(limit);
+    .all(req.user.id, limit);
   res.json(rows);
 });
 
@@ -245,12 +258,13 @@ router.get('/recent-conversions', (req, res) => {
     .prepare(
       `SELECT cv.*, c.name AS campaign_name, o.name AS offer_name
        FROM conversions cv
-       LEFT JOIN campaigns c ON c.id = cv.campaign_id
+       JOIN campaigns c ON c.id = cv.campaign_id
        LEFT JOIN offers o ON o.id = cv.offer_id
+       WHERE c.user_id = ?
        ORDER BY cv.id DESC
        LIMIT ?`
     )
-    .all(limit);
+    .all(req.user.id, limit);
   res.json(rows);
 });
 

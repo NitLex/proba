@@ -38,26 +38,36 @@ describe('tracking helpers', () => {
 describe('api integration', () => {
   let base;
   let server;
+  let token;
 
   before(async () => {
     process.env.DB_PATH = testDb;
+    process.env.JWT_SECRET = 'test-secret';
     for (const f of [testDb, `${testDb}-wal`, `${testDb}-shm`]) {
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
 
     const { db } = await import('../src/db.js');
+    const { hashPassword } = await import('../src/lib/auth.js');
+    const user = db
+      .prepare(`INSERT INTO users (username, password_hash) VALUES (?, ?)`)
+      .run('tester', hashPassword('secret1'));
+    const userId = Number(user.lastInsertRowid);
+
     const src = db
-      .prepare(`INSERT INTO traffic_sources (name, cost_param, token1) VALUES ('Test', 'cost', 'sub1')`)
-      .run();
+      .prepare(
+        `INSERT INTO traffic_sources (user_id, name, cost_param, token1) VALUES (?, 'Test', 'cost', 'sub1')`
+      )
+      .run(userId);
     const offer = db
       .prepare(
-        `INSERT INTO offers (name, url, payout) VALUES ('O1', 'https://offer.test/?id={clickid}', 10)`
+        `INSERT INTO offers (user_id, name, url, payout) VALUES (?, 'O1', 'https://offer.test/?id={clickid}', 10)`
       )
-      .run();
+      .run(userId);
     db.prepare(
-      `INSERT INTO campaigns (name, key, traffic_source_id, offer_id, cost_model, cost_value, status)
-       VALUES ('C1', 'testkey1', ?, ?, 'cpc', 0.1, 'active')`
-    ).run(Number(src.lastInsertRowid), Number(offer.lastInsertRowid));
+      `INSERT INTO campaigns (user_id, name, key, traffic_source_id, offer_id, cost_model, cost_value, status)
+       VALUES (?, 'C1', 'testkey1', ?, ?, 'cpc', 0.1, 'active')`
+    ).run(userId, Number(src.lastInsertRowid), Number(offer.lastInsertRowid));
 
     const { createApp } = await import('../src/app.js');
     const app = createApp();
@@ -66,6 +76,14 @@ describe('api integration', () => {
     });
     const { port } = server.address();
     base = `http://127.0.0.1:${port}`;
+
+    const login = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'tester', password: 'secret1' }),
+    });
+    const body = await login.json();
+    token = body.token;
   });
 
   after(() => {
@@ -77,6 +95,23 @@ describe('api integration', () => {
     assert.equal(res.status, 200);
     const json = await res.json();
     assert.equal(json.ok, true);
+  });
+
+  it('rejects protected api without token', async () => {
+    const res = await fetch(`${base}/api/stats/overview`);
+    assert.equal(res.status, 401);
+  });
+
+  it('registers a new user', async () => {
+    const res = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'newbie', password: 'pass123' }),
+    });
+    assert.equal(res.status, 201);
+    const body = await res.json();
+    assert.ok(body.token);
+    assert.equal(body.user.username, 'newbie');
   });
 
   it('tracks click and accepts postback', async () => {
@@ -96,7 +131,11 @@ describe('api integration', () => {
     assert.equal(body.ok, true);
     assert.equal(body.payout, 10);
 
-    const overview = await (await fetch(`${base}/api/stats/overview`)).json();
+    const overview = await (
+      await fetch(`${base}/api/stats/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json();
     assert.ok(overview.clicks >= 1);
     assert.ok(overview.revenue >= 10);
   });

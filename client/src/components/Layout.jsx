@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth';
 
 const links = [
   { to: '/', label: 'Дашборд', end: true },
@@ -11,6 +12,9 @@ const links = [
 ];
 
 export default function Layout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -28,6 +32,20 @@ export default function Layout() {
           ))}
         </nav>
         <div className="sidebar-foot">
+          <div style={{ marginBottom: '0.55rem' }}>
+            Вы вошли как <strong className="mono">{user?.username}</strong>
+          </div>
+          <button
+            className="btn ghost sm"
+            type="button"
+            style={{ width: '100%', marginBottom: '0.75rem' }}
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
+          >
+            Выйти
+          </button>
           Клик: <span className="mono">/click/:key</span>
           <br />
           Постбек: <span className="mono">/postback?clickid=…</span>
