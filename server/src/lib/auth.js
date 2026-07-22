@@ -29,6 +29,30 @@ export function publicUser(row) {
   return {
     id: row.id,
     username: row.username,
+    email: row.email || '',
+    telegram: row.telegram || '',
     created_at: row.created_at,
   };
+}
+
+export function normalizeEmail(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
+export function normalizeTelegram(raw) {
+  let t = String(raw || '').trim();
+  if (!t) return '';
+  // accept @user, user, or t.me/user / telegram.me/user links
+  t = t.replace(/^https?:\/\/(t\.me|telegram\.me)\//i, '');
+  t = t.replace(/^@/, '');
+  return t ? `@${t}` : '';
+}
+
+export function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function isValidTelegram(telegram) {
+  // stored as @username, 5–32 chars after @
+  return /^@[a-zA-Z0-9_]{5,32}$/.test(telegram);
 }

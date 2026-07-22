@@ -9,6 +9,7 @@ const links = [
   { to: '/sources', label: 'Источники' },
   { to: '/stats', label: 'Статистика' },
   { to: '/logs', label: 'Клики / конверсии' },
+  { to: '/profile', label: 'Личный кабинет' },
 ];
 
 export default function Layout() {

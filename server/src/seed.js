@@ -9,9 +9,25 @@ function ensureDemoUser() {
   let user = db.prepare(`SELECT * FROM users WHERE username = ?`).get(DEMO_USER);
   if (!user) {
     const info = db
-      .prepare(`INSERT INTO users (username, password_hash) VALUES (?, ?)`)
-      .run(DEMO_USER, hashPassword(DEMO_PASS));
+      .prepare(
+        `INSERT INTO users (username, password_hash, email, telegram) VALUES (?, ?, ?, ?)`
+      )
+      .run(DEMO_USER, hashPassword(DEMO_PASS), 'demo@arbtrack.local', '@arbtrack_demo');
     user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(Number(info.lastInsertRowid));
+  } else {
+    // backfill profile for older demo users
+    if (!user.email) {
+      db.prepare(`UPDATE users SET email = ? WHERE id = ? AND (email IS NULL OR email = '')`).run(
+        'demo@arbtrack.local',
+        user.id
+      );
+    }
+    if (!user.telegram) {
+      db.prepare(
+        `UPDATE users SET telegram = ? WHERE id = ? AND (telegram IS NULL OR telegram = '')`
+      ).run('@arbtrack_demo', user.id);
+    }
+    user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
   }
 
   // attach orphan rows from pre-auth installs

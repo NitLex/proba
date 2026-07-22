@@ -106,12 +106,37 @@ describe('api integration', () => {
     const res = await fetch(`${base}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'newbie', password: 'pass123' }),
+      body: JSON.stringify({
+        username: 'newbie',
+        password: 'pass123',
+        email: 'newbie@example.com',
+        telegram: '@newbie_user',
+      }),
     });
     assert.equal(res.status, 201);
     const body = await res.json();
     assert.ok(body.token);
     assert.equal(body.user.username, 'newbie');
+    assert.equal(body.user.email, 'newbie@example.com');
+    assert.equal(body.user.telegram, '@newbie_user');
+  });
+
+  it('updates profile', async () => {
+    const res = await fetch(`${base}/api/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        email: 'tester@example.com',
+        telegram: 'tester_tg',
+      }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.user.email, 'tester@example.com');
+    assert.equal(body.user.telegram, '@tester_tg');
   });
 
   it('tracks click and accepts postback', async () => {

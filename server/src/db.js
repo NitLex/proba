@@ -26,6 +26,8 @@ export function initSchema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
+      telegram TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -136,11 +138,13 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_landings_user ON landings(user_id);
   `);
 
-  // migrate older DBs created before auth
+  // migrate older DBs created before auth / profile fields
   ensureColumn('traffic_sources', 'user_id', 'INTEGER');
   ensureColumn('offers', 'user_id', 'INTEGER');
   ensureColumn('landings', 'user_id', 'INTEGER');
   ensureColumn('campaigns', 'user_id', 'INTEGER');
+  ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('users', 'telegram', "TEXT NOT NULL DEFAULT ''");
 }
 
 initSchema();

@@ -5,24 +5,37 @@ import { useAuth } from '../auth';
 export default function Register() {
   const { user, register } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [password2, setPassword2] = useState('');
+  const [form, setForm] = useState({
+    username: '',
+    email: '',
+    telegram: '',
+    password: '',
+    password2: '',
+  });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (user) return <Navigate to="/" replace />;
 
+  function setField(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
-    if (password !== password2) {
+    if (form.password !== form.password2) {
       setError('Пароли не совпадают');
       return;
     }
     setBusy(true);
     try {
-      await register(username.trim(), password);
+      await register({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        telegram: form.telegram.trim(),
+        password: form.password,
+      });
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -46,9 +59,31 @@ export default function Register() {
           <input
             className="input"
             autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={form.username}
+            onChange={(e) => setField('username', e.target.value)}
             placeholder="latin_letters_123"
+            required
+          />
+        </label>
+        <label className="lbl" style={{ marginTop: '0.75rem' }}>
+          Email
+          <input
+            className="input"
+            type="email"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => setField('email', e.target.value)}
+            placeholder="you@mail.com"
+            required
+          />
+        </label>
+        <label className="lbl" style={{ marginTop: '0.75rem' }}>
+          Telegram
+          <input
+            className="input"
+            value={form.telegram}
+            onChange={(e) => setField('telegram', e.target.value)}
+            placeholder="@username"
             required
           />
         </label>
@@ -58,8 +93,8 @@ export default function Register() {
             className="input"
             type="password"
             autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={form.password}
+            onChange={(e) => setField('password', e.target.value)}
             minLength={6}
             required
           />
@@ -70,14 +105,18 @@ export default function Register() {
             className="input"
             type="password"
             autoComplete="new-password"
-            value={password2}
-            onChange={(e) => setPassword2(e.target.value)}
+            value={form.password2}
+            onChange={(e) => setField('password2', e.target.value)}
             minLength={6}
             required
           />
         </label>
 
-        {error && <p className="neg" style={{ marginTop: '0.75rem' }}>{error}</p>}
+        {error && (
+          <p className="neg" style={{ marginTop: '0.75rem' }}>
+            {error}
+          </p>
+        )}
 
         <button className="btn" type="submit" style={{ width: '100%', marginTop: '1rem' }} disabled={busy}>
           {busy ? 'Создаём…' : 'Создать аккаунт'}

@@ -11,7 +11,7 @@ export function requireAuth(req, res, next) {
   try {
     const payload = verifyToken(token);
     const user = db
-      .prepare(`SELECT id, username, created_at FROM users WHERE id = ?`)
+      .prepare(`SELECT id, username, email, telegram, created_at FROM users WHERE id = ?`)
       .get(Number(payload.sub));
     if (!user) return res.status(401).json({ error: 'Пользователь не найден' });
     req.user = publicUser(user);

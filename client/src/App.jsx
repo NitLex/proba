@@ -10,6 +10,7 @@ import Stats from './pages/Stats';
 import Logs from './pages/Logs';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="sources" element={<Sources />} />
             <Route path="stats" element={<Stats />} />
             <Route path="logs" element={<Logs />} />
+            <Route path="profile" element={<Profile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
