@@ -20,6 +20,13 @@ function ensureColumn(table, column, definition) {
   }
 }
 
+function ensureSetting(key, value) {
+  db.prepare(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO NOTHING`
+  ).run(key, value);
+}
+
 export function initSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -28,7 +35,13 @@ export function initSchema() {
       password_hash TEXT NOT NULL,
       email TEXT NOT NULL DEFAULT '',
       telegram TEXT NOT NULL DEFAULT '',
+      is_admin INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS traffic_sources (
@@ -81,8 +94,18 @@ export function initSchema() {
       cost_model TEXT NOT NULL DEFAULT 'cpc',
       cost_value REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'active',
+      unique_hours INTEGER NOT NULL DEFAULT 24,
+      block_bots INTEGER NOT NULL DEFAULT 0,
       notes TEXT DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS campaign_offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      offer_id INTEGER NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
+      weight REAL NOT NULL DEFAULT 100,
+      UNIQUE(campaign_id, offer_id)
     );
 
     CREATE TABLE IF NOT EXISTS clicks (
@@ -136,15 +159,46 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_offers_user ON offers(user_id);
     CREATE INDEX IF NOT EXISTS idx_sources_user ON traffic_sources(user_id);
     CREATE INDEX IF NOT EXISTS idx_landings_user ON landings(user_id);
+    CREATE INDEX IF NOT EXISTS idx_campaign_offers_campaign ON campaign_offers(campaign_id);
   `);
 
-  // migrate older DBs created before auth / profile fields
   ensureColumn('traffic_sources', 'user_id', 'INTEGER');
   ensureColumn('offers', 'user_id', 'INTEGER');
   ensureColumn('landings', 'user_id', 'INTEGER');
   ensureColumn('campaigns', 'user_id', 'INTEGER');
+  ensureColumn('campaigns', 'unique_hours', 'INTEGER NOT NULL DEFAULT 24');
+  ensureColumn('campaigns', 'block_bots', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('users', 'telegram', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
+
+  ensureSetting('registration_enabled', '1');
+  ensureSetting('invite_code', '');
+
+  // migrate legacy single offer_id into campaign_offers
+  db.prepare(
+    `INSERT OR IGNORE INTO campaign_offers (campaign_id, offer_id, weight)
+     SELECT id, offer_id, 100 FROM campaigns WHERE offer_id IS NOT NULL`
+  ).run();
+
+  // promote first user to admin if none
+  const adminCount = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE is_admin = 1`).get().c;
+  if (!adminCount) {
+    const first = db.prepare(`SELECT id FROM users ORDER BY id ASC LIMIT 1`).get();
+    if (first) db.prepare(`UPDATE users SET is_admin = 1 WHERE id = ?`).run(first.id);
+  }
+}
+
+export function getSetting(key, fallback = '') {
+  const row = db.prepare(`SELECT value FROM app_settings WHERE key = ?`).get(key);
+  return row ? row.value : fallback;
+}
+
+export function setSetting(key, value) {
+  db.prepare(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(key, String(value));
 }
 
 initSchema();

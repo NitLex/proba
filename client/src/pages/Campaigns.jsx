@@ -6,12 +6,14 @@ const emptyForm = {
   name: '',
   key: '',
   traffic_source_id: '',
-  offer_id: '',
   landing_id: '',
   cost_model: 'cpc',
   cost_value: 0,
   status: 'active',
+  unique_hours: 24,
+  block_bots: false,
   notes: '',
+  rotation: [{ offer_id: '', weight: 100 }],
 };
 
 export default function Campaigns() {
@@ -45,13 +47,22 @@ export default function Campaigns() {
 
   async function save(e) {
     e.preventDefault();
+    const rotation = (form.rotation || [])
+      .filter((x) => x.offer_id && Number(x.weight) > 0)
+      .map((x) => ({ offer_id: Number(x.offer_id), weight: Number(x.weight) }));
     const body = {
-      ...form,
-      traffic_source_id: form.traffic_source_id ? Number(form.traffic_source_id) : null,
-      offer_id: form.offer_id ? Number(form.offer_id) : null,
-      landing_id: form.landing_id ? Number(form.landing_id) : null,
-      cost_value: Number(form.cost_value || 0),
+      name: form.name,
       key: form.key || undefined,
+      traffic_source_id: form.traffic_source_id ? Number(form.traffic_source_id) : null,
+      offer_id: rotation[0]?.offer_id || null,
+      landing_id: form.landing_id ? Number(form.landing_id) : null,
+      cost_model: form.cost_model,
+      cost_value: Number(form.cost_value || 0),
+      status: form.status,
+      unique_hours: Number(form.unique_hours || 24),
+      block_bots: !!form.block_bots,
+      notes: form.notes,
+      rotation,
     };
     try {
       if (editingId) await api.put(`/api/campaigns/${editingId}`, body);
@@ -70,12 +81,32 @@ export default function Campaigns() {
     await load();
   }
 
+  function openEdit(r) {
+    setEditingId(r.id);
+    setForm({
+      name: r.name,
+      key: r.key,
+      traffic_source_id: r.traffic_source_id || '',
+      landing_id: r.landing_id || '',
+      cost_model: r.cost_model,
+      cost_value: r.cost_value,
+      status: r.status,
+      unique_hours: r.unique_hours ?? 24,
+      block_bots: !!r.block_bots,
+      notes: r.notes || '',
+      rotation:
+        r.rotation?.length > 0
+          ? r.rotation.map((x) => ({ offer_id: String(x.offer_id), weight: x.weight }))
+          : [{ offer_id: r.offer_id ? String(r.offer_id) : '', weight: 100 }],
+    });
+  }
+
   return (
     <div>
       <div className="page-head">
         <div>
           <h1>Кампании</h1>
-          <p>Трекинг-ссылки, офферы, лендинги и стоимость клика</p>
+          <p>Ротация офферов, уникальность, антибот</p>
         </div>
         <div className="toolbar">
           <input
@@ -93,7 +124,7 @@ export default function Campaigns() {
             type="button"
             onClick={() => {
               setEditingId(null);
-              setForm({ ...emptyForm });
+              setForm({ ...emptyForm, rotation: [{ offer_id: '', weight: 100 }] });
             }}
           >
             + Кампания
@@ -112,7 +143,7 @@ export default function Campaigns() {
                 <th>Название</th>
                 <th>Key</th>
                 <th>Источник</th>
-                <th>Оффер</th>
+                <th>Офферы</th>
                 <th>CPC</th>
                 <th>Статус</th>
                 <th>Ссылка</th>
@@ -122,13 +153,17 @@ export default function Campaigns() {
             <tbody>
               {rows.map((r) => {
                 const url = `${clickBase}/click/${r.key}`;
+                const rot =
+                  r.rotation?.map((x) => `${x.offer_name || x.offer_id} (${x.weight})`).join(', ') ||
+                  r.offer_name ||
+                  '—';
                 return (
                   <tr key={r.id}>
                     <td className="mono">{r.id}</td>
                     <td>{r.name}</td>
                     <td className="mono">{r.key}</td>
                     <td>{r.source_name || '—'}</td>
-                    <td>{r.offer_name || '—'}</td>
+                    <td>{rot}</td>
                     <td>{money(r.cost_value)}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status}</span>
@@ -150,24 +185,7 @@ export default function Campaigns() {
                     </td>
                     <td>
                       <div className="toolbar">
-                        <button
-                          className="btn ghost sm"
-                          type="button"
-                          onClick={() => {
-                            setEditingId(r.id);
-                            setForm({
-                              name: r.name,
-                              key: r.key,
-                              traffic_source_id: r.traffic_source_id || '',
-                              offer_id: r.offer_id || '',
-                              landing_id: r.landing_id || '',
-                              cost_model: r.cost_model,
-                              cost_value: r.cost_value,
-                              status: r.status,
-                              notes: r.notes || '',
-                            });
-                          }}
-                        >
+                        <button className="btn ghost sm" type="button" onClick={() => openEdit(r)}>
                           Edit
                         </button>
                         <button className="btn danger sm" type="button" onClick={() => remove(r.id)}>
@@ -230,22 +248,7 @@ export default function Campaigns() {
                 </select>
               </label>
               <label className="lbl">
-                Оффер
-                <select
-                  className="select"
-                  value={form.offer_id}
-                  onChange={(e) => setForm({ ...form, offer_id: e.target.value })}
-                >
-                  <option value="">—</option>
-                  {offers.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="lbl">
-                Лендинг (опционально)
+                Лендинг
                 <select
                   className="select"
                   value={form.landing_id}
@@ -270,6 +273,16 @@ export default function Campaigns() {
                 />
               </label>
               <label className="lbl">
+                Уникальность (часов)
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  value={form.unique_hours}
+                  onChange={(e) => setForm({ ...form, unique_hours: e.target.value })}
+                />
+              </label>
+              <label className="lbl">
                 Статус
                 <select
                   className="select"
@@ -280,20 +293,80 @@ export default function Campaigns() {
                   <option value="paused">paused</option>
                 </select>
               </label>
-              <label className="lbl full">
-                Заметки
-                <textarea
-                  className="textarea"
-                  rows={2}
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              <label
+                className="lbl"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!form.block_bots}
+                  onChange={(e) => setForm({ ...form, block_bots: e.target.checked })}
                 />
+                Блокировать ботов
               </label>
+
+              <div className="full">
+                <div className="hint" style={{ marginBottom: '0.45rem' }}>
+                  Ротация офферов (вес = доля трафика)
+                </div>
+                {(form.rotation || []).map((row, idx) => (
+                  <div key={idx} className="toolbar" style={{ marginBottom: '0.4rem' }}>
+                    <select
+                      className="select"
+                      value={row.offer_id}
+                      onChange={(e) => {
+                        const rotation = [...form.rotation];
+                        rotation[idx] = { ...rotation[idx], offer_id: e.target.value };
+                        setForm({ ...form, rotation });
+                      }}
+                    >
+                      <option value="">— оффер —</option>
+                      {offers.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="input sm"
+                      type="number"
+                      min="1"
+                      style={{ width: 90 }}
+                      value={row.weight}
+                      onChange={(e) => {
+                        const rotation = [...form.rotation];
+                        rotation[idx] = { ...rotation[idx], weight: e.target.value };
+                        setForm({ ...form, rotation });
+                      }}
+                    />
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          rotation: form.rotation.filter((_, i) => i !== idx),
+                        })
+                      }
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="btn ghost sm"
+                  type="button"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      rotation: [...(form.rotation || []), { offer_id: '', weight: 100 }],
+                    })
+                  }
+                >
+                  + оффер
+                </button>
+              </div>
             </div>
-            <p className="hint" style={{ marginTop: '0.85rem' }}>
-              Макросы в URL оффера/лендинга: {'{clickid}'}, {'{campaign_id}'}, {'{campaign_name}'},{' '}
-              {'{cost}'}, {'{country}'}, {'{token1}'}…{'{token5}'}
-            </p>
             <div className="modal-actions">
               <button className="btn ghost" type="button" onClick={() => setForm(null)}>
                 Отмена

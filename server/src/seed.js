@@ -10,11 +10,12 @@ function ensureDemoUser() {
   if (!user) {
     const info = db
       .prepare(
-        `INSERT INTO users (username, password_hash, email, telegram) VALUES (?, ?, ?, ?)`
+        `INSERT INTO users (username, password_hash, email, telegram, is_admin) VALUES (?, ?, ?, ?, 1)`
       )
       .run(DEMO_USER, hashPassword(DEMO_PASS), 'demo@arbtrack.local', '@arbtrack_demo');
     user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(Number(info.lastInsertRowid));
   } else {
+    db.prepare(`UPDATE users SET is_admin = 1 WHERE username = ?`).run(DEMO_USER);
     // backfill profile for older demo users
     if (!user.email) {
       db.prepare(`UPDATE users SET email = ? WHERE id = ? AND (email IS NULL OR email = '')`).run(

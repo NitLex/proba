@@ -31,6 +31,7 @@ export function publicUser(row) {
     username: row.username,
     email: row.email || '',
     telegram: row.telegram || '',
+    is_admin: !!row.is_admin,
     created_at: row.created_at,
   };
 }

@@ -1,19 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { api } from '../api';
 
 export default function Register() {
   const { user, register } = useAuth();
   const navigate = useNavigate();
+  const [status, setStatus] = useState(null);
   const [form, setForm] = useState({
     username: '',
     email: '',
     telegram: '',
     password: '',
     password2: '',
+    invite_code: '',
   });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .get('/api/auth/registration-status')
+      .then(setStatus)
+      .catch(() => setStatus({ enabled: true, invite_required: false }));
+  }, []);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -35,6 +45,7 @@ export default function Register() {
         email: form.email.trim(),
         telegram: form.telegram.trim(),
         password: form.password,
+        invite_code: form.invite_code.trim(),
       });
       navigate('/');
     } catch (err) {
@@ -42,6 +53,25 @@ export default function Register() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (status && !status.enabled) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="brand" style={{ marginBottom: '1rem' }}>
+            <div className="brand-mark">
+              Arb<span>Track</span>
+            </div>
+            <div className="brand-sub">Регистрация закрыта</div>
+          </div>
+          <p className="hint">Новые аккаунты сейчас не принимаются. Обратитесь к администратору.</p>
+          <p className="hint" style={{ textAlign: 'center' }}>
+            <Link to="/login">Войти</Link>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -87,6 +117,17 @@ export default function Register() {
             required
           />
         </label>
+        {status?.invite_required && (
+          <label className="lbl" style={{ marginTop: '0.75rem' }}>
+            Инвайт-код
+            <input
+              className="input mono"
+              value={form.invite_code}
+              onChange={(e) => setField('invite_code', e.target.value)}
+              required
+            />
+          </label>
+        )}
         <label className="lbl" style={{ marginTop: '0.75rem' }}>
           Пароль
           <input

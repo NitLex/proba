@@ -11,7 +11,9 @@ export function requireAuth(req, res, next) {
   try {
     const payload = verifyToken(token);
     const user = db
-      .prepare(`SELECT id, username, email, telegram, created_at FROM users WHERE id = ?`)
+      .prepare(
+        `SELECT id, username, email, telegram, is_admin, created_at FROM users WHERE id = ?`
+      )
       .get(Number(payload.sub));
     if (!user) return res.status(401).json({ error: 'Пользователь не найден' });
     req.user = publicUser(user);
@@ -19,4 +21,13 @@ export function requireAuth(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Сессия истекла, войдите снова' });
   }
+}
+
+export function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (!req.user?.is_admin) {
+      return res.status(403).json({ error: 'Только для администратора' });
+    }
+    next();
+  });
 }

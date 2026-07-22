@@ -9,6 +9,7 @@ import postbackRouter from './routes/postback.js';
 import campaignsRouter from './routes/campaigns.js';
 import statsRouter from './routes/stats.js';
 import authRouter from './routes/auth.js';
+import settingsRouter from './routes/settings.js';
 import { crudRouter } from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
 
@@ -78,6 +79,7 @@ export function createApp() {
     })
   );
   app.use('/api/stats', statsRouter);
+  app.use('/api/settings', settingsRouter);
 
   const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
   if (fs.existsSync(clientDist)) {

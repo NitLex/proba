@@ -11,7 +11,9 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
-    "test": "npm test --prefix server"
+    "test": "npm test --prefix server",
+    "backup": "bash scripts/backup-db.sh",
+    "update:vps": "bash update-vps.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

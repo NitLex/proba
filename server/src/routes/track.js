@@ -7,6 +7,7 @@ import {
   detectBot,
   makeClickId,
   parseCost,
+  pickWeighted,
 } from '../lib/tracking.js';
 
 const router = Router();
@@ -29,6 +30,39 @@ function loadCampaign(key) {
     .get(key);
 }
 
+function loadRotation(campaignId) {
+  return db
+    .prepare(
+      `SELECT co.offer_id, co.weight, o.name AS offer_name, o.url AS offer_url, o.payout AS offer_payout, o.status
+       FROM campaign_offers co
+       JOIN offers o ON o.id = co.offer_id
+       WHERE co.campaign_id = ? AND o.status = 'active'`
+    )
+    .all(campaignId);
+}
+
+function pickOffer(campaign) {
+  const rotation = loadRotation(campaign.id);
+  const picked = pickWeighted(rotation);
+  if (picked) {
+    return {
+      offer_id: picked.offer_id,
+      offer_name: picked.offer_name,
+      offer_url: picked.offer_url,
+      offer_payout: picked.offer_payout,
+    };
+  }
+  if (campaign.offer_id && campaign.offer_url) {
+    return {
+      offer_id: campaign.offer_id,
+      offer_name: campaign.offer_name,
+      offer_url: campaign.offer_url,
+      offer_payout: campaign.offer_payout,
+    };
+  }
+  return null;
+}
+
 function tokenValue(req, paramName) {
   if (!paramName) return '';
   const v = req.query[paramName];
@@ -41,6 +75,12 @@ router.get('/click/:key', (req, res) => {
   if (campaign.status !== 'active') return res.status(403).send('Campaign paused');
 
   const ua = req.headers['user-agent'] || '';
+  const isBot = detectBot(ua);
+  if (campaign.block_bots && isBot) {
+    return res.status(403).send('Bot traffic blocked');
+  }
+
+  const offer = pickOffer(campaign);
   const parser = new UAParser(ua);
   const device = parser.getDevice();
   const os = parser.getOS();
@@ -63,15 +103,18 @@ router.get('/click/:key', (req, res) => {
   const token4 = tokenValue(req, campaign.src_token4);
   const token5 = tokenValue(req, campaign.src_token5);
 
+  const uniqueHours = Math.max(1, Number(campaign.unique_hours || 24));
   const recent = db
     .prepare(
       `SELECT id FROM clicks
        WHERE campaign_id = ? AND ip = ? AND user_agent = ?
-         AND created_at > datetime('now', '-24 hours')
+         AND created_at > datetime('now', ?)
        LIMIT 1`
     )
-    .get(campaign.id, ip, ua);
+    .get(campaign.id, ip, ua, `-${uniqueHours} hours`);
   const isUnique = recent ? 0 : 1;
+
+  const offerId = offer?.offer_id ?? campaign.offer_id ?? null;
 
   db.prepare(
     `INSERT INTO clicks (
@@ -86,7 +129,7 @@ router.get('/click/:key', (req, res) => {
   ).run({
     clickid,
     campaign_id: campaign.id,
-    offer_id: campaign.offer_id,
+    offer_id: offerId,
     landing_id: campaign.landing_id,
     traffic_source_id: campaign.traffic_source_id,
     ip,
@@ -99,7 +142,7 @@ router.get('/click/:key', (req, res) => {
     referer: req.headers.referer || '',
     cost,
     is_unique: isUnique,
-    is_bot: detectBot(ua),
+    is_bot: isBot,
     token1,
     token2,
     token3,
@@ -113,10 +156,10 @@ router.get('/click/:key', (req, res) => {
     campaign_id: campaign.id,
     campaign_name: campaign.name,
     campaign_key: campaign.key,
-    offer_id: campaign.offer_id,
-    offer_name: campaign.offer_name,
+    offer_id: offerId,
+    offer_name: offer?.offer_name || campaign.offer_name,
     cost,
-    payout: campaign.offer_payout,
+    payout: offer?.offer_payout ?? campaign.offer_payout,
     country: String(req.query.country || ''),
     city: String(req.query.city || ''),
     device: device.type || 'desktop',
@@ -132,25 +175,27 @@ router.get('/click/:key', (req, res) => {
     token5,
   };
 
-  // Landing → offer flow, or direct to offer
   if (campaign.landing_url) {
     const dest = applyMacros(campaign.landing_url, ctx);
     const sep = dest.includes('?') ? '&' : '?';
-    return res.redirect(302, `${dest}${sep}clickid=${encodeURIComponent(clickid)}&ck=${encodeURIComponent(campaign.key)}`);
+    return res.redirect(
+      302,
+      `${dest}${sep}clickid=${encodeURIComponent(clickid)}&ck=${encodeURIComponent(campaign.key)}`
+    );
   }
 
-  if (!campaign.offer_url) return res.status(400).send('No offer or landing configured');
-  return res.redirect(302, applyMacros(campaign.offer_url, ctx));
+  const offerUrl = offer?.offer_url || campaign.offer_url;
+  if (!offerUrl) return res.status(400).send('No offer or landing configured');
+  return res.redirect(302, applyMacros(offerUrl, ctx));
 });
 
-/** Landing page CTA → offer */
 router.get('/to-offer', (req, res) => {
   const clickid = String(req.query.clickid || '');
   if (!clickid) return res.status(400).send('clickid required');
 
   const click = db
     .prepare(
-      `SELECT cl.*, c.name AS campaign_name, c.key AS campaign_key,
+      `SELECT cl.*, c.name AS campaign_name, c.key AS campaign_key, c.block_bots,
         o.name AS offer_name, o.url AS offer_url, o.payout AS offer_payout
        FROM clicks cl
        JOIN campaigns c ON c.id = cl.campaign_id
@@ -160,6 +205,7 @@ router.get('/to-offer', (req, res) => {
     .get(clickid);
 
   if (!click || !click.offer_url) return res.status(404).send('Offer not found');
+  if (click.block_bots && click.is_bot) return res.status(403).send('Bot traffic blocked');
 
   const dest = applyMacros(click.offer_url, {
     clickid: click.clickid,

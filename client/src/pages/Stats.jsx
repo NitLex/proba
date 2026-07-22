@@ -1,41 +1,61 @@
 import { useEffect, useState } from 'react';
-import { api, money, num, pct, today, todayMinus } from '../api';
+import { api, money, num, pct, today, todayMinus, downloadCsv } from '../api';
 
 const groups = [
   { id: 'by-campaign', label: 'По кампаниям' },
   { id: 'by-offer', label: 'По офферам' },
   { id: 'by-source', label: 'По источникам' },
   { id: 'by-day', label: 'По дням' },
+  { id: 'by-token', label: 'По токенам' },
 ];
 
 export default function Stats() {
   const [group, setGroup] = useState('by-campaign');
+  const [token, setToken] = useState('token1');
   const [from, setFrom] = useState(todayMinus(7));
   const [to, setTo] = useState(today());
   const [rows, setRows] = useState([]);
   const [overview, setOverview] = useState(null);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    const q = `from=${from}&to=${to}`;
+    const q = new URLSearchParams({ from, to });
+    if (group === 'by-token') q.set('token', token);
     Promise.all([
       api.get(`/api/stats/${group}?${q}`),
       api.get(`/api/stats/overview?${q}`),
-    ]).then(([r, o]) => {
-      setRows(r);
-      setOverview(o);
-    });
-  }, [group, from, to]);
+    ])
+      .then(([r, o]) => {
+        setRows(r);
+        setOverview(o);
+        setErr('');
+      })
+      .catch((e) => setErr(e.message));
+  }, [group, from, to, token]);
+
+  async function exportCsv() {
+    try {
+      const q = new URLSearchParams({ from, to, format: 'csv' });
+      if (group === 'by-token') q.set('token', token);
+      await downloadCsv(`/api/stats/${group}?${q}`, `${group}.csv`);
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
 
   return (
     <div>
       <div className="page-head">
         <div>
           <h1>Статистика</h1>
-          <p>Отчёты в стиле Binom: клики, cost, revenue, ROI, CR, EPC</p>
+          <p>Отчёты: клики, cost, revenue, ROI, CR, EPC, токены</p>
         </div>
         <div className="toolbar">
           <input className="input sm" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           <input className="input sm" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <button className="btn ghost sm" type="button" onClick={exportCsv}>
+            CSV
+          </button>
         </div>
       </div>
 
@@ -73,7 +93,18 @@ export default function Stats() {
             {g.label}
           </button>
         ))}
+        {group === 'by-token' && (
+          <select className="select sm" value={token} onChange={(e) => setToken(e.target.value)}>
+            <option value="token1">token1</option>
+            <option value="token2">token2</option>
+            <option value="token3">token3</option>
+            <option value="token4">token4</option>
+            <option value="token5">token5</option>
+          </select>
+        )}
       </div>
+
+      {err && <p className="neg">{err}</p>}
 
       <div className="panel">
         <div className="table-wrap">
@@ -96,7 +127,7 @@ export default function Stats() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id ?? r.day}>
+                <tr key={r.id ?? r.day ?? r.name}>
                   <td>{r.name || r.day}</td>
                   {group === 'by-campaign' && <td>{r.source_name}</td>}
                   {group === 'by-campaign' && <td>{r.offer_name}</td>}

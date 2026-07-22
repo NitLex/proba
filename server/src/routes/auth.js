@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { db, getSetting } from '../db.js';
 import {
   hashPassword,
   verifyPassword,
@@ -15,9 +15,30 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 
 const USER_RE = /^[a-zA-Z0-9_]{3,32}$/;
-const USER_SELECT = `id, username, email, telegram, created_at`;
+const USER_SELECT = `id, username, email, telegram, is_admin, created_at`;
+
+router.get('/registration-status', (_req, res) => {
+  const enabled = getSetting('registration_enabled', '1') === '1';
+  const invite = getSetting('invite_code', '');
+  res.json({
+    enabled,
+    invite_required: enabled && !!invite,
+  });
+});
 
 router.post('/register', (req, res) => {
+  if (getSetting('registration_enabled', '1') !== '1') {
+    return res.status(403).json({ error: 'Регистрация закрыта' });
+  }
+
+  const inviteRequired = getSetting('invite_code', '');
+  if (inviteRequired) {
+    const code = String(req.body.invite_code || '').trim();
+    if (code !== inviteRequired) {
+      return res.status(403).json({ error: 'Неверный инвайт-код' });
+    }
+  }
+
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
   const email = normalizeEmail(req.body.email);
@@ -50,11 +71,15 @@ router.post('/register', (req, res) => {
     return res.status(409).json({ error: 'Этот email уже зарегистрирован' });
   }
 
+  const userCount = db.prepare(`SELECT COUNT(*) AS c FROM users`).get().c;
+  const isAdmin = userCount === 0 ? 1 : 0;
+
   const info = db
     .prepare(
-      `INSERT INTO users (username, password_hash, email, telegram) VALUES (?, ?, ?, ?)`
+      `INSERT INTO users (username, password_hash, email, telegram, is_admin)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .run(username, hashPassword(password), email, telegram);
+    .run(username, hashPassword(password), email, telegram, isAdmin);
 
   const user = db
     .prepare(`SELECT ${USER_SELECT} FROM users WHERE id = ?`)
@@ -112,6 +137,25 @@ router.put('/profile', requireAuth, (req, res) => {
     .get(req.user.id);
 
   res.json({ user: publicUser(user) });
+});
+
+router.put('/password', requireAuth, (req, res) => {
+  const currentPassword = String(req.body.current_password || '');
+  const newPassword = String(req.body.new_password || '');
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Новый пароль минимум 6 символов' });
+  }
+
+  const row = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.user.id);
+  if (!row || !verifyPassword(currentPassword, row.password_hash)) {
+    return res.status(400).json({ error: 'Текущий пароль неверный' });
+  }
+
+  db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(
+    hashPassword(newPassword),
+    req.user.id
+  );
+  res.json({ ok: true });
 });
 
 export default router;

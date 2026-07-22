@@ -11,6 +11,8 @@ const fields = [
   'cost_model',
   'cost_value',
   'status',
+  'unique_hours',
+  'block_bots',
   'notes',
 ];
 
@@ -19,6 +21,40 @@ const router = Router();
 function ownedRef(table, id, userId) {
   if (!id) return true;
   return !!db.prepare(`SELECT id FROM ${table} WHERE id = ? AND user_id = ?`).get(id, userId);
+}
+
+function getRotation(campaignId) {
+  return db
+    .prepare(
+      `SELECT co.offer_id, co.weight, o.name AS offer_name
+       FROM campaign_offers co
+       JOIN offers o ON o.id = co.offer_id
+       WHERE co.campaign_id = ?
+       ORDER BY co.id ASC`
+    )
+    .all(campaignId);
+}
+
+function saveRotation(campaignId, offers, userId) {
+  const list = Array.isArray(offers) ? offers : [];
+  db.prepare(`DELETE FROM campaign_offers WHERE campaign_id = ?`).run(campaignId);
+  const insert = db.prepare(
+    `INSERT INTO campaign_offers (campaign_id, offer_id, weight) VALUES (?, ?, ?)`
+  );
+  for (const item of list) {
+    const offerId = Number(item.offer_id);
+    const weight = Math.max(0, Number(item.weight || 0));
+    if (!offerId || weight <= 0) continue;
+    if (!ownedRef('offers', offerId, userId)) {
+      throw Object.assign(new Error('Invalid offer in rotation'), { status: 400 });
+    }
+    insert.run(campaignId, offerId, weight);
+  }
+}
+
+function withRotation(row) {
+  if (!row) return row;
+  return { ...row, rotation: getRotation(row.id) };
 }
 
 router.get('/', (req, res) => {
@@ -40,7 +76,8 @@ router.get('/', (req, res) => {
     params.push(`%${q}%`, `%${q}%`);
   }
   sql += ` ORDER BY c.id DESC`;
-  res.json(db.prepare(sql).all(...params));
+  const rows = db.prepare(sql).all(...params).map(withRotation);
+  res.json(rows);
 });
 
 router.get('/:id', (req, res) => {
@@ -55,7 +92,7 @@ router.get('/:id', (req, res) => {
     )
     .get(Number(req.params.id), req.user.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
-  res.json(row);
+  res.json(withRotation(row));
 });
 
 router.post('/', (req, res) => {
@@ -68,17 +105,27 @@ router.post('/', (req, res) => {
   data.cost_model = data.cost_model || 'cpc';
   data.cost_value = Number(data.cost_value || 0);
   data.status = data.status || 'active';
+  data.unique_hours = Math.max(1, Number(data.unique_hours || 24));
+  data.block_bots = data.block_bots ? 1 : 0;
 
   const srcId = data.traffic_source_id ? Number(data.traffic_source_id) : null;
-  const offerId = data.offer_id ? Number(data.offer_id) : null;
+  let offerId = data.offer_id ? Number(data.offer_id) : null;
   const landId = data.landing_id ? Number(data.landing_id) : null;
+
+  const rotation = Array.isArray(req.body.rotation) ? req.body.rotation : null;
+  if (rotation?.length && !offerId) {
+    offerId = Number(rotation[0].offer_id) || null;
+  }
+
   data.traffic_source_id = srcId;
   data.offer_id = offerId;
   data.landing_id = landId;
 
-  if (!ownedRef('traffic_sources', srcId, req.user.id) ||
-      !ownedRef('offers', offerId, req.user.id) ||
-      !ownedRef('landings', landId, req.user.id)) {
+  if (
+    !ownedRef('traffic_sources', srcId, req.user.id) ||
+    !ownedRef('offers', offerId, req.user.id) ||
+    !ownedRef('landings', landId, req.user.id)
+  ) {
     return res.status(400).json({ error: 'Invalid source/offer/landing' });
   }
 
@@ -88,9 +135,16 @@ router.post('/', (req, res) => {
     const info = db
       .prepare(`INSERT INTO campaigns (${keys.join(', ')}) VALUES (${placeholders})`)
       .run(data);
-    const row = db.prepare(`SELECT * FROM campaigns WHERE id = ?`).get(Number(info.lastInsertRowid));
-    res.status(201).json(row);
+    const id = Number(info.lastInsertRowid);
+    if (rotation?.length) {
+      saveRotation(id, rotation, req.user.id);
+    } else if (offerId) {
+      saveRotation(id, [{ offer_id: offerId, weight: 100 }], req.user.id);
+    }
+    const row = db.prepare(`SELECT * FROM campaigns WHERE id = ?`).get(id);
+    res.status(201).json(withRotation(row));
   } catch (e) {
+    if (e.status === 400) return res.status(400).json({ error: e.message });
     if (String(e.message).includes('UNIQUE')) {
       return res.status(409).json({ error: 'Campaign key already exists' });
     }
@@ -107,6 +161,13 @@ router.put('/:id', (req, res) => {
   const data = { id, user_id: req.user.id };
   for (const f of fields) {
     if (req.body[f] !== undefined) data[f] = req.body[f];
+  }
+
+  if (data.unique_hours !== undefined) {
+    data.unique_hours = Math.max(1, Number(data.unique_hours || 24));
+  }
+  if (data.block_bots !== undefined) {
+    data.block_bots = data.block_bots ? 1 : 0;
   }
 
   if (data.traffic_source_id !== undefined) {
@@ -129,17 +190,29 @@ router.put('/:id', (req, res) => {
   }
 
   const keys = Object.keys(data).filter((k) => k !== 'id' && k !== 'user_id');
-  if (!keys.length) return res.status(400).json({ error: 'Empty body' });
-  const sets = keys.map((k) => `${k} = @${k}`).join(', ');
   try {
-    db.prepare(`UPDATE campaigns SET ${sets} WHERE id = @id AND user_id = @user_id`).run(data);
+    if (keys.length) {
+      const sets = keys.map((k) => `${k} = @${k}`).join(', ');
+      db.prepare(`UPDATE campaigns SET ${sets} WHERE id = @id AND user_id = @user_id`).run(data);
+    }
+    if (Array.isArray(req.body.rotation)) {
+      saveRotation(id, req.body.rotation, req.user.id);
+      const first = req.body.rotation.find((x) => Number(x.offer_id) && Number(x.weight) > 0);
+      if (first) {
+        db.prepare(`UPDATE campaigns SET offer_id = ? WHERE id = ?`).run(
+          Number(first.offer_id),
+          id
+        );
+      }
+    }
   } catch (e) {
+    if (e.status === 400) return res.status(400).json({ error: e.message });
     if (String(e.message).includes('UNIQUE')) {
       return res.status(409).json({ error: 'Campaign key already exists' });
     }
     throw e;
   }
-  res.json(db.prepare(`SELECT * FROM campaigns WHERE id = ?`).get(id));
+  res.json(withRotation(db.prepare(`SELECT * FROM campaigns WHERE id = ?`).get(id)));
 });
 
 router.delete('/:id', (req, res) => {

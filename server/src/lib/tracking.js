@@ -5,10 +5,25 @@ export const makeClickId = customAlphabet(alphabet, 16);
 export const makeCampaignKey = customAlphabet(alphabet, 8);
 
 const BOT_RE =
-  /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|phantom|selenium|wget|curl|python-requests|scrapy/i;
+  /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|phantom|selenium|wget|curl|python-requests|scrapy|httpclient|libwww|java\/|okhttp|go-http|aiohttp|postman|insomnia|monitoring|uptimerobot|pingdom|statuscake|bytespider|semrush|ahrefs|mj12bot|dotbot|petalbot|yandexbot|bingbot|googlebot|baiduspider|duckduckbot|applebot|twitterbot|linkedinbot|embedly|quora link|whatsapp|telegramBot|discordbot|slackbot/i;
 
-export function detectBot(ua = '') {
-  return BOT_RE.test(ua) ? 1 : 0;
+export function detectBot(ua = '', opts = {}) {
+  const raw = String(ua || '').trim();
+  if (!raw && opts.emptyUaIsBot !== false) return 1;
+  if (raw.length < 12 && opts.shortUaIsBot !== false) return 1;
+  return BOT_RE.test(raw) ? 1 : 0;
+}
+
+export function pickWeighted(items) {
+  const list = (items || []).filter((x) => x && Number(x.weight) > 0);
+  if (!list.length) return null;
+  const total = list.reduce((s, x) => s + Number(x.weight), 0);
+  let r = Math.random() * total;
+  for (const item of list) {
+    r -= Number(item.weight);
+    if (r <= 0) return item;
+  }
+  return list[list.length - 1];
 }
 
 /**
@@ -62,4 +77,15 @@ export function parseCost(raw, fallback = 0) {
   if (raw === undefined || raw === null || raw === '') return fallback;
   const n = Number(String(raw).replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
+}
+
+export function toCsv(rows, columns) {
+  const escape = (v) => {
+    const s = v == null ? '' : String(v);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const header = columns.map((c) => escape(c.label)).join(',');
+  const lines = rows.map((row) => columns.map((c) => escape(row[c.key])).join(','));
+  return [header, ...lines].join('\n');
 }

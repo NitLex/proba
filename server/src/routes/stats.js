@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { toCsv } from '../lib/tracking.js';
 
 const router = Router();
 
@@ -109,7 +110,11 @@ router.get('/by-campaign', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  res.json(rows.map(enrichRow));
+  const enriched = rows.map(enrichRow);
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-campaign.csv', enriched, statsColumns(true));
+  }
+  res.json(enriched);
 });
 
 router.get('/by-offer', (req, res) => {
@@ -146,7 +151,11 @@ router.get('/by-offer', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  res.json(rows.map(enrichRow));
+  const enriched = rows.map(enrichRow);
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-offer.csv', enriched, statsColumns());
+  }
+  res.json(enriched);
 });
 
 router.get('/by-source', (req, res) => {
@@ -181,7 +190,11 @@ router.get('/by-source', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  res.json(rows.map(enrichRow));
+  const enriched = rows.map(enrichRow);
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-source.csv', enriched, statsColumns());
+  }
+  res.json(enriched);
 });
 
 router.get('/by-day', (req, res) => {
@@ -232,7 +245,151 @@ router.get('/by-day', (req, res) => {
     map.set(r.day, cur);
   }
 
-  res.json([...map.values()].sort((a, b) => a.day.localeCompare(b.day)).map(enrichRow));
+  const enriched = [...map.values()].sort((a, b) => a.day.localeCompare(b.day)).map(enrichRow);
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(
+      res,
+      'by-day.csv',
+      enriched.map((r) => ({ ...r, name: r.day })),
+      statsColumns()
+    );
+  }
+  res.json(enriched);
+});
+
+router.get('/by-token', (req, res) => {
+  const uid = req.user.id;
+  const { from, to } = req.query;
+  const tokenField = ['token1', 'token2', 'token3', 'token4', 'token5'].includes(
+    String(req.query.token || '')
+  )
+    ? String(req.query.token)
+    : 'token1';
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const clickRows = db
+    .prepare(
+      `SELECT
+        CASE WHEN cl.${tokenField} IS NULL OR cl.${tokenField} = '' THEN '(empty)' ELSE cl.${tokenField} END AS name,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(SUM(cl.is_unique), 0) AS uniques
+       FROM clicks cl
+       JOIN campaigns c ON c.id = cl.campaign_id
+       WHERE c.user_id = ? AND ${cf.sql}
+       GROUP BY name`
+    )
+    .all(uid, ...cf.params);
+
+  const convRows = db
+    .prepare(
+      `SELECT
+        CASE WHEN cl.${tokenField} IS NULL OR cl.${tokenField} = '' THEN '(empty)' ELSE cl.${tokenField} END AS name,
+        COUNT(cv.id) AS conversions,
+        COALESCE(SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END), 0) AS revenue
+       FROM conversions cv
+       JOIN clicks cl ON cl.clickid = cv.clickid
+       JOIN campaigns c ON c.id = cl.campaign_id
+       WHERE c.user_id = ? AND ${vf.sql}
+       GROUP BY name`
+    )
+    .all(uid, ...vf.params);
+
+  const map = new Map();
+  for (const r of clickRows) {
+    map.set(r.name, {
+      name: r.name,
+      clicks: r.clicks,
+      cost: Number(r.cost),
+      uniques: Number(r.uniques),
+      conversions: 0,
+      revenue: 0,
+    });
+  }
+  for (const r of convRows) {
+    const cur = map.get(r.name) || {
+      name: r.name,
+      clicks: 0,
+      cost: 0,
+      uniques: 0,
+      conversions: 0,
+      revenue: 0,
+    };
+    cur.conversions = r.conversions;
+    cur.revenue = Number(r.revenue);
+    map.set(r.name, cur);
+  }
+
+  const enriched = [...map.values()]
+    .sort((a, b) => b.clicks - a.clicks)
+    .map(enrichRow);
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-token.csv', enriched, statsColumns());
+  }
+  res.json(enriched);
+});
+
+router.get('/export/:kind', (req, res) => {
+  const kind = String(req.params.kind || '');
+  if (kind === 'clicks') {
+    const rows = db
+      .prepare(
+        `SELECT cl.created_at, cl.clickid, c.name AS campaign_name, o.name AS offer_name,
+                s.name AS source_name, cl.country, cl.device, cl.cost, cl.is_unique, cl.is_bot,
+                cl.token1, cl.token2, cl.token3, cl.token4, cl.token5
+         FROM clicks cl
+         JOIN campaigns c ON c.id = cl.campaign_id
+         LEFT JOIN offers o ON o.id = cl.offer_id
+         LEFT JOIN traffic_sources s ON s.id = cl.traffic_source_id
+         WHERE c.user_id = ?
+         ORDER BY cl.id DESC
+         LIMIT 5000`
+      )
+      .all(req.user.id);
+    return sendCsv(res, 'clicks.csv', rows, [
+      { key: 'created_at', label: 'created_at' },
+      { key: 'clickid', label: 'clickid' },
+      { key: 'campaign_name', label: 'campaign' },
+      { key: 'offer_name', label: 'offer' },
+      { key: 'source_name', label: 'source' },
+      { key: 'country', label: 'country' },
+      { key: 'device', label: 'device' },
+      { key: 'cost', label: 'cost' },
+      { key: 'is_unique', label: 'unique' },
+      { key: 'is_bot', label: 'bot' },
+      { key: 'token1', label: 'token1' },
+      { key: 'token2', label: 'token2' },
+      { key: 'token3', label: 'token3' },
+      { key: 'token4', label: 'token4' },
+      { key: 'token5', label: 'token5' },
+    ]);
+  }
+  if (kind === 'conversions') {
+    const rows = db
+      .prepare(
+        `SELECT cv.created_at, cv.clickid, c.name AS campaign_name, o.name AS offer_name,
+                cv.status, cv.payout, cv.currency, cv.txid
+         FROM conversions cv
+         JOIN campaigns c ON c.id = cv.campaign_id
+         LEFT JOIN offers o ON o.id = cv.offer_id
+         WHERE c.user_id = ?
+         ORDER BY cv.id DESC
+         LIMIT 5000`
+      )
+      .all(req.user.id);
+    return sendCsv(res, 'conversions.csv', rows, [
+      { key: 'created_at', label: 'created_at' },
+      { key: 'clickid', label: 'clickid' },
+      { key: 'campaign_name', label: 'campaign' },
+      { key: 'offer_name', label: 'offer' },
+      { key: 'status', label: 'status' },
+      { key: 'payout', label: 'payout' },
+      { key: 'currency', label: 'currency' },
+      { key: 'txid', label: 'txid' },
+    ]);
+  }
+  return res.status(400).json({ error: 'Use format=csv on report endpoints, or clicks/conversions' });
 });
 
 router.get('/recent-clicks', (req, res) => {
@@ -290,6 +447,31 @@ function enrichRow(row) {
     cr: clicks > 0 ? round((conversions / clicks) * 100) : 0,
     epc: clicks > 0 ? round(revenue / clicks) : 0,
   };
+}
+
+function statsColumns(withCampaignMeta = false) {
+  const cols = [{ key: 'name', label: 'name' }];
+  if (withCampaignMeta) {
+    cols.push({ key: 'source_name', label: 'source' }, { key: 'offer_name', label: 'offer' });
+  }
+  cols.push(
+    { key: 'clicks', label: 'clicks' },
+    { key: 'conversions', label: 'conversions' },
+    { key: 'cr', label: 'cr' },
+    { key: 'cost', label: 'cost' },
+    { key: 'revenue', label: 'revenue' },
+    { key: 'profit', label: 'profit' },
+    { key: 'roi', label: 'roi' },
+    { key: 'epc', label: 'epc' }
+  );
+  return cols;
+}
+
+function sendCsv(res, filename, rows, columns) {
+  const csv = toCsv(rows, columns);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(`\uFEFF${csv}`);
 }
 
 export default router;

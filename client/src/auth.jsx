@@ -43,13 +43,19 @@ export function AuthProvider({ children }) {
     return r.user;
   }
 
+  async function changePassword(current_password, new_password) {
+    await api.put('/api/auth/password', { current_password, new_password });
+  }
+
   function logout() {
     clearAuthToken();
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, updateProfile, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, updateProfile, changePassword, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
