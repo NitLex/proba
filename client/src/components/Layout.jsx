@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 const links = [
   { to: '/', label: 'Дашборд', end: true },
+  { to: '/bundles', label: 'Связки' },
   { to: '/campaigns', label: 'Кампании' },
   { to: '/offers', label: 'Офферы' },
   { to: '/landings', label: 'Лендинги' },
