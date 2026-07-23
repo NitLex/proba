@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, money } from '../api';
-import { Modal, copyText } from '../components/ui';
+import { Modal, copyText, HelpTip, LabelWithHint, CurrencySelect } from '../components/ui';
 
 const RULE_FIELDS = [
   { value: 'country', label: 'Country' },
@@ -51,6 +51,7 @@ function emptyForm() {
     traffic_source_id: '',
     cost_model: 'cpc',
     cost_value: 0,
+    currency: 'USD',
     status: 'active',
     unique_hours: 24,
     block_bots: false,
@@ -108,6 +109,7 @@ function mapCampaignToForm(r) {
     traffic_source_id: r.traffic_source_id || '',
     cost_model: r.cost_model,
     cost_value: r.cost_value,
+    currency: r.currency || 'USD',
     status: r.status,
     unique_hours: r.unique_hours ?? 24,
     block_bots: !!r.block_bots,
@@ -190,6 +192,7 @@ export default function Campaigns() {
       landing_id: defaultPath.landing_id || null,
       cost_model: form.cost_model,
       cost_value: Number(form.cost_value || 0),
+      currency: form.currency || 'USD',
       status: form.status,
       unique_hours: Number(form.unique_hours || 24),
       block_bots: !!form.block_bots,
@@ -308,7 +311,7 @@ export default function Campaigns() {
                         {rot}
                       </div>
                     </td>
-                    <td>{money(r.cost_value)}</td>
+                    <td>{money(r.cost_value, r.currency || 'USD')}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status}</span>
                     </td>
@@ -400,7 +403,9 @@ export default function Campaigns() {
                 </select>
               </label>
               <label className="lbl">
-                CPC
+                <LabelWithHint hint="Стоимость клика по умолчанию, если в URL нет параметра cost.">
+                  CPC
+                </LabelWithHint>
                 <input
                   className="input"
                   type="number"
@@ -410,7 +415,18 @@ export default function Campaigns() {
                 />
               </label>
               <label className="lbl">
-                Уникальность (часов)
+                <LabelWithHint hint="Валюта стоимости клика (CPC) в этой кампании.">
+                  Валюта
+                </LabelWithHint>
+                <CurrencySelect
+                  value={form.currency || 'USD'}
+                  onChange={(currency) => setForm({ ...form, currency })}
+                />
+              </label>
+              <label className="lbl">
+                <LabelWithHint hint="Сколько часов один и тот же IP+браузер считается повторным (не уник) кликом.">
+                  Уникальность (часов)
+                </LabelWithHint>
                 <input
                   className="input"
                   type="number"
@@ -439,46 +455,57 @@ export default function Campaigns() {
                   checked={!!form.block_bots}
                   onChange={(e) => setForm({ ...form, block_bots: e.target.checked })}
                 />
-                Блокировать ботов
+                <LabelWithHint hint="Если включено — подозрительные боты (по User-Agent) не проходят на оффер.">
+                  Блокировать ботов
+                </LabelWithHint>
               </label>
 
               <div className="full">
-                <div className="section-label">Paths</div>
-                <p className="hint" style={{ marginBottom: '0.55rem' }}>
-                  Path = лендинг + ротация офферов. Default path используется, если правило не
-                  сработало.
-                </p>
+                <div className="section-label">
+                  Paths
+                  <HelpTip text="Path — это маршрут: лендинг + ротация офферов. Default path используется, если ни одно правило не сработало." />
+                </div>
                 {(form.paths || []).map((path, pIdx) => (
                   <div key={path.client_id} className="subpanel">
                     <div className="toolbar" style={{ marginBottom: '0.45rem', flexWrap: 'wrap' }}>
-                      <input
-                        className="input"
-                        style={{ flex: 1, minWidth: 140 }}
-                        value={path.name}
-                        onChange={(e) => updatePath(pIdx, { name: e.target.value })}
-                        placeholder="Имя path"
-                      />
-                      <input
-                        className="input sm"
-                        type="number"
-                        min="0"
-                        style={{ width: 90 }}
-                        title="Weight"
-                        value={path.weight}
-                        onChange={(e) => updatePath(pIdx, { weight: e.target.value })}
-                      />
-                      <select
-                        className="select"
-                        value={path.landing_id}
-                        onChange={(e) => updatePath(pIdx, { landing_id: e.target.value })}
-                      >
-                        <option value="">Direct to offer</option>
-                        {landings.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.name}
-                          </option>
-                        ))}
-                      </select>
+                      <span className="field-hint-wrap" style={{ flex: 1, minWidth: 140 }}>
+                        <input
+                          className="input"
+                          style={{ width: '100%' }}
+                          value={path.name}
+                          onChange={(e) => updatePath(pIdx, { name: e.target.value })}
+                          placeholder="Имя path"
+                        />
+                        <HelpTip text="Название path для себя и для выбора в Rules." />
+                      </span>
+                      <span className="field-hint-wrap">
+                        <input
+                          className="input sm"
+                          type="number"
+                          min="0"
+                          style={{ width: 90 }}
+                          value={path.weight}
+                          onChange={(e) => updatePath(pIdx, { weight: e.target.value })}
+                          placeholder="вес"
+                        />
+                        <HelpTip text="Вес path при случайном выборе среди нескольких (если нет rule). Больше вес — чаще выбирается." />
+                      </span>
+                      <span className="field-hint-wrap" style={{ flex: 1, minWidth: 140 }}>
+                        <select
+                          className="select"
+                          style={{ width: '100%' }}
+                          value={path.landing_id}
+                          onChange={(e) => updatePath(pIdx, { landing_id: e.target.value })}
+                        >
+                          <option value="">Direct to offer</option>
+                          {landings.map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.name}
+                            </option>
+                          ))}
+                        </select>
+                        <HelpTip text="Лендинг (прокладка) перед оффером. Direct to offer — сразу на партнёрскую ссылку." />
+                      </span>
                       <label className="chk">
                         <input
                           type="checkbox"
@@ -486,6 +513,7 @@ export default function Campaigns() {
                           onChange={(e) => updatePath(pIdx, { is_default: e.target.checked })}
                         />
                         default
+                        <HelpTip text="Default path — запасной маршрут, если правила не подошли." />
                       </label>
                       <label className="chk">
                         <input
@@ -528,18 +556,21 @@ export default function Campaigns() {
                             </option>
                           ))}
                         </select>
-                        <input
-                          className="input sm"
-                          type="number"
-                          min="1"
-                          style={{ width: 90 }}
-                          value={row.weight}
-                          onChange={(e) => {
-                            const offers = [...path.offers];
-                            offers[oIdx] = { ...offers[oIdx], weight: e.target.value };
-                            updatePath(pIdx, { offers });
-                          }}
-                        />
+                        <span className="field-hint-wrap">
+                          <input
+                            className="input sm"
+                            type="number"
+                            min="1"
+                            style={{ width: 90 }}
+                            value={row.weight}
+                            onChange={(e) => {
+                              const offers = [...path.offers];
+                              offers[oIdx] = { ...offers[oIdx], weight: e.target.value };
+                              updatePath(pIdx, { offers });
+                            }}
+                          />
+                          <HelpTip text="Вес оффера в ротации внутри path. 100 и 100 ≈ 50/50." />
+                        </span>
                         <button
                           className="btn ghost sm"
                           type="button"
@@ -592,10 +623,10 @@ export default function Campaigns() {
               </div>
 
               <div className="full">
-                <div className="section-label">Rules</div>
-                <p className="hint" style={{ marginBottom: '0.55rem' }}>
-                  Условия через AND. Первое подходящее правило (по priority) направляет на path.
-                </p>
+                <div className="section-label">
+                  Rules
+                  <HelpTip text="Правила фильтруют трафик. Условия в одном rule через AND. Срабатывает первое подходящее правило (меньший priority раньше)." />
+                </div>
                 {(form.rules || []).map((rule, rIdx) => (
                   <div key={rIdx} className="subpanel">
                     <div className="toolbar" style={{ marginBottom: '0.45rem', flexWrap: 'wrap' }}>
@@ -606,25 +637,31 @@ export default function Campaigns() {
                         onChange={(e) => updateRule(rIdx, { name: e.target.value })}
                         placeholder="Имя rule"
                       />
-                      <input
-                        className="input sm"
-                        type="number"
-                        style={{ width: 90 }}
-                        title="Priority (меньше = раньше)"
-                        value={rule.priority}
-                        onChange={(e) => updateRule(rIdx, { priority: e.target.value })}
-                      />
-                      <select
-                        className="select"
-                        value={rule.path_id}
-                        onChange={(e) => updateRule(rIdx, { path_id: e.target.value })}
-                      >
-                        {form.paths.map((p) => (
-                          <option key={p.client_id} value={p.client_id}>
-                            → {p.name}
-                          </option>
-                        ))}
-                      </select>
+                      <span className="field-hint-wrap">
+                        <input
+                          className="input sm"
+                          type="number"
+                          style={{ width: 90 }}
+                          value={rule.priority}
+                          onChange={(e) => updateRule(rIdx, { priority: e.target.value })}
+                          placeholder="prio"
+                        />
+                        <HelpTip text="Приоритет: чем меньше число, тем раньше проверяется правило." />
+                      </span>
+                      <span className="field-hint-wrap">
+                        <select
+                          className="select"
+                          value={rule.path_id}
+                          onChange={(e) => updateRule(rIdx, { path_id: e.target.value })}
+                        >
+                          {form.paths.map((p) => (
+                            <option key={p.client_id} value={p.client_id}>
+                              → {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        <HelpTip text="На какой Path отправить клик, если все условия rule совпали." />
+                      </span>
                       <label className="chk">
                         <input
                           type="checkbox"
@@ -679,16 +716,20 @@ export default function Campaigns() {
                             </option>
                           ))}
                         </select>
-                        <input
-                          className="input"
-                          placeholder="значение (для in: RU,US)"
-                          value={cond.value}
-                          onChange={(e) => {
-                            const conditions = [...rule.conditions];
-                            conditions[cIdx] = { ...conditions[cIdx], value: e.target.value };
-                            updateRule(rIdx, { conditions });
-                          }}
-                        />
+                        <span className="field-hint-wrap" style={{ flex: 1 }}>
+                          <input
+                            className="input"
+                            style={{ width: '100%' }}
+                            placeholder="значение (для in: RU,US)"
+                            value={cond.value}
+                            onChange={(e) => {
+                              const conditions = [...rule.conditions];
+                              conditions[cIdx] = { ...conditions[cIdx], value: e.target.value };
+                              updateRule(rIdx, { conditions });
+                            }}
+                          />
+                          <HelpTip text="Для оператора in / not in перечисляйте значения через запятую: RU,US,DE." />
+                        </span>
                         <button
                           className="btn ghost sm"
                           type="button"

@@ -51,11 +51,20 @@ export const api = {
 
 export function money(n, currency = 'USD') {
   if (n == null || Number.isNaN(Number(n))) return '—';
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(n));
+  const code = String(currency || 'USD').toUpperCase();
+  const amount = Number(n);
+  try {
+    if (code === 'USDT') {
+      return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(amount)} USDT`;
+    }
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${code}`;
+  }
 }
 
 export function pct(n) {

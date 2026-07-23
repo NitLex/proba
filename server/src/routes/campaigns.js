@@ -10,6 +10,7 @@ const fields = [
   'landing_id',
   'cost_model',
   'cost_value',
+  'currency',
   'status',
   'unique_hours',
   'block_bots',

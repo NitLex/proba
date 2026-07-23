@@ -218,6 +218,7 @@ export function initSchema() {
   ensureColumn('campaigns', 'user_id', 'INTEGER');
   ensureColumn('campaigns', 'unique_hours', 'INTEGER NOT NULL DEFAULT 24');
   ensureColumn('campaigns', 'block_bots', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('campaigns', 'currency', "TEXT NOT NULL DEFAULT 'USD'");
   ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('users', 'telegram', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');

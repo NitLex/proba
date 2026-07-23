@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, money } from '../api';
-import { Modal } from '../components/ui';
+import { Modal, CurrencySelect, LabelWithHint } from '../components/ui';
 
 const empty = {
   name: '',
@@ -135,7 +135,9 @@ export default function Offers() {
                 />
               </label>
               <label className="lbl full">
-                URL (с макросами)
+                <LabelWithHint hint="Ссылка партнёрки. Можно вставить макросы: {clickid}, {token1}…">
+                  URL (с макросами)
+                </LabelWithHint>
                 <input
                   className="input mono"
                   required
@@ -145,7 +147,9 @@ export default function Offers() {
                 />
               </label>
               <label className="lbl">
-                Payout
+                <LabelWithHint hint="Сумма выплаты с одной конверсии (для расчёта revenue, если постбек без payout).">
+                  Payout
+                </LabelWithHint>
                 <input
                   className="input"
                   type="number"
@@ -155,15 +159,18 @@ export default function Offers() {
                 />
               </label>
               <label className="lbl">
-                Currency
-                <input
-                  className="input"
-                  value={form.currency}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                <LabelWithHint hint="Валюта выплаты оффера. Выберите из списка — популярные сверху.">
+                  Валюта
+                </LabelWithHint>
+                <CurrencySelect
+                  value={form.currency || 'USD'}
+                  onChange={(currency) => setForm({ ...form, currency })}
                 />
               </label>
               <label className="lbl">
-                GEO
+                <LabelWithHint hint="Гео оффера, для себя (например DK, DE, multi).">
+                  GEO
+                </LabelWithHint>
                 <input
                   className="input"
                   value={form.geo}
