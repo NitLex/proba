@@ -100,4 +100,48 @@ describe('api integration', () => {
     assert.ok(overview.clicks >= 1);
     assert.ok(overview.revenue >= 10);
   });
+
+  it('bundles crud + launch campaign', async () => {
+    const created = await fetch(`${base}/api/bundles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Test FB Nutra DE',
+        vertical: 'Nutra',
+        geo: 'DE',
+        source: 'Facebook Ads',
+        funnel: 'preland',
+        payout_model: 'CPA',
+        bid_hint: 'CPC 0.35$',
+        heat: 'hot',
+        difficulty: 'medium',
+        rating: 5,
+        where_to_pour: 'Meta CBO broad 35-65',
+        creatives: 'UGC video',
+        status: 'active',
+      }),
+    });
+    assert.equal(created.status, 201);
+    const bundle = await created.json();
+    assert.equal(bundle.name, 'Test FB Nutra DE');
+
+    const list = await (await fetch(`${base}/api/bundles?vertical=Nutra&heat=hot`)).json();
+    assert.ok(list.some((b) => b.id === bundle.id));
+
+    const launch = await fetch(`${base}/api/bundles/${bundle.id}/launch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payout: 42, cost_value: 0.33 }),
+    });
+    assert.equal(launch.status, 201);
+    const launched = await launch.json();
+    assert.ok(launched.campaign?.key);
+    assert.ok(launched.click_path.startsWith('/click/'));
+    assert.ok(launched.offer_id);
+    assert.ok(launched.landing_id);
+
+    const camp = await (await fetch(`${base}/api/campaigns/${launched.campaign.id}`)).json();
+    assert.match(camp.name, /Facebook Ads/);
+    assert.equal(camp.cost_value, 0.33);
+  });
 });
