@@ -38,7 +38,7 @@ export default function Layout() {
           <button
             className="btn ghost sm"
             type="button"
-            style={{ width: '100%', marginBottom: '0.75rem' }}
+            style={{ width: '100%' }}
             onClick={() => {
               logout();
               navigate('/login');
@@ -46,9 +46,6 @@ export default function Layout() {
           >
             Выйти
           </button>
-          Клик: <span className="mono">/click/:key</span>
-          <br />
-          Постбек: <span className="mono">/postback?clickid=…</span>
         </div>
       </aside>
       <main className="main">
