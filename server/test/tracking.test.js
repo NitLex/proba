@@ -164,4 +164,25 @@ describe('api integration', () => {
     assert.ok(overview.clicks >= 1);
     assert.ok(overview.revenue >= 10);
   });
+
+  it('records site visit and shows admin stats', async () => {
+    const visit = await fetch(`${base}/api/analytics/visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_key: 'visitor_test_key_01', path: '/login' }),
+    });
+    assert.equal(visit.status, 200);
+    const v = await visit.json();
+    assert.equal(v.ok, true);
+
+    const stats = await fetch(`${base}/api/analytics/site`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(stats.status, 200);
+    const body = await stats.json();
+    assert.ok(body.visits_total >= 1);
+    assert.ok(body.uniques_total >= 1);
+    assert.ok(body.registrations >= 1);
+    assert.ok(Array.isArray(body.recent_users));
+  });
 });

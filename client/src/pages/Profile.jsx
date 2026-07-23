@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
-import { api } from '../api';
+import { api, num } from '../api';
+import { Metric } from '../components/ui';
 
 export default function Profile() {
   const { user, updateProfile, changePassword } = useAuth();
@@ -20,6 +21,7 @@ export default function Profile() {
   const [inviteCode, setInviteCode] = useState('');
   const [setMsg2, setSetMsg2] = useState('');
   const [setErr, setSetErr] = useState('');
+  const [siteStats, setSiteStats] = useState(null);
 
   useEffect(() => {
     setEmail(user?.email || '');
@@ -35,6 +37,10 @@ export default function Profile() {
         setInviteCode(s.invite_code || '');
       })
       .catch(() => {});
+    api
+      .get('/api/analytics/site')
+      .then(setSiteStats)
+      .catch(() => setSiteStats(null));
   }, [user]);
 
   async function onSubmit(e) {
@@ -183,6 +189,62 @@ export default function Profile() {
           </form>
         </div>
       </div>
+
+      {user?.is_admin && siteStats && (
+        <div className="panel" style={{ marginTop: '1rem' }}>
+          <div className="panel-head">
+            <h2>Посетители сайта</h2>
+          </div>
+          <div style={{ padding: '1rem' }}>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Считаются заходы на страницы входа и регистрации (не клики по /click/…).
+            </p>
+            <div className="metrics" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              <Metric label="Визиты сегодня" value={num(siteStats.visits_today)} />
+              <Metric label="Уники сегодня" value={num(siteStats.uniques_today)} />
+              <Metric label="Регистрации сегодня" value={num(siteStats.registrations_today)} />
+              <Metric label="Визиты всего" value={num(siteStats.visits_total)} />
+              <Metric label="Уники всего" value={num(siteStats.uniques_total)} />
+              <Metric label="Пользователей всего" value={num(siteStats.registrations)} />
+            </div>
+
+            <div className="table-wrap" style={{ marginTop: '1rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Логин</th>
+                    <th>Email</th>
+                    <th>Telegram</th>
+                    <th>Когда</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(siteStats.recent_users || []).map((u) => (
+                    <tr key={u.id}>
+                      <td className="mono">{u.id}</td>
+                      <td>
+                        {u.username}
+                        {u.is_admin ? ' · admin' : ''}
+                      </td>
+                      <td>{u.email || '—'}</td>
+                      <td>{u.telegram || '—'}</td>
+                      <td className="mono">{u.created_at}</td>
+                    </tr>
+                  ))}
+                  {!siteStats.recent_users?.length && (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="empty">Пользователей пока нет</div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {user?.is_admin && (
         <div className="panel" style={{ marginTop: '1rem', maxWidth: 560 }}>

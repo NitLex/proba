@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { api } from '../api';
+import { trackSiteVisit } from '../analytics';
 
 export default function Register() {
   const { user, register } = useAuth();
@@ -19,6 +20,7 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    trackSiteVisit('/register');
     api
       .get('/api/auth/registration-status')
       .then(setStatus)

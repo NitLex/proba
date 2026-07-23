@@ -10,6 +10,7 @@ import campaignsRouter from './routes/campaigns.js';
 import statsRouter from './routes/stats.js';
 import authRouter from './routes/auth.js';
 import settingsRouter from './routes/settings.js';
+import analyticsRouter, { recordSiteVisit } from './routes/analytics.js';
 import { crudRouter } from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
 
@@ -27,6 +28,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.post('/api/analytics/visit', recordSiteVisit);
 
   // Public tracking endpoints (must stay open for ads & affiliate networks)
   app.use(trackRouter);
@@ -34,6 +36,7 @@ export function createApp() {
 
   // Protected dashboard API
   app.use('/api', requireAuth);
+  app.use('/api/analytics', analyticsRouter);
   app.use('/api/campaigns', campaignsRouter);
   app.use(
     '/api/offers',

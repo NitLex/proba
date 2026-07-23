@@ -198,6 +198,18 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_campaign_offers_campaign ON campaign_offers(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_paths_campaign ON campaign_paths(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_rules_campaign ON campaign_rules(campaign_id);
+
+    CREATE TABLE IF NOT EXISTS site_visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      visitor_key TEXT NOT NULL,
+      path TEXT NOT NULL DEFAULT '/',
+      ip TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_site_visits_visitor ON site_visits(visitor_key);
+    CREATE INDEX IF NOT EXISTS idx_site_visits_created ON site_visits(created_at);
   `);
 
   ensureColumn('traffic_sources', 'user_id', 'INTEGER');

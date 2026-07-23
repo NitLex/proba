@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { trackSiteVisit } from '../analytics';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -9,6 +10,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    trackSiteVisit('/login');
+  }, []);
 
   if (user) return <Navigate to="/" replace />;
 
