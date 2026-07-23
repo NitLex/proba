@@ -50,8 +50,8 @@ describe('api integration', () => {
     const { db } = await import('../src/db.js');
     const { hashPassword } = await import('../src/lib/auth.js');
     const user = db
-      .prepare(`INSERT INTO users (username, password_hash) VALUES (?, ?)`)
-      .run('tester', hashPassword('secret1'));
+      .prepare(`INSERT INTO users (username, password_hash, email, telegram, is_admin) VALUES (?, ?, ?, ?, 1)`)
+      .run('tester', hashPassword('secret1'), 'tester@test.local', '@tester', 1);
     const userId = Number(user.lastInsertRowid);
 
     const src = db
