@@ -108,6 +108,42 @@ export function initSchema() {
       UNIQUE(campaign_id, offer_id)
     );
 
+    CREATE TABLE IF NOT EXISTS campaign_paths (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT 'Default',
+      weight REAL NOT NULL DEFAULT 100,
+      landing_id INTEGER REFERENCES landings(id) ON DELETE SET NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS path_offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path_id INTEGER NOT NULL REFERENCES campaign_paths(id) ON DELETE CASCADE,
+      offer_id INTEGER NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
+      weight REAL NOT NULL DEFAULT 100,
+      UNIQUE(path_id, offer_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS campaign_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT 'Rule',
+      priority INTEGER NOT NULL DEFAULT 100,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      path_id INTEGER REFERENCES campaign_paths(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS rule_conditions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rule_id INTEGER NOT NULL REFERENCES campaign_rules(id) ON DELETE CASCADE,
+      field TEXT NOT NULL,
+      operator TEXT NOT NULL DEFAULT 'eq',
+      value TEXT NOT NULL DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS clicks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clickid TEXT NOT NULL UNIQUE,
@@ -160,6 +196,8 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_sources_user ON traffic_sources(user_id);
     CREATE INDEX IF NOT EXISTS idx_landings_user ON landings(user_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_offers_campaign ON campaign_offers(campaign_id);
+    CREATE INDEX IF NOT EXISTS idx_campaign_paths_campaign ON campaign_paths(campaign_id);
+    CREATE INDEX IF NOT EXISTS idx_campaign_rules_campaign ON campaign_rules(campaign_id);
   `);
 
   ensureColumn('traffic_sources', 'user_id', 'INTEGER');
@@ -180,6 +218,28 @@ export function initSchema() {
     `INSERT OR IGNORE INTO campaign_offers (campaign_id, offer_id, weight)
      SELECT id, offer_id, 100 FROM campaigns WHERE offer_id IS NOT NULL`
   ).run();
+
+  // create default path for campaigns that have none
+  const camps = db.prepare(`SELECT id, landing_id FROM campaigns`).all();
+  const pathCount = db.prepare(
+    `SELECT COUNT(*) AS c FROM campaign_paths WHERE campaign_id = ?`
+  );
+  const insertPath = db.prepare(
+    `INSERT INTO campaign_paths (campaign_id, name, weight, landing_id, enabled, is_default, sort_order)
+     VALUES (?, 'Default', 100, ?, 1, 1, 0)`
+  );
+  const insertPathOffer = db.prepare(
+    `INSERT OR IGNORE INTO path_offers (path_id, offer_id, weight) VALUES (?, ?, ?)`
+  );
+  for (const c of camps) {
+    if (pathCount.get(c.id).c > 0) continue;
+    const info = insertPath.run(c.id, c.landing_id || null);
+    const pathId = Number(info.lastInsertRowid);
+    const offers = db
+      .prepare(`SELECT offer_id, weight FROM campaign_offers WHERE campaign_id = ?`)
+      .all(c.id);
+    for (const o of offers) insertPathOffer.run(pathId, o.offer_id, o.weight);
+  }
 
   // promote first user to admin if none
   const adminCount = db.prepare(`SELECT COUNT(*) AS c FROM users WHERE is_admin = 1`).get().c;

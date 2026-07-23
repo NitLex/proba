@@ -2,19 +2,120 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, money } from '../api';
 import { Modal, copyText } from '../components/ui';
 
-const emptyForm = {
-  name: '',
-  key: '',
-  traffic_source_id: '',
-  landing_id: '',
-  cost_model: 'cpc',
-  cost_value: 0,
-  status: 'active',
-  unique_hours: 24,
-  block_bots: false,
-  notes: '',
-  rotation: [{ offer_id: '', weight: 100 }],
-};
+const RULE_FIELDS = [
+  { value: 'country', label: 'Country' },
+  { value: 'device', label: 'Device' },
+  { value: 'os', label: 'OS' },
+  { value: 'browser', label: 'Browser' },
+  { value: 'bot', label: 'Bot (0/1)' },
+  { value: 'language', label: 'Language' },
+  { value: 'ip', label: 'IP' },
+  { value: 'token1', label: 'token1' },
+  { value: 'token2', label: 'token2' },
+  { value: 'token3', label: 'token3' },
+  { value: 'token4', label: 'token4' },
+  { value: 'token5', label: 'token5' },
+];
+
+const RULE_OPS = [
+  { value: 'eq', label: '=' },
+  { value: 'neq', label: '≠' },
+  { value: 'contains', label: 'contains' },
+  { value: 'starts', label: 'starts' },
+  { value: 'in', label: 'in' },
+  { value: 'not_in', label: 'not in' },
+];
+
+let cid = 0;
+function nextId(prefix = 'p') {
+  cid += 1;
+  return `${prefix}${Date.now()}_${cid}`;
+}
+
+function defaultPath() {
+  return {
+    client_id: nextId('path'),
+    name: 'Default',
+    weight: 100,
+    landing_id: '',
+    enabled: true,
+    is_default: true,
+    offers: [{ offer_id: '', weight: 100 }],
+  };
+}
+
+function emptyForm() {
+  return {
+    name: '',
+    key: '',
+    traffic_source_id: '',
+    cost_model: 'cpc',
+    cost_value: 0,
+    status: 'active',
+    unique_hours: 24,
+    block_bots: false,
+    notes: '',
+    paths: [defaultPath()],
+    rules: [],
+  };
+}
+
+function mapCampaignToForm(r) {
+  const paths =
+    r.paths?.length > 0
+      ? r.paths.map((p, idx) => ({
+          client_id: String(p.id || nextId('path')),
+          name: p.name || `Path ${idx + 1}`,
+          weight: p.weight ?? 100,
+          landing_id: p.landing_id ? String(p.landing_id) : '',
+          enabled: p.enabled !== 0 && p.enabled !== false,
+          is_default: !!p.is_default,
+          offers:
+            p.offers?.length > 0
+              ? p.offers.map((o) => ({ offer_id: String(o.offer_id), weight: o.weight }))
+              : [{ offer_id: '', weight: 100 }],
+        }))
+      : [
+          {
+            ...defaultPath(),
+            landing_id: r.landing_id ? String(r.landing_id) : '',
+            offers:
+              r.rotation?.length > 0
+                ? r.rotation.map((x) => ({ offer_id: String(x.offer_id), weight: x.weight }))
+                : [{ offer_id: r.offer_id ? String(r.offer_id) : '', weight: 100 }],
+          },
+        ];
+
+  const pathIds = new Set(paths.map((p) => p.client_id));
+  const rules = (r.rules || []).map((rule) => ({
+    name: rule.name || 'Rule',
+    priority: rule.priority ?? 100,
+    enabled: rule.enabled !== 0 && rule.enabled !== false,
+    path_id: pathIds.has(String(rule.path_id)) ? String(rule.path_id) : paths[0]?.client_id || '',
+    conditions:
+      rule.conditions?.length > 0
+        ? rule.conditions.map((c) => ({
+            field: c.field || 'country',
+            operator: c.operator || 'eq',
+            value: c.value || '',
+          }))
+        : [{ field: 'country', operator: 'eq', value: '' }],
+  }));
+
+  return {
+    name: r.name,
+    key: r.key,
+    traffic_source_id: r.traffic_source_id || '',
+    cost_model: r.cost_model,
+    cost_value: r.cost_value,
+    status: r.status,
+    unique_hours: r.unique_hours ?? 24,
+    block_bots: !!r.block_bots,
+    notes: r.notes || '',
+    paths,
+    rules,
+  };
+}
 
 export default function Campaigns() {
   const [rows, setRows] = useState([]);
@@ -47,28 +148,62 @@ export default function Campaigns() {
 
   async function save(e) {
     e.preventDefault();
-    const rotation = (form.rotation || [])
-      .filter((x) => x.offer_id && Number(x.weight) > 0)
-      .map((x) => ({ offer_id: Number(x.offer_id), weight: Number(x.weight) }));
+    const paths = (form.paths || []).map((p, idx) => ({
+      client_id: p.client_id,
+      name: p.name || `Path ${idx + 1}`,
+      weight: Number(p.weight || 100),
+      landing_id: p.landing_id ? Number(p.landing_id) : null,
+      enabled: !!p.enabled,
+      is_default: !!p.is_default,
+      sort_order: idx,
+      offers: (p.offers || [])
+        .filter((x) => x.offer_id && Number(x.weight) > 0)
+        .map((x) => ({ offer_id: Number(x.offer_id), weight: Number(x.weight) })),
+    }));
+
+    if (!paths.length) {
+      setMsg('Нужен хотя бы один path');
+      return;
+    }
+    if (!paths.some((p) => p.is_default)) paths[0].is_default = true;
+
+    const rules = (form.rules || []).map((r, idx) => ({
+      name: r.name || `Rule ${idx + 1}`,
+      priority: Number(r.priority || (idx + 1) * 10),
+      enabled: !!r.enabled,
+      path_id: r.path_id,
+      conditions: (r.conditions || [])
+        .filter((c) => c.field && String(c.value ?? '').trim() !== '')
+        .map((c) => ({
+          field: c.field,
+          operator: c.operator || 'eq',
+          value: String(c.value),
+        })),
+    }));
+
+    const defaultPath = paths.find((p) => p.is_default) || paths[0];
     const body = {
       name: form.name,
       key: form.key || undefined,
       traffic_source_id: form.traffic_source_id ? Number(form.traffic_source_id) : null,
-      offer_id: rotation[0]?.offer_id || null,
-      landing_id: form.landing_id ? Number(form.landing_id) : null,
+      offer_id: defaultPath.offers[0]?.offer_id || null,
+      landing_id: defaultPath.landing_id || null,
       cost_model: form.cost_model,
       cost_value: Number(form.cost_value || 0),
       status: form.status,
       unique_hours: Number(form.unique_hours || 24),
       block_bots: !!form.block_bots,
       notes: form.notes,
-      rotation,
+      paths,
+      rules,
     };
+
     try {
       if (editingId) await api.put(`/api/campaigns/${editingId}`, body);
       else await api.post('/api/campaigns', body);
       setForm(null);
       setEditingId(null);
+      setMsg('');
       await load();
     } catch (err) {
       setMsg(err.message);
@@ -81,24 +216,21 @@ export default function Campaigns() {
     await load();
   }
 
-  function openEdit(r) {
-    setEditingId(r.id);
-    setForm({
-      name: r.name,
-      key: r.key,
-      traffic_source_id: r.traffic_source_id || '',
-      landing_id: r.landing_id || '',
-      cost_model: r.cost_model,
-      cost_value: r.cost_value,
-      status: r.status,
-      unique_hours: r.unique_hours ?? 24,
-      block_bots: !!r.block_bots,
-      notes: r.notes || '',
-      rotation:
-        r.rotation?.length > 0
-          ? r.rotation.map((x) => ({ offer_id: String(x.offer_id), weight: x.weight }))
-          : [{ offer_id: r.offer_id ? String(r.offer_id) : '', weight: 100 }],
-    });
+  function updatePath(idx, patch) {
+    const paths = [...form.paths];
+    paths[idx] = { ...paths[idx], ...patch };
+    if (patch.is_default) {
+      paths.forEach((p, i) => {
+        paths[i] = { ...p, is_default: i === idx };
+      });
+    }
+    setForm({ ...form, paths });
+  }
+
+  function updateRule(idx, patch) {
+    const rules = [...form.rules];
+    rules[idx] = { ...rules[idx], ...patch };
+    setForm({ ...form, rules });
   }
 
   return (
@@ -106,7 +238,7 @@ export default function Campaigns() {
       <div className="page-head">
         <div>
           <h1>Кампании</h1>
-          <p>Ротация офферов, уникальность, антибот</p>
+          <p>Paths, Rules, ротация офферов</p>
         </div>
         <div className="toolbar">
           <input
@@ -124,7 +256,7 @@ export default function Campaigns() {
             type="button"
             onClick={() => {
               setEditingId(null);
-              setForm({ ...emptyForm, rotation: [{ offer_id: '', weight: 100 }] });
+              setForm(emptyForm());
             }}
           >
             + Кампания
@@ -143,7 +275,7 @@ export default function Campaigns() {
                 <th>Название</th>
                 <th>Key</th>
                 <th>Источник</th>
-                <th>Офферы</th>
+                <th>Paths / Rules</th>
                 <th>CPC</th>
                 <th>Статус</th>
                 <th>Ссылка</th>
@@ -153,7 +285,12 @@ export default function Campaigns() {
             <tbody>
               {rows.map((r) => {
                 const url = `${clickBase}/click/${r.key}`;
+                const pathCount = r.paths?.length || 0;
+                const ruleCount = r.rules?.length || 0;
                 const rot =
+                  r.paths?.[0]?.offers
+                    ?.map((x) => `${x.offer_name || x.offer_id} (${x.weight})`)
+                    .join(', ') ||
                   r.rotation?.map((x) => `${x.offer_name || x.offer_id} (${x.weight})`).join(', ') ||
                   r.offer_name ||
                   '—';
@@ -163,7 +300,14 @@ export default function Campaigns() {
                     <td>{r.name}</td>
                     <td className="mono">{r.key}</td>
                     <td>{r.source_name || '—'}</td>
-                    <td>{rot}</td>
+                    <td>
+                      <span className="mono">
+                        {pathCount}p / {ruleCount}r
+                      </span>
+                      <div className="hint" style={{ marginTop: 2 }}>
+                        {rot}
+                      </div>
+                    </td>
                     <td>{money(r.cost_value)}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status}</span>
@@ -185,7 +329,14 @@ export default function Campaigns() {
                     </td>
                     <td>
                       <div className="toolbar">
-                        <button className="btn ghost sm" type="button" onClick={() => openEdit(r)}>
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          onClick={() => {
+                            setEditingId(r.id);
+                            setForm(mapCampaignToForm(r));
+                          }}
+                        >
                           Edit
                         </button>
                         <button className="btn danger sm" type="button" onClick={() => remove(r.id)}>
@@ -212,6 +363,7 @@ export default function Campaigns() {
         <Modal
           title={editingId ? 'Редактировать кампанию' : 'Новая кампания'}
           onClose={() => setForm(null)}
+          className="wide"
         >
           <form onSubmit={save}>
             <div className="form-grid">
@@ -243,21 +395,6 @@ export default function Campaigns() {
                   {sources.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="lbl">
-                Лендинг
-                <select
-                  className="select"
-                  value={form.landing_id}
-                  onChange={(e) => setForm({ ...form, landing_id: e.target.value })}
-                >
-                  <option value="">Direct to offer</option>
-                  {landings.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
                     </option>
                   ))}
                 </select>
@@ -306,50 +443,126 @@ export default function Campaigns() {
               </label>
 
               <div className="full">
-                <div className="hint" style={{ marginBottom: '0.45rem' }}>
-                  Ротация офферов (вес = доля трафика)
-                </div>
-                {(form.rotation || []).map((row, idx) => (
-                  <div key={idx} className="toolbar" style={{ marginBottom: '0.4rem' }}>
-                    <select
-                      className="select"
-                      value={row.offer_id}
-                      onChange={(e) => {
-                        const rotation = [...form.rotation];
-                        rotation[idx] = { ...rotation[idx], offer_id: e.target.value };
-                        setForm({ ...form, rotation });
-                      }}
-                    >
-                      <option value="">— оффер —</option>
-                      {offers.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      className="input sm"
-                      type="number"
-                      min="1"
-                      style={{ width: 90 }}
-                      value={row.weight}
-                      onChange={(e) => {
-                        const rotation = [...form.rotation];
-                        rotation[idx] = { ...rotation[idx], weight: e.target.value };
-                        setForm({ ...form, rotation });
-                      }}
-                    />
+                <div className="section-label">Paths</div>
+                <p className="hint" style={{ marginBottom: '0.55rem' }}>
+                  Path = лендинг + ротация офферов. Default path используется, если правило не
+                  сработало.
+                </p>
+                {(form.paths || []).map((path, pIdx) => (
+                  <div key={path.client_id} className="subpanel">
+                    <div className="toolbar" style={{ marginBottom: '0.45rem', flexWrap: 'wrap' }}>
+                      <input
+                        className="input"
+                        style={{ flex: 1, minWidth: 140 }}
+                        value={path.name}
+                        onChange={(e) => updatePath(pIdx, { name: e.target.value })}
+                        placeholder="Имя path"
+                      />
+                      <input
+                        className="input sm"
+                        type="number"
+                        min="0"
+                        style={{ width: 90 }}
+                        title="Weight"
+                        value={path.weight}
+                        onChange={(e) => updatePath(pIdx, { weight: e.target.value })}
+                      />
+                      <select
+                        className="select"
+                        value={path.landing_id}
+                        onChange={(e) => updatePath(pIdx, { landing_id: e.target.value })}
+                      >
+                        <option value="">Direct to offer</option>
+                        {landings.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="chk">
+                        <input
+                          type="checkbox"
+                          checked={!!path.is_default}
+                          onChange={(e) => updatePath(pIdx, { is_default: e.target.checked })}
+                        />
+                        default
+                      </label>
+                      <label className="chk">
+                        <input
+                          type="checkbox"
+                          checked={!!path.enabled}
+                          onChange={(e) => updatePath(pIdx, { enabled: e.target.checked })}
+                        />
+                        on
+                      </label>
+                      {form.paths.length > 1 && (
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              paths: form.paths.filter((_, i) => i !== pIdx),
+                            })
+                          }
+                        >
+                          − path
+                        </button>
+                      )}
+                    </div>
+                    {(path.offers || []).map((row, oIdx) => (
+                      <div key={oIdx} className="toolbar" style={{ marginBottom: '0.35rem' }}>
+                        <select
+                          className="select"
+                          value={row.offer_id}
+                          onChange={(e) => {
+                            const offers = [...path.offers];
+                            offers[oIdx] = { ...offers[oIdx], offer_id: e.target.value };
+                            updatePath(pIdx, { offers });
+                          }}
+                        >
+                          <option value="">— оффер —</option>
+                          {offers.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className="input sm"
+                          type="number"
+                          min="1"
+                          style={{ width: 90 }}
+                          value={row.weight}
+                          onChange={(e) => {
+                            const offers = [...path.offers];
+                            offers[oIdx] = { ...offers[oIdx], weight: e.target.value };
+                            updatePath(pIdx, { offers });
+                          }}
+                        />
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          onClick={() =>
+                            updatePath(pIdx, {
+                              offers: path.offers.filter((_, i) => i !== oIdx),
+                            })
+                          }
+                        >
+                          −
+                        </button>
+                      </div>
+                    ))}
                     <button
                       className="btn ghost sm"
                       type="button"
                       onClick={() =>
-                        setForm({
-                          ...form,
-                          rotation: form.rotation.filter((_, i) => i !== idx),
+                        updatePath(pIdx, {
+                          offers: [...(path.offers || []), { offer_id: '', weight: 100 }],
                         })
                       }
                     >
-                      −
+                      + оффер
                     </button>
                   </div>
                 ))}
@@ -359,11 +572,172 @@ export default function Campaigns() {
                   onClick={() =>
                     setForm({
                       ...form,
-                      rotation: [...(form.rotation || []), { offer_id: '', weight: 100 }],
+                      paths: [
+                        ...form.paths,
+                        {
+                          client_id: nextId('path'),
+                          name: `Path ${form.paths.length + 1}`,
+                          weight: 100,
+                          landing_id: '',
+                          enabled: true,
+                          is_default: false,
+                          offers: [{ offer_id: '', weight: 100 }],
+                        },
+                      ],
                     })
                   }
                 >
-                  + оффер
+                  + path
+                </button>
+              </div>
+
+              <div className="full">
+                <div className="section-label">Rules</div>
+                <p className="hint" style={{ marginBottom: '0.55rem' }}>
+                  Условия через AND. Первое подходящее правило (по priority) направляет на path.
+                </p>
+                {(form.rules || []).map((rule, rIdx) => (
+                  <div key={rIdx} className="subpanel">
+                    <div className="toolbar" style={{ marginBottom: '0.45rem', flexWrap: 'wrap' }}>
+                      <input
+                        className="input"
+                        style={{ flex: 1, minWidth: 120 }}
+                        value={rule.name}
+                        onChange={(e) => updateRule(rIdx, { name: e.target.value })}
+                        placeholder="Имя rule"
+                      />
+                      <input
+                        className="input sm"
+                        type="number"
+                        style={{ width: 90 }}
+                        title="Priority (меньше = раньше)"
+                        value={rule.priority}
+                        onChange={(e) => updateRule(rIdx, { priority: e.target.value })}
+                      />
+                      <select
+                        className="select"
+                        value={rule.path_id}
+                        onChange={(e) => updateRule(rIdx, { path_id: e.target.value })}
+                      >
+                        {form.paths.map((p) => (
+                          <option key={p.client_id} value={p.client_id}>
+                            → {p.name}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="chk">
+                        <input
+                          type="checkbox"
+                          checked={!!rule.enabled}
+                          onChange={(e) => updateRule(rIdx, { enabled: e.target.checked })}
+                        />
+                        on
+                      </label>
+                      <button
+                        className="btn ghost sm"
+                        type="button"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            rules: form.rules.filter((_, i) => i !== rIdx),
+                          })
+                        }
+                      >
+                        − rule
+                      </button>
+                    </div>
+                    {(rule.conditions || []).map((cond, cIdx) => (
+                      <div key={cIdx} className="toolbar" style={{ marginBottom: '0.35rem' }}>
+                        <select
+                          className="select"
+                          value={cond.field}
+                          onChange={(e) => {
+                            const conditions = [...rule.conditions];
+                            conditions[cIdx] = { ...conditions[cIdx], field: e.target.value };
+                            updateRule(rIdx, { conditions });
+                          }}
+                        >
+                          {RULE_FIELDS.map((f) => (
+                            <option key={f.value} value={f.value}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          className="select sm"
+                          style={{ width: 110 }}
+                          value={cond.operator}
+                          onChange={(e) => {
+                            const conditions = [...rule.conditions];
+                            conditions[cIdx] = { ...conditions[cIdx], operator: e.target.value };
+                            updateRule(rIdx, { conditions });
+                          }}
+                        >
+                          {RULE_OPS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className="input"
+                          placeholder="значение (для in: RU,US)"
+                          value={cond.value}
+                          onChange={(e) => {
+                            const conditions = [...rule.conditions];
+                            conditions[cIdx] = { ...conditions[cIdx], value: e.target.value };
+                            updateRule(rIdx, { conditions });
+                          }}
+                        />
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          onClick={() =>
+                            updateRule(rIdx, {
+                              conditions: rule.conditions.filter((_, i) => i !== cIdx),
+                            })
+                          }
+                        >
+                          −
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      onClick={() =>
+                        updateRule(rIdx, {
+                          conditions: [
+                            ...(rule.conditions || []),
+                            { field: 'country', operator: 'eq', value: '' },
+                          ],
+                        })
+                      }
+                    >
+                      + условие
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="btn ghost sm"
+                  type="button"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      rules: [
+                        ...form.rules,
+                        {
+                          name: `Rule ${form.rules.length + 1}`,
+                          priority: (form.rules.length + 1) * 10,
+                          enabled: true,
+                          path_id: form.paths[0]?.client_id || '',
+                          conditions: [{ field: 'country', operator: 'eq', value: '' }],
+                        },
+                      ],
+                    })
+                  }
+                >
+                  + rule
                 </button>
               </div>
             </div>

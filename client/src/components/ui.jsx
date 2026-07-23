@@ -7,10 +7,10 @@ export function Metric({ label, value, tone }) {
   );
 }
 
-export function Modal({ title, children, onClose }) {
+export function Modal({ title, children, onClose, className = '' }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal ${className}`.trim()} onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
         {children}
       </div>
