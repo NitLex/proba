@@ -9,7 +9,8 @@
     "seed": "node src/seed.js",
     "setup:ppm": "node src/setup-ppm.js",
     "check:leadgid": "node src/lib/leadgid.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "setup:ppm:remote": "node src/setup-ppm-remote.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
