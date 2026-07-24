@@ -63,7 +63,6 @@ function bannerHtml(s) {
       </div>
       <span class="banner__cta">Получить карту</span>
     </div>
-    <p class="banner__footer">Подробные условия — на сайте platipomiru.com</p>
   </div>
 </article>
 </body></html>`;
