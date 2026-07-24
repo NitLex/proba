@@ -32,3 +32,7 @@ https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={sta
 1. Открой клик-ссылку в браузере → должен редирект на go.leadgid.ru
 2. В LeadGid дождись тестовой/реальной конверсии или дерни постбек вручную
 3. В трекере: Клики / конверсии → виден sale и payout
+
+## Тест постбека в LeadGid
+Тестер LeadGid подставляет `clickid=aff_sub_value` (фейковый). Трекер должен отвечать **HTTP 200** даже если клика нет (`unmatched: true`).
+Если видишь 404 — на сервере старая версия postback, нужен деплой фикса.

@@ -23,10 +23,6 @@ router.get('/postback', (req, res) => {
     )
     .get(clickid);
 
-  if (!click) {
-    return res.status(404).json({ ok: false, error: 'click not found' });
-  }
-
   const statusRaw = String(req.query.status || req.query.event || 'lead').toLowerCase();
   const statusMap = {
     lead: 'lead',
@@ -50,7 +46,33 @@ router.get('/postback', (req, res) => {
 
   let payout = parseCost(req.query.payout ?? req.query.sum ?? req.query.amount, null);
   if (payout === null) {
-    payout = status === 'sale' || status === 'lead' ? Number(click.offer_payout || 0) : 0;
+    payout = status === 'sale' || status === 'lead' ? Number(click?.offer_payout || 0) : 0;
+  }
+
+  // LeadGid / network URL testers often send placeholder clickids (e.g. aff_sub_value).
+  // Always acknowledge with HTTP 200 so the network marks postback as delivered.
+  if (!click) {
+    const info = db
+      .prepare(
+        `INSERT INTO conversions (
+          clickid, click_row_id, campaign_id, offer_id, status, payout, currency, txid, raw_query
+        ) VALUES (?, NULL, NULL, NULL, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        clickid,
+        status,
+        payout ?? 0,
+        String(req.query.currency || 'RUB'),
+        String(req.query.txid || req.query.transaction_id || ''),
+        new URLSearchParams(req.query).toString()
+      );
+    return res.json({
+      ok: true,
+      unmatched: true,
+      id: Number(info.lastInsertRowid),
+      payout: payout ?? 0,
+      status,
+    });
   }
 
   const existing = db

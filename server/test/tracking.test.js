@@ -101,6 +101,16 @@ describe('api integration', () => {
     assert.ok(overview.revenue >= 10);
   });
 
+  it('accepts unmatched postback with 200 (LeadGid URL test)', async () => {
+    const pb = await fetch(
+      `${base}/postback?clickid=aff_sub_value&payout=100.1&status=approved&txid=lgtest`
+    );
+    assert.equal(pb.status, 200);
+    const body = await pb.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.unmatched, true);
+  });
+
   it('bundles crud + launch campaign', async () => {
     const created = await fetch(`${base}/api/bundles`, {
       method: 'POST',
