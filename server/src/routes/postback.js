@@ -32,11 +32,19 @@ router.get('/postback', (req, res) => {
     lead: 'lead',
     sale: 'sale',
     approved: 'sale',
+    approve: 'sale',
+    confirmed: 'sale',
+    paid: 'sale',
     dep: 'sale',
     deposit: 'sale',
+    goal: 'sale',
     rejected: 'rejected',
+    reject: 'rejected',
+    declined: 'rejected',
     trash: 'rejected',
     hold: 'hold',
+    pending: 'hold',
+    waiting: 'hold',
   };
   const status = statusMap[statusRaw] || statusRaw;
 
