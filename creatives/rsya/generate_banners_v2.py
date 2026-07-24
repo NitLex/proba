@@ -424,29 +424,36 @@ def layout_poster(w, h, hero):
     bf = fit(d, BRAND, w - 2 * pad, 34)
     d.text((pad, 36), BRAND, font=bf, fill=TEAL)
 
-    y = int(h * 0.52)
     max_w = w - 2 * pad
-    tf = fit(d, HEAD, max_w, 52)
+    cta_h = 64
+    footer_h = 28
+    promo_block_h = 90
+    bottom_reserved = pad + footer_h + cta_h + 16 + promo_block_h
+
+    y = int(h * 0.48)
+    tf = fit(d, HEAD, max_w, 48)
     for line in wrap(d, HEAD, tf, max_w, 3):
         d.text((pad, y), line, font=tf, fill=WHITE)
         y += tf.size + 8
 
-    sf = fit(d, SUB, max_w, 26, bold=False)
-    d.text((pad, y + 6), SUB, font=sf, fill=MUTED)
-    y += sf.size + 28
+    sf = fit(d, SUB, max_w, 24, bold=False)
+    d.text((pad, y + 4), SUB, font=sf, fill=MUTED)
+    y += sf.size + 22
 
     for b in BENEFITS:
         line = "•  " + b
-        bfnt = fit(d, line, max_w, 22, bold=False)
+        bfnt = fit(d, line, max_w, 20, bold=False)
+        # stop if we'd collide with promo
+        if y + bfnt.size > h - bottom_reserved:
+            break
         d.text((pad, y), line, font=bfnt, fill=MUTED)
         y += bfnt.size + 10
 
-    y += 16
-    promo_block(d, pad, y, 420, scale=1.3)
-    cta_h = 64
-    round_btn(d, (pad, h - pad - cta_h - 36, pad + 360, h - pad - 36), TEAL, CTA)
-    ff = fit(d, FOOTER, max_w, 16, bold=False)
-    d.text((pad, h - pad - 24), FOOTER, font=ff, fill=(150, 170, 185))
+    promo_y = h - bottom_reserved + 8
+    promo_block(d, pad, promo_y, 420, scale=1.25)
+    round_btn(d, (pad, h - pad - footer_h - cta_h, pad + 380, h - pad - footer_h), TEAL, CTA)
+    ff = fit(d, FOOTER, max_w, 15, bold=False)
+    d.text((pad, h - pad - 18), FOOTER, font=ff, fill=(150, 170, 185))
     return base
 
 
