@@ -1,0 +1,361 @@
+/* Плати по миру — cyberpunk fintech banner kit */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Manrope:wght@400;600;700&display=swap');
+
+:root {
+  --bg0: #050810;
+  --bg1: #0a1020;
+  --neon-cyan: #00e5ff;
+  --neon-blue: #3d7bff;
+  --neon-purple: #a855f7;
+  --neon-pink: #e879f9;
+  --text: #eef6ff;
+  --muted: #94a8c4;
+  --accent-gold: #ffd54a;
+  --glow: 0 0 24px rgba(0, 229, 255, 0.35);
+  --font-display: 'Orbitron', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.gallery {
+  font-family: var(--font-body);
+  background: #111;
+  color: #ccc;
+  padding: 2rem;
+}
+
+.gallery h1 {
+  font-family: var(--font-display);
+  color: var(--neon-cyan);
+  margin-bottom: 0.5rem;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.gallery-item {
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.gallery-item h3 {
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  color: #888;
+}
+
+/* ── Banner base ── */
+.banner {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg0);
+  font-family: var(--font-body);
+  color: var(--text);
+  isolation: isolate;
+}
+
+.banner__bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, rgba(5, 8, 16, 0.92) 0%, rgba(5, 8, 16, 0.55) 45%, rgba(5, 8, 16, 0.35) 100%),
+    url('assets/bg-hero.png') center / cover no-repeat;
+  z-index: 0;
+}
+
+.banner__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.banner__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.banner__glow--cyan {
+  width: 40%;
+  height: 80%;
+  right: -5%;
+  top: -20%;
+  background: rgba(0, 229, 255, 0.15);
+}
+
+.banner__glow--purple {
+  width: 30%;
+  height: 60%;
+  right: 10%;
+  bottom: -20%;
+  background: rgba(168, 85, 247, 0.2);
+}
+
+.banner__content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.banner__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(90deg, #fff 0%, var(--neon-cyan) 50%, var(--neon-purple) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.banner__subtitle {
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.banner__bullets {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+
+.banner__bullets li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35em;
+  font-size: inherit;
+  line-height: 1.2;
+  color: #c8d8ec;
+}
+
+.banner__bullets li::before {
+  content: '▸';
+  color: var(--neon-cyan);
+  flex-shrink: 0;
+}
+
+.banner__promo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1em;
+  padding: 0.35em 0.6em;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 6px;
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: var(--glow);
+}
+
+.banner__promo-code {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--neon-cyan);
+  letter-spacing: 0.08em;
+}
+
+.banner__promo-bonus {
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.banner__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #050810;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.45);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.banner__footer {
+  color: rgba(148, 168, 196, 0.75);
+  font-size: inherit;
+  line-height: 1.2;
+}
+
+.banner__chip {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 0.55em;
+  font-weight: 700;
+  padding: 0.2em 0.5em;
+  border-radius: 3px;
+  background: rgba(168, 85, 247, 0.25);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: var(--neon-pink);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── Size: horizontal ultra-wide (1000×120, 1280×256, 1706×184) ── */
+.banner--hz-ultra .banner__content {
+  padding: 8% 4% 8% 5%;
+  max-width: 62%;
+}
+
+.banner--hz-ultra .banner__title { font-size: clamp(10px, 4.5vw, 22px); }
+.banner--hz-ultra .banner__subtitle { font-size: clamp(7px, 2.2vw, 11px); margin-top: 0.3em; display: none; }
+.banner--hz-ultra .banner__bullets { display: none; }
+.banner--hz-ultra .banner__row { display: flex; align-items: center; gap: 0.8em; margin-top: 0.4em; flex-wrap: wrap; }
+.banner--hz-ultra .banner__promo { flex-direction: row; align-items: center; gap: 0.5em; padding: 0.25em 0.5em; }
+.banner--hz-ultra .banner__promo-code { font-size: clamp(8px, 2.5vw, 14px); }
+.banner--hz-ultra .banner__promo-bonus { font-size: clamp(7px, 2vw, 12px); }
+.banner--hz-ultra .banner__cta { font-size: clamp(7px, 2.2vw, 12px); padding: 0.35em 0.8em; }
+.banner--hz-ultra .banner__footer { display: none; }
+
+/* ── Size: horizontal standard (728×90, 320×50, 320×100) ── */
+.banner--hz-std .banner__content {
+  padding: 10% 3% 10% 4%;
+  max-width: 70%;
+}
+
+.banner--hz-std .banner__chip { margin-bottom: 0.2em; }
+.banner--hz-std .banner__title { font-size: clamp(9px, 3.8vw, 18px); }
+.banner--hz-std .banner__subtitle { font-size: clamp(6px, 1.8vw, 10px); margin-top: 0.15em; }
+.banner--hz-std .banner__bullets { display: none; }
+.banner--hz-std .banner__row { display: flex; align-items: center; gap: 0.6em; margin-top: 0.35em; }
+.banner--hz-std .banner__promo { padding: 0.2em 0.45em; }
+.banner--hz-std .banner__promo-code { font-size: clamp(7px, 2vw, 12px); }
+.banner--hz-std .banner__promo-bonus { font-size: clamp(6px, 1.6vw, 10px); }
+.banner--hz-std .banner__cta { font-size: clamp(6px, 1.8vw, 11px); padding: 0.3em 0.7em; }
+.banner--hz-std .banner__footer { display: none; }
+
+/* ── Size: billboard (970×250, 1080×450) ── */
+.banner--billboard .banner__content {
+  padding: 6% 5% 6% 6%;
+  max-width: 58%;
+}
+
+.banner--billboard .banner__chip { margin-bottom: 0.4em; }
+.banner--billboard .banner__title { font-size: clamp(14px, 3.2vw, 32px); }
+.banner--billboard .banner__subtitle { font-size: clamp(9px, 1.6vw, 15px); margin-top: 0.35em; }
+.banner--billboard .banner__bullets { margin-top: 0.6em; font-size: clamp(7px, 1.2vw, 12px); }
+.banner--billboard .banner__row { display: flex; align-items: center; gap: 1em; margin-top: 0.7em; flex-wrap: wrap; }
+.banner--billboard .banner__promo-code { font-size: clamp(11px, 2vw, 20px); }
+.banner--billboard .banner__promo-bonus { font-size: clamp(9px, 1.5vw, 16px); }
+.banner--billboard .banner__cta { font-size: clamp(9px, 1.4vw, 14px); padding: 0.55em 1.2em; }
+.banner--billboard .banner__footer { margin-top: 0.5em; font-size: clamp(6px, 1vw, 10px); }
+
+/* ── Size: medium rectangle (300×250, 336×280) ── */
+.banner--mrect .banner__content {
+  padding: 8% 6%;
+}
+
+.banner--mrect .banner__chip { font-size: 7px; margin-bottom: 0.3em; }
+.banner--mrect .banner__title { font-size: 15px; }
+.banner--mrect .banner__subtitle { font-size: 9px; margin-top: 0.3em; }
+.banner--mrect .banner__bullets { margin-top: 0.45em; font-size: 7.5px; }
+.banner--mrect .banner__row { margin-top: 0.5em; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35em; }
+.banner--mrect .banner__promo-code { font-size: 13px; }
+.banner--mrect .banner__promo-bonus { font-size: 10px; }
+.banner--mrect .banner__cta { font-size: 9px; padding: 0.45em 0.9em; }
+.banner--mrect .banner__footer { margin-top: 0.35em; font-size: 6px; }
+
+/* ── Size: square (300×300) ── */
+.banner--square .banner__content {
+  padding: 7% 6%;
+}
+
+.banner--square .banner__chip { font-size: 7px; }
+.banner--square .banner__title { font-size: 14px; }
+.banner--square .banner__subtitle { font-size: 8.5px; margin-top: 0.25em; }
+.banner--square .banner__bullets { margin-top: 0.4em; font-size: 7px; }
+.banner--square .banner__row { margin-top: 0.45em; }
+.banner--square .banner__promo-code { font-size: 12px; }
+.banner--square .banner__promo-bonus { font-size: 9px; }
+.banner--square .banner__cta { font-size: 8px; padding: 0.4em 0.85em; }
+.banner--square .banner__footer { font-size: 5.5px; margin-top: 0.3em; }
+
+/* ── Size: vertical narrow (160×600, 240×400, 240×600, 300×500, 300×600) ── */
+.banner--vert .banner__bg {
+  background:
+    linear-gradient(180deg, rgba(5, 8, 16, 0.9) 0%, rgba(5, 8, 16, 0.7) 40%, rgba(5, 8, 16, 0.85) 100%),
+    url('assets/bg-hero.png') 70% 30% / cover no-repeat;
+}
+
+.banner--vert .banner__content {
+  padding: 5% 8%;
+  justify-content: flex-end;
+  padding-bottom: 8%;
+}
+
+.banner--vert .banner__chip { font-size: 6px; margin-bottom: 0.4em; }
+.banner--vert .banner__title { font-size: 11px; }
+.banner--vert .banner__subtitle { font-size: 7px; margin-top: 0.3em; }
+.banner--vert .banner__bullets { margin-top: 0.5em; font-size: 6.5px; }
+.banner--vert .banner__row { margin-top: 0.55em; display: flex; flex-direction: column; gap: 0.35em; }
+.banner--vert .banner__promo { width: 100%; }
+.banner--vert .banner__promo-code { font-size: 11px; }
+.banner--vert .banner__promo-bonus { font-size: 8px; }
+.banner--vert .banner__cta { font-size: 7px; padding: 0.45em; width: 100%; text-align: center; }
+.banner--vert .banner__footer { font-size: 5px; margin-top: 0.4em; }
+
+/* ── Size: mobile landscape (480×320) ── */
+.banner--mland .banner__content {
+  padding: 6% 5%;
+  max-width: 65%;
+}
+
+.banner--mland .banner__title { font-size: 13px; }
+.banner--mland .banner__subtitle { font-size: 8px; }
+.banner--mland .banner__bullets { font-size: 7px; margin-top: 0.35em; }
+.banner--mland .banner__row { margin-top: 0.4em; display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
+.banner--mland .banner__promo-code { font-size: 11px; }
+.banner--mland .banner__cta { font-size: 8px; padding: 0.4em 0.8em; }
+.banner--mland .banner__footer { font-size: 5.5px; margin-top: 0.3em; }
+
+/* ── Size: mobile portrait full (940×1524, 320×480) ── */
+.banner--mport .banner__bg {
+  background:
+    linear-gradient(180deg, rgba(5, 8, 16, 0.75) 0%, rgba(5, 8, 16, 0.5) 35%, rgba(5, 8, 16, 0.88) 75%),
+    url('assets/bg-hero.png') center top / cover no-repeat;
+}
+
+.banner--mport .banner__content {
+  padding: 55% 7% 6%;
+  justify-content: flex-end;
+}
+
+.banner--mport .banner__chip { font-size: 9px; }
+.banner--mport .banner__title { font-size: 20px; }
+.banner--mport .banner__subtitle { font-size: 11px; margin-top: 0.35em; }
+.banner--mport .banner__bullets { margin-top: 0.6em; font-size: 10px; }
+.banner--mport .banner__row { margin-top: 0.7em; display: flex; flex-direction: column; gap: 0.45em; }
+.banner--mport .banner__promo { width: 100%; padding: 0.5em 0.7em; }
+.banner--mport .banner__promo-code { font-size: 18px; }
+.banner--mport .banner__promo-bonus { font-size: 14px; }
+.banner--mport .banner__cta { font-size: 12px; padding: 0.6em; width: 100%; }
+.banner--mport .banner__footer { font-size: 8px; margin-top: 0.5em; }
