@@ -43,7 +43,7 @@ function upsertOffer(lgOffer) {
   // Placeholder tracking URL — replace with real LeadGid affiliate link after connect
   const url =
     process.env.LEADGID_OFFER_URL ||
-    `https://GO.LEADGID.PLACEHOLDER/click?offer_id=7397&sub1={clickid}&sub2={campaign_id}&sub3={token1}`;
+    `https://go.leadgid.ru/aff_c?aff_id=123072&offer_id=7397&p=adnetwork&aff_sub={clickid}&aff_sub2={campaign_id}&aff_sub3={token1}`;
 
   const existing = db.prepare(`SELECT * FROM offers WHERE notes LIKE ?`).get(`%${MARKER}%`);
   const notes = [
