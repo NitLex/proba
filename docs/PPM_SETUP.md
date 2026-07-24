@@ -47,12 +47,15 @@ https://ТВОЙ_ТРЕКЕР/postback?clickid={SUB1}&payout={PAYOUT}&status={ST
 
 ## 5. Яндекс.Директ
 
-Когда будет OAuth `access_token` — добавь в `.env`:
+**Пока API не одобрен (ошибка 58)** — запуск вручную:
+см. пошагово [`docs/DIRECT_MANUAL_PPM.md`](./DIRECT_MANUAL_PPM.md).
+
+Ссылка для объявлений РСЯ:
 ```
-YANDEX_DIRECT_TOKEN=...
-YANDEX_DIRECT_LOGIN=...
+https://trekerarbitrag.ru/click/0BL6esOO?utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}
 ```
-и напиши агенту — создадим кампании/объявления через API.
+
+Когда заявку на API одобрят — можно создавать кампании через API (`YANDEX_DIRECT_TOKEN` / `YANDEX_DIRECT_LOGIN` уже в `SECRETS.env`).
 
 ## Ориентиры экономики (#7397)
 
