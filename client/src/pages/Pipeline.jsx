@@ -160,8 +160,12 @@ export default function Pipeline() {
               <div className="mono" style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
                 images
               </div>
-              <strong>Креативы</strong>
-              <p className="hint">{integrations.images?.note || '—'}</p>
+              <strong>GPT Image</strong>
+              <p className="hint">
+                {integrations.images?.configured
+                  ? integrations.images.note
+                  : 'Нужен OPENAI_API_KEY (GPT Image API)'}
+              </p>
             </div>
             <div className="subpanel">
               <div className="mono" style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>

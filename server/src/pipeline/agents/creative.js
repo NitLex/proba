@@ -147,7 +147,7 @@ export async function runCreative({ offer, context }) {
       generated_images: generated,
       image_provider: imgCfg,
       generator_hint:
-        'creatives/rsya/ или IMAGE_PROVIDER=openai|replicate|useapi_mj для midjourney-уровня',
+        'creatives/rsya/ или GPT Image API: OPENAI_API_KEY + IMAGE_PROVIDER=openai',
       direct_textad_min_size: '450x450 (лучше 1080x1080 JPG)',
     },
     cursor_prompt: [
