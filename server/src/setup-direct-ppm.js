@@ -4,7 +4,9 @@
  *
  * Usage: node src/setup-direct-ppm.js
  */
-import '../lib/env.js';
+import { loadEnv } from './lib/env.js';
+
+loadEnv();
 
 const TOKEN = process.env.YANDEX_DIRECT_TOKEN;
 const LOGIN = process.env.YANDEX_DIRECT_LOGIN;
