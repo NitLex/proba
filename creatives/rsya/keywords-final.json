@@ -1,0 +1,613 @@
+{
+  "offer": "Плати по миру (LeadGid 7397)",
+  "geo": "RU",
+  "region_ids": [
+    225
+  ],
+  "channel": "Yandex Direct РСЯ",
+  "source": "wordstat_live+cleanup",
+  "mode": "live",
+  "notes": [
+    "Сырой Wordstat live дал много мусора (МФО «Кредит 365», навигаторы, размеры одежды, войска).",
+    "Сиды оффера под виртуальную карту PPM; бренд-займы и cash-обмен валюты вычищены.",
+    "Travel/Services дополнены эвристикой по углам аналитика — live почти не дал релевантных фраз."
+  ],
+  "groups": {
+    "travel": {
+      "title": "Путешествия / оплата за границей",
+      "keywords": [
+        {
+          "phrase": "карта для поездок",
+          "shows": 10375,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в беларусь",
+          "shows": 1327,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в китай",
+          "shows": 1274,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в белоруссию",
+          "shows": 1108,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "виртуальная карта для путешествий",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты за границей",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата за границей картой",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для поездок за рубеж",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для путешествий",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата за границей",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для отпуска",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "цифровая карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для туристов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты за рубежом",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "банковская карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для путешествий за границу",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    },
+    "services": {
+      "title": "Зарубежные сервисы и подписки",
+      "keywords": [
+        {
+          "phrase": "зарубежные сервисы",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата зарубежных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для зарубежных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта в долларах",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для зарубежных подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "онлайн карта для сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта в валюте",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта usd",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата иностранных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "цифровая карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для онлайн подписок",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    },
+    "premium": {
+      "title": "Премиум / выгодный курс",
+      "keywords": [
+        {
+          "phrase": "выгодный курс",
+          "shows": 161271,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "самый выгодный курс",
+          "shows": 22725,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "выгодный курс валют",
+          "shows": 22152,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "большой лимит",
+          "shows": 12144,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "премиальная карта",
+          "shows": 9336,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "премиальные карты банков",
+          "shows": 1931,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "карта мир премиальная",
+          "shows": 1717,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "кредитный лимит большой",
+          "shows": 1562,
+          "source": "wordstat_live",
+          "group": "premium"
+        },
+        {
+          "phrase": "премиальная виртуальная карта",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта с выгодным курсом",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "премиальная карта с выгодным курсом",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта выгодный курс",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта с большим лимитом",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "премиум виртуальная карта",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    }
+  },
+  "negatives": [
+    "бесплатно",
+    "халява",
+    "взлом",
+    "кряк",
+    "скачать",
+    "торрент",
+    "работа",
+    "вакансия",
+    "займ",
+    "микрозайм",
+    "кредит наличными",
+    "казино",
+    "ставки",
+    "1xbet",
+    "крипта",
+    "bitcoin",
+    "p2p",
+    "обнал",
+    "для детей",
+    "школьник",
+    "кредит 365",
+    "credit365",
+    "личный кабинет",
+    "войти",
+    "вход",
+    "обменник",
+    "обмен валюты",
+    "купить доллары",
+    "навигатор",
+    "маршрут",
+    "смотреть онлайн",
+    "блог",
+    "войска",
+    "отряд",
+    "бункер",
+    "разрешенная максимальная масса",
+    "размер м",
+    "размер л",
+    "зарплата",
+    "просрочка",
+    "букмекер",
+    "купить готовые",
+    "без документов"
+  ],
+  "rejected": [
+    {
+      "phrase": "обменник",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "обмен валюты",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "ре премиум",
+      "reason": "token fragment / noise"
+    },
+    {
+      "phrase": "выгодный курс сегодня",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс доллара",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс купить",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "разрешенная максимальная масса",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "купить сегодня по выгодному курсу",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "купить доллары по выгодному курсу",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодный курс в москве",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "кредит 365",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "банки выгодный курс",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодные курсы банков",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "купить доллары по выгодному курсу сегодня",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодный курс доллара на сегодня",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "особо крупный размер",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодный курс евро",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "не выгодно",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодные курсы москва сегодня",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс доллара в банках",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс доллара в москве",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "купить в москве по выгодному курсу",
+      "reason": "FX rate without card context"
+    },
+    {
+      "phrase": "построить маршрут на карте",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодный курс доллара сегодня банки",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "доллар курс доллара сегодня выгодный банк",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "навигатор онлайн проложить маршрут",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "доступная страна",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "выгодный курс банков на сегодня",
+      "reason": "FX rate without card context"
+    },
+    {
+      "phrase": "выгодный курс обмена",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс в банке купить",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "выгодный курс доллара в москве сегодня",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "больш",
+      "reason": "token fragment / noise"
+    },
+    {
+      "phrase": "самый выгодный курс доллара",
+      "reason": "cash FX — not virtual card intent"
+    },
+    {
+      "phrase": "кредит 365 личный",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "самая дорогая валюта",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 кабинет",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 личный кабинет",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "элитные войска",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "самая дешевая валюта",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "займ кредит 365",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "бункер карточки",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "где выгодно купить доллары",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "элитный отряд",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "на тот большак",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 займ личный",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредиска займ личный кабинет",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 займ личный кабинет",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "разрешенная максимальная масса это",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "credit365",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "какое золото дороже",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "самая дешевая валюта в мире",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "блог путешественника",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "путешественники смотреть онлайн",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "какой размер больше м или л",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "большо",
+      "reason": "token fragment / noise"
+    },
+    {
+      "phrase": "маршрут 7п",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 вход",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 войти",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 личный кабинет войти",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 займ вход",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "365 кредит займ вход личный",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "кредит 365 личный кабинет займ вход",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "заказ больше лимитов кошелька",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "какая самая дешевая валюта",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "села премиум",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "что больше м или л размеры",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "премиальная карта сбербанка",
+      "reason": "junk/irrelevant association or MFO"
+    },
+    {
+      "phrase": "синяя карта для поездки в беларусь",
+      "reason": "junk/irrelevant association or MFO"
+    }
+  ],
+  "autotargeting": "suspended_on_start",
+  "bid_hint_rub": 10.2,
+  "stats": {
+    "raw_phrases": 80,
+    "kept_travel": 18,
+    "kept_services": 16,
+    "kept_premium": 14,
+    "rejected": 68,
+    "negatives": 43
+  }
+}
