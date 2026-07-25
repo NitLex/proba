@@ -8,3 +8,5 @@ client/dist/
 .DS_Store
 *.log
 .env
+SECRETS.env
+env.local
