@@ -14,7 +14,8 @@
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
     "test": "npm test --prefix server",
-    "setup:ppm:remote": "npm run setup:ppm:remote --prefix server"
+    "setup:ppm:remote": "npm run setup:ppm:remote --prefix server",
+    "pipeline": "npm run pipeline --prefix server --"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

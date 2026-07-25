@@ -8,6 +8,7 @@ import Sources from './pages/Sources';
 import Stats from './pages/Stats';
 import Logs from './pages/Logs';
 import Bundles from './pages/Bundles';
+import Pipeline from './pages/Pipeline';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="pipeline" element={<Pipeline />} />
           <Route path="bundles" element={<Bundles />} />
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="offers" element={<Offers />} />
