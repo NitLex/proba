@@ -346,7 +346,7 @@ export default function Pipeline() {
                 checked={spawnCursor}
                 onChange={(e) => setSpawnCursor(e.target.checked)}
               />
-              Автозапуск Cursor-субагентов
+              Автозапуск Cursor-субагентов (не создаёт кампанию в Директе — только cloud-агенты)
             </label>
             <div className="full">
               <button className="btn" disabled={busy} type="submit">

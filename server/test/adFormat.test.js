@@ -6,6 +6,7 @@ import {
   overlayLinesForOffer,
 } from '../src/lib/adFormat.js';
 import { buildCreativePrompt } from '../src/lib/imageGen.js';
+import { moscowDateISO } from '../src/pipeline/agents/direct.js';
 
 test('normalizeAdFormat aliases', () => {
   assert.equal(normalizeAdFormat('graphic'), 'graphic');
@@ -30,6 +31,12 @@ test('overlay lines include offer promo', () => {
   });
   assert.ok(lines.length >= 2);
   assert.ok(lines.some((l) => /LG2026|Цифровая|Оформление/i.test(l)));
+});
+
+test('moscowDateISO is YYYY-MM-DD', () => {
+  assert.match(moscowDateISO(new Date('2026-07-25T22:00:00.000Z')), /^\d{4}-\d{2}-\d{2}$/);
+  // 22:00 UTC = 01:00 next day Moscow → should be 2026-07-26
+  assert.equal(moscowDateISO(new Date('2026-07-25T22:00:00.000Z')), '2026-07-26');
 });
 
 test('buildCreativePrompt differs for graphic vs product', () => {

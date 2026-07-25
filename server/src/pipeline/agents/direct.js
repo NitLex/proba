@@ -34,6 +34,18 @@ async function directApi(service, body) {
   return data;
 }
 
+/** Direct StartDate must be >= today in Europe/Moscow, not UTC. */
+export function moscowDateISO(d = new Date()) {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  // en-CA → YYYY-MM-DD
+  return fmt.format(d);
+}
+
 function resolveImageAbs(relOrAbs) {
   if (!relOrAbs) return null;
   if (path.isAbsolute(relOrAbs) && fs.existsSync(relOrAbs)) return relOrAbs;
@@ -189,7 +201,7 @@ async function applyDraft(plan) {
       Campaigns: [
         {
           Name: plan.name.slice(0, 255),
-          StartDate: new Date().toISOString().slice(0, 10),
+          StartDate: moscowDateISO(),
           TextCampaign: {
             BiddingStrategy: {
               Search: { BiddingStrategyType: 'SERVING_OFF' },
