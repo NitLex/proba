@@ -1,0 +1,45 @@
+{
+  "agent": "direct",
+  "branch": "cursor/ppm-direct-05bc",
+  "applied": false,
+  "draft_only": true,
+  "moderation_submitted": false,
+  "plan_name": "РСЯ | Плати по миру - Выпуск карты | товарное | travel+services+sbp",
+  "href": "https://trekerarbitrag.ru/click/DBSKE5N0",
+  "plan_path": "direct/plans/rsya-ppm-travel-services-sbp-product.json",
+  "ad_format": "product",
+  "direct_ad_type": "TextAd",
+  "creatives": [
+    "creatives/rsya/direct-textad/ppm-travel-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-services-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-premium-1080.jpg"
+  ],
+  "settings": {
+    "neuro_ads": "OFF",
+    "direct_helps_auto": "OFF",
+    "network": "WB_MAXIMUM_CLICKS",
+    "bid_ceiling_rub": 5,
+    "weekly_spend_limit_rub": 35000,
+    "region_ids": [225],
+    "state": "OFF",
+    "moderation": "DO_NOT_SUBMIT"
+  },
+  "startdate_fix": {
+    "bug": "API 5005 — StartDate from toISOString() (UTC) was behind Europe/Moscow current date after 21:00 UTC",
+    "fix": "server/src/lib/directDate.js → moscowStartDate(); used in apply-direct-plan.js and pipeline/agents/direct.js",
+    "dry_run_start_date": "2026-07-26",
+    "utc_at_run": "2026-07-25"
+  },
+  "dry_run_ok": true,
+  "error": "YANDEX_DIRECT_TOKEN / YANDEX_DIRECT_LOGIN missing in cloud-agent workspace",
+  "code": "NO_TOKEN",
+  "blocker": "Cursor cloud agent was spawned without SECRETS.env. Orchestrator had api_ready=true, but OAuth secrets are not injected into cloud sub-agents.",
+  "next_steps": [
+    "На машине оркестратора с SECRETS.env выполнить: npm run apply:direct",
+    "Нужны YANDEX_DIRECT_TOKEN и YANDEX_DIRECT_LOGIN",
+    "Скрипт создаст черновик OFF: кампанию, группы, ключи, TextAd, картинки, bid modifiers",
+    "ads.moderate и campaigns.resume по умолчанию НЕ вызываются",
+    "В UI: проверить → отправить на модерацию → запустить вручную; Neuro Ads не включать"
+  ],
+  "apply_command": "npm run apply:direct"
+}

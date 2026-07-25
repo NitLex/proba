@@ -1,0 +1,108 @@
+{
+  "plan_name": "РСЯ | Плати по миру - Выпуск карты | товарное | travel+services+sbp",
+  "href": "https://trekerarbitrag.ru/click/DBSKE5N0",
+  "dry_run": true,
+  "draft_only": true,
+  "moderation_submitted": false,
+  "neuro_ads": "OFF",
+  "direct_helps_auto": "OFF",
+  "start_date": "2026-07-26",
+  "start_date_tz": "Europe/Moscow",
+  "steps": {
+    "campaign": {
+      "preview": {
+        "Name": "РСЯ | Плати по миру - Выпуск карты | товарное | travel+services+sbp",
+        "StartDate": "2026-07-26",
+        "TimeZone": "Europe/Moscow",
+        "NegativeKeywords": {
+          "Items": [
+            "бесплатно",
+            "халява",
+            "взлом",
+            "кряк",
+            "скачать",
+            "торрент",
+            "работа",
+            "вакансия",
+            "займ",
+            "микрозайм",
+            "кредит наличными",
+            "казино",
+            "ставки",
+            "1xbet",
+            "крипта",
+            "bitcoin",
+            "p2p",
+            "обнал",
+            "для детей",
+            "школьник"
+          ]
+        },
+        "TextCampaign": {
+          "BiddingStrategy": {
+            "Search": {
+              "BiddingStrategyType": "SERVING_OFF"
+            },
+            "Network": {
+              "BiddingStrategyType": "WB_MAXIMUM_CLICKS",
+              "WbMaximumClicks": {
+                "WeeklySpendLimit": 35000000000,
+                "BidCeiling": 5000000
+              }
+            }
+          },
+          "Settings": [
+            {
+              "Option": "ENABLE_SITE_MONITORING",
+              "Value": "YES"
+            },
+            {
+              "Option": "ENABLE_COMPANY_INFO",
+              "Value": "NO"
+            },
+            {
+              "Option": "ENABLE_AREA_OF_INTEREST_TARGETING",
+              "Value": "NO"
+            },
+            {
+              "Option": "ALTERNATIVE_TEXTS_ENABLED",
+              "Value": "NO"
+            },
+            {
+              "Option": "ADD_METRICA_TAG",
+              "Value": "NO"
+            }
+          ],
+          "TrackingParams": "utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}"
+        }
+      }
+    },
+    "ad_groups": [
+      {
+        "name": "PPM Поездки / travel-оплаты · товарное",
+        "keywords": 20,
+        "ads": 3,
+        "image": "creatives/rsya/direct-textad/ppm-travel-1080.jpg",
+        "direct_ad_type": "TextAd"
+      },
+      {
+        "name": "PPM Подписки и онлайн-сервисы · товарное",
+        "keywords": 15,
+        "ads": 3,
+        "image": "creatives/rsya/direct-textad/ppm-services-1080.jpg",
+        "direct_ad_type": "TextAd"
+      },
+      {
+        "name": "PPM Быстрый выпуск + СБП · товарное",
+        "keywords": 13,
+        "ads": 2,
+        "image": "creatives/rsya/direct-textad/ppm-premium-1080.jpg",
+        "direct_ad_type": "TextAd"
+      }
+    ],
+    "safety": {
+      "ads_moderate": "SKIPPED (draft-only; pass --moderate to opt in)",
+      "campaigns_resume": "SKIPPED"
+    }
+  }
+}
