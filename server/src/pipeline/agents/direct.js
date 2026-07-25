@@ -14,6 +14,10 @@ import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
+  DIRECT_BID_MODIFIERS,
+  DIRECT_CREATIVE_RULES,
+  DIRECT_EXCLUDED_PLACEMENTS,
+  DIRECT_FINANCE_DOCS,
   DIRECT_HARD_RULES,
   DIRECT_RSYA_PLAYBOOK,
   getDirectKnowledgeBrief,
@@ -116,7 +120,20 @@ function buildPlan({ offer, context }) {
     knowledge: {
       help_root: 'https://yandex.ru/support/direct/ru/',
       strategy_why: DIRECT_RSYA_PLAYBOOK.recommended_strategy.why,
-      hard_rules: DIRECT_HARD_RULES.slice(0, 6),
+      hard_rules: DIRECT_HARD_RULES.slice(0, 8),
+      bid_modifiers: DIRECT_BID_MODIFIERS.recommended_rsya_test,
+      excluded_placements: {
+        limit: DIRECT_EXCLUDED_PLACEMENTS.limit,
+        when_to_clean: DIRECT_EXCLUDED_PLACEMENTS.when_to_clean,
+        seed_patterns: DIRECT_EXCLUDED_PLACEMENTS.seed_blocklist_patterns,
+        workflow: DIRECT_EXCLUDED_PLACEMENTS.workflow,
+      },
+      creative_rules: {
+        text: DIRECT_CREATIVE_RULES.text,
+        images: DIRECT_CREATIVE_RULES.images,
+        landing: DIRECT_CREATIVE_RULES.landing,
+      },
+      finance_docs: DIRECT_FINANCE_DOCS.payment_systems,
     },
     strategy: {
       search: DIRECT_RSYA_PLAYBOOK.recommended_strategy.search,
@@ -369,7 +386,11 @@ export async function runDirect({ offer, context, apply = false }) {
       : 'Директ: план готов (токена нет — только спецификация)';
 
   const knowledge = getDirectKnowledgeBrief();
-  const operator_checklist = buildDirectOperatorChecklist({ plan, offer });
+  const operator_checklist = buildDirectOperatorChecklist({
+    plan,
+    offer,
+    playbook: context.playbook,
+  });
 
   return {
     summary: readyMessage,
