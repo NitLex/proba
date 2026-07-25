@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { applyMacros, parseCost, detectBot, makeClickId } from '../src/lib/tracking.js';
+import { applyMacros, parseCost, detectBot, isAdReviewBot, makeClickId } from '../src/lib/tracking.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testDb = path.join(__dirname, 'test-arbtrack.db');
@@ -25,6 +25,8 @@ describe('tracking helpers', () => {
   it('detects bots', () => {
     assert.equal(detectBot('Googlebot/2.1'), 1);
     assert.equal(detectBot('Mozilla/5.0 Chrome'), 0);
+    assert.equal(isAdReviewBot('Mozilla/5.0 (compatible; YandexBot/3.0)'), true);
+    assert.equal(isAdReviewBot('curl/8.0'), false);
   });
 
   it('generates click ids', () => {

@@ -5,6 +5,7 @@ import {
   applyMacros,
   clientIp,
   detectBot,
+  isAdReviewBot,
   makeClickId,
   parseCost,
   pickWeighted,
@@ -55,7 +56,8 @@ router.get('/click/:key', (req, res) => {
 
   const ua = req.headers['user-agent'] || '';
   const isBot = detectBot(ua);
-  if (campaign.block_bots && isBot) {
+  // Allow YandexBot / AdsBot through for Direct (and similar) moderation checks
+  if (campaign.block_bots && isBot && !isAdReviewBot(ua)) {
     return res.status(403).send('Bot traffic blocked');
   }
 
@@ -226,7 +228,10 @@ router.get('/to-offer', (req, res) => {
     .get(clickid);
 
   if (!click || !click.offer_url) return res.status(404).send('Offer not found');
-  if (click.block_bots && click.is_bot) return res.status(403).send('Bot traffic blocked');
+  const uaToOffer = req.headers['user-agent'] || click.user_agent || '';
+  if (click.block_bots && click.is_bot && !isAdReviewBot(uaToOffer)) {
+    return res.status(403).send('Bot traffic blocked');
+  }
 
   const dest = applyMacros(click.offer_url, {
     clickid: click.clickid,

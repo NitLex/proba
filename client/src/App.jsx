@@ -11,6 +11,7 @@ import Logs from './pages/Logs';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Pipeline from './pages/Pipeline';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="sources" element={<Sources />} />
             <Route path="stats" element={<Stats />} />
             <Route path="logs" element={<Logs />} />
+            <Route path="pipeline" element={<Pipeline />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

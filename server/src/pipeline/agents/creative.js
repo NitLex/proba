@@ -1,0 +1,170 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { generateAngleImages, imageGenConfig, buildCreativePrompt } from '../../lib/imageGen.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
+
+const RSYA_SIZES = [
+  '300x250',
+  '300x300',
+  '336x280',
+  '728x90',
+  '300x600',
+  '320x100',
+  '1080x450',
+  '1080x1080',
+];
+
+function listExistingAssets() {
+  const found = [];
+  if (!fs.existsSync(creativesRoot)) return found;
+  for (const name of fs.readdirSync(creativesRoot)) {
+    if (/\.(zip|mp4|jpg|png)$/i.test(name)) {
+      found.push(path.join('creatives/rsya', name));
+    }
+  }
+  const textAd = path.join(creativesRoot, 'direct-textad');
+  if (fs.existsSync(textAd)) {
+    for (const name of fs.readdirSync(textAd)) {
+      if (/\.(jpg|png)$/i.test(name)) found.push(path.join('creatives/rsya/direct-textad', name));
+    }
+  }
+  return found;
+}
+
+/** Safer copy for Direct moderation — no brand names / Apple Pay / Google Pay. */
+function adCopy(angle, offer, promo) {
+  const code = promo?.code || offer.promo_code || 'LG2026';
+  const map = {
+    travel: {
+      titles: [
+        'Цифровая карта для поездок',
+        'Оплата в поездках онлайн',
+        'Карта для путешествий',
+      ],
+      texts: [
+        `Оформление онлайн. Пополнение по СБП. Промокод ${code} — скидка на выпуск.`,
+        `Быстрый выпуск. Промокод ${code}. Пополнение рублями.`,
+      ],
+    },
+    services: {
+      titles: [
+        'Оплата подписок онлайн',
+        'Карта для сервисов',
+        'Карта онлайн за минуты',
+      ],
+      texts: [
+        `Пополнение по СБП. Промокод ${code} — на открытие карты.`,
+        `Быстрый выпуск. Промокод ${code}.`,
+      ],
+    },
+    premium: {
+      titles: ['Премиальная карта онлайн', 'Больше выгоды на оплатах'],
+      texts: [`Промокод ${code} — скидка на премиум-выпуск.`],
+    },
+    sbp: {
+      titles: ['Карта с пополнением по СБП', 'Выпуск карты онлайн'],
+      texts: [`Промокод ${code}. Пополнение рублями по СБП.`],
+    },
+    generic: {
+      titles: [String(offer.name || 'Оформить онлайн').slice(0, 56), 'Быстрый выпуск карты'],
+      texts: [`Оформление онлайн. Промокод ${code}.`, 'Пополнение рублями по СБП.'],
+    },
+  };
+  return map[angle.id] || map.generic;
+}
+
+export async function runCreative({ offer, context }) {
+  const playbook = context.playbook || {};
+  const angles = playbook.angles || [{ id: 'generic', title: 'Основной' }];
+  const promo = (playbook.promo_codes || [])[0] || { code: offer.promo_code || 'LG2026' };
+  const assets = listExistingAssets();
+  const imgCfg = imageGenConfig();
+  const runId = context.run_id || `offer-${Date.now()}`;
+
+  const creatives = angles.map((angle) => {
+    const copy = adCopy(angle, offer, promo);
+    return {
+      angle_id: angle.id,
+      angle_title: angle.title,
+      titles: copy.titles,
+      texts: copy.texts,
+      image_prompt: buildCreativePrompt({ angle, offer }),
+      sitelinks: [
+        { title: 'Оформить карту', description: 'Онлайн за пару минут' },
+        { title: `Промокод ${promo?.code || 'LG2026'}`, description: promo?.note || 'Скидка на выпуск' },
+        { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
+        { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
+      ],
+      callouts: [
+        'Оформление онлайн',
+        'Пополнение по СБП',
+        'Цифровая карта',
+        `Промокод ${promo?.code || 'LG2026'}`,
+      ],
+      forbidden: [
+        'обход санкций/ограничений',
+        'гарантии одобрения',
+        'P2P/вывод',
+        'gambling/adult/crypto',
+        'бренды Apple Pay / Google Pay / Booking',
+      ],
+      sizes: RSYA_SIZES,
+      preferred_packs: assets.filter((a) =>
+        angle.id === 'travel'
+          ? /travel/i.test(a)
+          : angle.id === 'services'
+            ? /service|subscription/i.test(a)
+            : true,
+      ),
+    };
+  });
+
+  // Generate 1–2 strong visuals when IMAGE_PROVIDER is configured
+  const generated = await generateAngleImages({
+    angles,
+    offer,
+    runId,
+    limit: Number(process.env.IMAGE_GEN_LIMIT || 2),
+  });
+
+  const okImages = generated.filter((g) => g.ok);
+  const summaryParts = [
+    `Креатив-брифы: ${creatives.length} углов`,
+    `ассетов в репо: ${assets.length}`,
+    imgCfg.configured
+      ? `генерация ${imgCfg.provider}: ${okImages.length}/${generated.length}`
+      : 'генерация картинок выключена (IMAGE_PROVIDER)',
+  ];
+
+  return {
+    summary: summaryParts.join(' · '),
+    creatives: {
+      briefs: creatives,
+      existing_assets: assets,
+      generated_images: generated,
+      image_provider: imgCfg,
+      generator_hint:
+        'creatives/rsya/ или IMAGE_PROVIDER=openai|replicate|useapi_mj для midjourney-уровня',
+      direct_textad_min_size: '450x450 (лучше 1080x1080 JPG)',
+    },
+    cursor_prompt: [
+      'Ты креатив-агент для РСЯ Яндекс.Директ.',
+      `Оффер: ${JSON.stringify({ name: offer.name, promo })}`,
+      `Углы: ${JSON.stringify(angles)}`,
+      `Промпты: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, prompt: c.image_prompt })))}`,
+      `Сгенерированные файлы: ${JSON.stringify(okImages)}`,
+      'Собери баннеры 1080x1080 JPG без брендов платёжек. Не нарушай forbidden.',
+    ].join('\n'),
+    context_patch: {
+      creatives: {
+        briefs: creatives,
+        existing_assets: assets,
+        generated_images: generated,
+        image_provider: imgCfg,
+      },
+    },
+  };
+}

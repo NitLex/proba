@@ -7,11 +7,19 @@ export const makeCampaignKey = customAlphabet(alphabet, 8);
 const BOT_RE =
   /bot|crawl|spider|slurp|facebookexternalhit|preview|headless|phantom|selenium|wget|curl|python-requests|scrapy|httpclient|libwww|java\/|okhttp|go-http|aiohttp|postman|insomnia|monitoring|uptimerobot|pingdom|statuscake|bytespider|semrush|ahrefs|mj12bot|dotbot|petalbot|yandexbot|bingbot|googlebot|baiduspider|duckduckbot|applebot|twitterbot|linkedinbot|embedly|quora link|whatsapp|telegramBot|discordbot|slackbot/i;
 
+/** Ad-network / search review bots that must reach the offer (Direct moderation, etc.). */
+const AD_REVIEW_BOT_RE =
+  /Yandex(Bot|Direct|Metrika|Webmaster|Images|MobileBot)|AdsBot-Google|Mediapartners-Google|Googlebot|bingbot|Applebot|DuckDuckBot|Mail\.RU_Bot|Yahoo! Slurp|facebookexternalhit/i;
+
 export function detectBot(ua = '', opts = {}) {
   const raw = String(ua || '').trim();
   if (!raw && opts.emptyUaIsBot !== false) return 1;
   if (raw.length < 12 && opts.shortUaIsBot !== false) return 1;
   return BOT_RE.test(raw) ? 1 : 0;
+}
+
+export function isAdReviewBot(ua = '') {
+  return AD_REVIEW_BOT_RE.test(String(ua || ''));
 }
 
 export function pickWeighted(items) {

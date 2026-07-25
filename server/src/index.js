@@ -1,4 +1,7 @@
+import { loadEnv } from './lib/env.js';
 import { createApp } from './app.js';
+
+loadEnv();
 
 const PORT = Number(process.env.PORT) || 3001;
 const app = createApp();
