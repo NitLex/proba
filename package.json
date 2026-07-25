@@ -11,8 +11,11 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
-    "test": "npm test --prefix server"
+    "test": "npm test --prefix server",
+    "apply:direct": "npm run apply:direct --prefix server --",
+    "apply:direct:dry": "npm run apply:direct:dry --prefix server --"
   },
+
   "devDependencies": {
     "concurrently": "^9.1.2"
   }
