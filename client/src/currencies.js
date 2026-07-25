@@ -1,5 +1,5 @@
 /** Popular first, then the rest alphabetically by code. */
-export const POPULAR_CURRENCIES = ['USD', 'EUR', 'RUB', 'GBP', 'UAH', 'KZT', 'TRY', 'USDT'];
+export const POPULAR_CURRENCIES = ['RUB', 'USD', 'EUR', 'GBP', 'UAH', 'KZT', 'TRY', 'USDT'];
 
 export const ALL_CURRENCIES = [
   { code: 'USD', name: 'US Dollar' },

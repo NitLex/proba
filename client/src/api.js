@@ -49,9 +49,9 @@ export const api = {
   del: (path) => request(path, { method: 'DELETE' }),
 };
 
-export function money(n, currency = 'USD') {
+export function money(n, currency = 'RUB') {
   if (n == null || Number.isNaN(Number(n))) return '—';
-  const code = String(currency || 'USD').toUpperCase();
+  const code = String(currency || 'RUB').toUpperCase();
   const amount = Number(n);
   try {
     if (code === 'USDT') {

@@ -23,7 +23,7 @@ function userDisplayCurrency(uid, from, to) {
   const cf = dateFilter(from, to, 'cl.created_at');
   const top = db
     .prepare(
-      `SELECT COALESCE(NULLIF(c.currency, ''), 'USD') AS currency, COUNT(*) AS cnt
+      `SELECT COALESCE(NULLIF(c.currency, ''), 'RUB') AS currency, COUNT(*) AS cnt
        FROM clicks cl
        JOIN campaigns c ON c.id = cl.campaign_id
        WHERE c.user_id = ? AND ${cf.sql}
@@ -36,7 +36,7 @@ function userDisplayCurrency(uid, from, to) {
 
   const latest = db
     .prepare(
-      `SELECT COALESCE(NULLIF(currency, ''), 'USD') AS currency
+      `SELECT COALESCE(NULLIF(currency, ''), 'RUB') AS currency
        FROM campaigns WHERE user_id = ? ORDER BY id DESC LIMIT 1`
     )
     .get(uid);
@@ -118,7 +118,7 @@ router.get('/by-campaign', (req, res) => {
         c.name,
         c.key,
         c.status,
-        COALESCE(NULLIF(c.currency, ''), 'USD') AS currency,
+        COALESCE(NULLIF(c.currency, ''), 'RUB') AS currency,
         COALESCE(s.name, '—') AS source_name,
         COALESCE(o.name, '—') AS offer_name,
         COUNT(cl.id) AS clicks,
@@ -167,7 +167,7 @@ router.get('/by-offer', (req, res) => {
         o.network,
         o.geo,
         o.payout,
-        COALESCE(NULLIF(o.currency, ''), 'USD') AS currency,
+        COALESCE(NULLIF(o.currency, ''), 'RUB') AS currency,
         COUNT(cl.id) AS clicks,
         COALESCE(SUM(cl.cost), 0) AS cost,
         COALESCE(cv.conversions, 0) AS conversions,
@@ -206,7 +206,7 @@ router.get('/by-source', (req, res) => {
       `SELECT
         s.id,
         s.name,
-        COALESCE(NULLIF(s.currency, ''), 'USD') AS currency,
+        COALESCE(NULLIF(s.currency, ''), 'RUB') AS currency,
         COUNT(cl.id) AS clicks,
         COALESCE(SUM(cl.cost), 0) AS cost,
         COALESCE(cv.conversions, 0) AS conversions,
@@ -481,7 +481,7 @@ function enrichRow(row) {
   const profit = revenue - cost;
   return {
     ...row,
-    currency: row.currency || 'USD',
+    currency: row.currency || 'RUB',
     clicks,
     cost: round(cost),
     revenue: round(revenue),

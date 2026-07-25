@@ -114,7 +114,7 @@ export default function Logs() {
                     <td>
                       <span className={`badge ${c.status}`}>{c.status}</span>
                     </td>
-                    <td>{money(c.payout, c.currency || 'USD')}</td>
+                    <td>{money(c.payout, c.currency || 'RUB')}</td>
                     <td className="mono">{c.txid || '—'}</td>
                   </tr>
                 ))}

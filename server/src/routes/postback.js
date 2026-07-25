@@ -106,7 +106,7 @@ function handlePostback(req, res) {
       click.offer_id,
       status,
       payout,
-      String(q.currency || click.offer_currency || 'USD'),
+      String(q.currency || click.offer_currency || 'RUB'),
       txid,
       new URLSearchParams(q).toString(),
     );
