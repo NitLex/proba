@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { verifyToken, publicUser } from '../lib/auth.js';
+import { verifyToken, publicUser, isDemoUser } from '../lib/auth.js';
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -27,6 +27,18 @@ export function requireAdmin(req, res, next) {
   requireAuth(req, res, () => {
     if (!req.user?.is_admin) {
       return res.status(403).json({ error: 'Только для администратора' });
+    }
+    next();
+  });
+}
+
+/** Registered (non-demo) users only — for orchestrator / paid tooling. */
+export function requireRegistered(req, res, next) {
+  requireAuth(req, res, () => {
+    if (isDemoUser(req.user) || req.user?.is_demo) {
+      return res.status(403).json({
+        error: 'Оркестратор доступен только зарегистрированным пользователям (не демо)',
+      });
     }
     next();
   });

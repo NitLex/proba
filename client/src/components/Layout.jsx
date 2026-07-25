@@ -9,13 +9,15 @@ const links = [
   { to: '/sources', label: 'Источники' },
   { to: '/stats', label: 'Статистика' },
   { to: '/logs', label: 'Клики / конверсии' },
-  { to: '/pipeline', label: 'Оркестратор' },
+  { to: '/pipeline', label: 'Оркестратор', registeredOnly: true },
   { to: '/profile', label: 'Личный кабинет' },
 ];
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const isDemo = Boolean(user?.is_demo || String(user?.username || '').toLowerCase() === 'demo');
+  const visibleLinks = links.filter((l) => !l.registeredOnly || !isDemo);
 
   return (
     <div className="app-shell">
@@ -26,7 +28,7 @@ export default function Layout() {
           </div>
         </div>
         <nav className="nav">
-          {links.map((l) => (
+          {visibleLinks.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end}>
               {l.label}
             </NavLink>

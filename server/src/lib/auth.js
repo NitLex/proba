@@ -24,6 +24,15 @@ export function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
+/** Demo account seeded for public showcase — no orchestrator / secrets tooling. */
+export function isDemoUser(userOrUsername) {
+  const name =
+    typeof userOrUsername === 'string'
+      ? userOrUsername
+      : userOrUsername?.username || '';
+  return String(name).trim().toLowerCase() === 'demo';
+}
+
 export function publicUser(row) {
   if (!row) return null;
   return {
@@ -32,6 +41,7 @@ export function publicUser(row) {
     email: row.email || '',
     telegram: row.telegram || '',
     is_admin: !!row.is_admin,
+    is_demo: isDemoUser(row),
     created_at: row.created_at,
   };
 }

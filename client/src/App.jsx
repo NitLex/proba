@@ -30,6 +30,15 @@ function Protected({ children }) {
   return children;
 }
 
+/** Orchestrator: registered users only (hidden for demo). */
+function RegisteredOnly({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  const isDemo = Boolean(user?.is_demo || String(user?.username || '').toLowerCase() === 'demo');
+  if (!user || isDemo) return <Navigate to="/" replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -51,7 +60,14 @@ export default function App() {
             <Route path="sources" element={<Sources />} />
             <Route path="stats" element={<Stats />} />
             <Route path="logs" element={<Logs />} />
-            <Route path="pipeline" element={<Pipeline />} />
+            <Route
+              path="pipeline"
+              element={
+                <RegisteredOnly>
+                  <Pipeline />
+                </RegisteredOnly>
+              }
+            />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

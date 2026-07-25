@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireRegistered } from '../middleware/auth.js';
 import { AGENT_ROLES, DEFAULT_PIPELINE, executeRun, startPipeline } from '../pipeline/runner.js';
 import { getRun, listRuns, updateRun } from '../pipeline/store.js';
 import { wordstatConfig } from '../lib/wordstat.js';
@@ -15,6 +16,8 @@ import {
 import { DIRECT_DOC_SOURCES } from '../pipeline/knowledge/direct-handbook.js';
 
 const router = Router();
+// Double-guard: demo account must never use orchestrator (UI also hides the tab)
+router.use(requireRegistered);
 
 function trackerModeInfo() {
   const forcedLocal = String(process.env.PIPELINE_TRACKER_MODE || '') === 'local';
