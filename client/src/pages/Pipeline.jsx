@@ -109,8 +109,8 @@ export default function Pipeline() {
         <div>
           <h1>Оркестратор агентов</h1>
           <p className="muted">
-            Даёшь данные оффера → аналитик разбирает связки → Wordstat / креатив / трекер / Директ
-            получают задачи.
+            Локальный оркестратор: анализ → Wordstat / креатив / трекер / Директ.
+            Прод <code>trekerarbitrag.ru</code> — только трекер (кампании, офферы, постбеки); сюда оркестратор не деплоим.
           </p>
         </div>
       </header>
@@ -137,6 +137,15 @@ export default function Pipeline() {
                 {integrations.cursor_agents?.configured
                   ? `OK · ${integrations.cursor_agents.repo} @ ${integrations.cursor_agents.startingRef}`
                   : 'Не настроено — задай CURSOR_API_KEY (+ CURSOR_REPO_URL)'}
+              </p>
+            </div>
+            <div className="agent-card">
+              <div className="agent-id">tracker</div>
+              <strong>ArbTrack</strong>
+              <p className="muted small">
+                {integrations.tracker?.mode === 'remote'
+                  ? `Remote → ${integrations.tracker.url}`
+                  : integrations.tracker?.note || 'Local'}
               </p>
             </div>
           </div>

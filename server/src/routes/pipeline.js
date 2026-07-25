@@ -3,6 +3,7 @@ import { AGENT_ROLES, DEFAULT_PIPELINE, executeRun, startPipeline } from '../pip
 import { getRun, listRuns } from '../pipeline/store.js';
 import { wordstatConfig } from '../lib/wordstat.js';
 import { cursorAgentsConfig, DEFAULT_CURSOR_SPAWN_AGENTS } from '../lib/cursorAgents.js';
+import { remoteBase, remoteConfigured } from '../lib/arbtrackRemote.js';
 import { maybeSpawnCursorAgents } from '../pipeline/spawnCursor.js';
 
 const router = Router();
@@ -21,6 +22,13 @@ router.get('/roles', (_req, res) => {
         repo: cursorAgentsConfig().repoUrl,
         startingRef: cursorAgentsConfig().startingRef,
         default_spawn: DEFAULT_CURSOR_SPAWN_AGENTS,
+      },
+      tracker: {
+        mode: remoteConfigured() ? 'remote' : 'local',
+        url: remoteConfigured() ? remoteBase() : 'http://localhost:3001',
+        note: remoteConfigured()
+          ? 'Оркестратор локальный; кампании/офферы пишет на удалённый трекер'
+          : 'Локальный режим (нет ARBTRACK_USERNAME/PASSWORD)',
       },
     },
   });

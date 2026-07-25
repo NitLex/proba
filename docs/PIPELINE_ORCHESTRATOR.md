@@ -3,6 +3,15 @@
 Сервис принимает **вводные по офферу** и распределяет работу по агентам.
 Поддерживает **live Wordstat** и **автозапуск Cursor Cloud Agents**.
 
+## Где что крутится
+
+| Что | Где |
+|-----|-----|
+| Трекер (кампании, офферы, постбеки, клики) | **только** https://trekerarbitrag.ru |
+| Оркестратор (UI `/pipeline`, агенты) | **локально** (`npm run dev`) — на VPS не деплоим |
+
+Если в `SECRETS.env` есть `ARBTRACK_USERNAME` / `ARBTRACK_PASSWORD` и `ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru`, tracker-агент создаёт сущности **на проде**, а UI оркестратора остаётся локальным.
+
 ## Поток
 
 ```
