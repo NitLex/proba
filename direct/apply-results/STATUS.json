@@ -1,0 +1,33 @@
+{
+  "agent": "direct",
+  "branch": "cursor/ppm-direct-2d13",
+  "applied": false,
+  "plan_name": "РСЯ | Кредит 365  | premium+travel+services",
+  "href": "https://trekerarbitrag.ru/click/9oXIbDTD",
+  "plan_path": "direct/plans/rsya-kredit365-premium-travel-services.json",
+  "creatives": [
+    "creatives/rsya/direct-textad/ppm-premium-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-travel-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-services-1080.jpg"
+  ],
+  "settings": {
+    "neuro_ads": "OFF",
+    "direct_helps_auto": "OFF",
+    "network": "WB_MAXIMUM_CLICKS",
+    "bid_ceiling_rub": 10.2,
+    "weekly_spend_limit_rub": 35000,
+    "region_ids": [225]
+  },
+  "dry_run_ok": true,
+  "error": "YANDEX_DIRECT_TOKEN / YANDEX_DIRECT_LOGIN missing in cloud-agent workspace",
+  "code": "NO_TOKEN",
+  "blocker": "Cursor cloud agent was spawned without SECRETS.env. Local orchestrator reported api_ready=true, but OAuth secrets are not injected into cloud sub-agents.",
+  "next_steps": [
+    "На машине оркестратора с SECRETS.env выполнить: npm run apply:direct:resume",
+    "Нужны YANDEX_DIRECT_TOKEN и YANDEX_DIRECT_LOGIN=nitkinaleksandr",
+    "Скрипт создаст кампанию, группы, ключи, объявления, картинки, bid modifiers и отправит на модерацию",
+    "После Status=ACCEPTED — campaigns.resume (флаг --resume)",
+    "В UI не включать Neuro Ads / авторекомендации"
+  ],
+  "apply_command": "npm run apply:direct:resume"
+}

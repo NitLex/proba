@@ -1,0 +1,97 @@
+{
+  "plan_name": "РСЯ | Кредит 365  | premium+travel+services",
+  "href": "https://trekerarbitrag.ru/click/9oXIbDTD",
+  "dry_run": true,
+  "neuro_ads": "OFF",
+  "direct_helps_auto": "OFF",
+  "steps": {
+    "campaign": {
+      "preview": {
+        "Name": "РСЯ | Кредит 365  | premium+travel+services",
+        "StartDate": "2026-07-25",
+        "TimeZone": "Europe/Moscow",
+        "NegativeKeywords": {
+          "Items": [
+            "бесплатно",
+            "халява",
+            "взлом",
+            "кряк",
+            "скачать",
+            "торрент",
+            "работа",
+            "вакансия",
+            "займ",
+            "микрозайм",
+            "кредит наличными",
+            "казино",
+            "ставки",
+            "1xbet",
+            "крипта",
+            "bitcoin",
+            "p2p",
+            "обнал",
+            "для детей",
+            "школьник"
+          ]
+        },
+        "TextCampaign": {
+          "BiddingStrategy": {
+            "Search": {
+              "BiddingStrategyType": "SERVING_OFF"
+            },
+            "Network": {
+              "BiddingStrategyType": "WB_MAXIMUM_CLICKS",
+              "WbMaximumClicks": {
+                "WeeklySpendLimit": 35000000000,
+                "BidCeiling": 10200000
+              }
+            }
+          },
+          "Settings": [
+            {
+              "Option": "ENABLE_SITE_MONITORING",
+              "Value": "YES"
+            },
+            {
+              "Option": "ENABLE_COMPANY_INFO",
+              "Value": "NO"
+            },
+            {
+              "Option": "ENABLE_AREA_OF_INTEREST_TARGETING",
+              "Value": "NO"
+            },
+            {
+              "Option": "ALTERNATIVE_TEXTS_ENABLED",
+              "Value": "NO"
+            },
+            {
+              "Option": "ADD_METRICA_TAG",
+              "Value": "NO"
+            }
+          ],
+          "TrackingParams": "utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}"
+        }
+      }
+    },
+    "ad_groups": [
+      {
+        "name": "PPM Премиум / выгодный курс",
+        "keywords": 45,
+        "ads": 2,
+        "image": "creatives/rsya/direct-textad/ppm-premium-1080.jpg"
+      },
+      {
+        "name": "PPM Путешествия (из похожих связок)",
+        "keywords": 7,
+        "ads": 3,
+        "image": "creatives/rsya/direct-textad/ppm-travel-1080.jpg"
+      },
+      {
+        "name": "PPM Сервисы (из похожих связок)",
+        "keywords": 1,
+        "ads": 3,
+        "image": "creatives/rsya/direct-textad/ppm-services-1080.jpg"
+      }
+    ]
+  }
+}
