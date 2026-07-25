@@ -13,6 +13,7 @@ const emptyOffer = {
   daily_budget: '5000',
   promo_code: '',
   notes: '',
+  ad_format: 'auto',
 };
 
 const STATUS_CLASS = {
@@ -225,6 +226,22 @@ export default function Pipeline() {
                 placeholder="https://go.leadgid.ru/aff_c?offer_id=7397&..."
               />
             </label>
+
+            <label className="lbl full">
+              Тип объявления / креатива
+              <select
+                className="field"
+                value={form.ad_format}
+                onChange={(e) => setForm({ ...form, ad_format: e.target.value })}
+              >
+                <option value="auto">Авто — по креативу (с текстом → графика, без → товарное)</option>
+                <option value="product">Товарное — чистая картинка, текст в настройках</option>
+                <option value="graphic">Графическое — надписи оффера на баннере</option>
+              </select>
+            </label>
+            <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+              Графическое = ImageAd (текст на картинке). Товарное = TextAd (заголовок/текст в полях Директа).
+            </p>
 
             <div className="full">
               <button

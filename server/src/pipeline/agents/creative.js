@@ -2,6 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateAngleImages, imageGenConfig, buildCreativePrompt } from '../../lib/imageGen.js';
+import {
+  normalizeAdFormat,
+  resolveAdFormat,
+  overlayLinesForOffer,
+  formatLabel,
+} from '../../lib/adFormat.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
@@ -76,6 +82,20 @@ function adCopy(angle, offer, promo) {
   return map[angle.id] || map.generic;
 }
 
+/**
+ * Decide generation format from offer.ad_format.
+ * auto → product by default (текст в полях); graphic only when explicitly requested
+ * or when notes hint at "текст на баннере".
+ */
+function decideGenerationFormat(offer) {
+  const requested = normalizeAdFormat(offer.ad_format || offer.adFormat || 'auto');
+  if (requested === 'graphic' || requested === 'product') return requested;
+  const notes = `${offer.notes || ''} ${offer.creative_notes || ''}`.toLowerCase();
+  if (/графич|текст на (баннер|картинк|креатив)|надпис/.test(notes)) return 'graphic';
+  // auto default: товарное — чистая картинка, текст в настройках объявления
+  return 'product';
+}
+
 export async function runCreative({ offer, context }) {
   const playbook = context.playbook || {};
   const angles = playbook.angles || [{ id: 'generic', title: 'Основной' }];
@@ -83,18 +103,46 @@ export async function runCreative({ offer, context }) {
   const assets = listExistingAssets();
   const imgCfg = imageGenConfig();
   const runId = context.run_id || `offer-${Date.now()}`;
+  const requestedFormat = normalizeAdFormat(offer.ad_format || offer.adFormat || 'auto');
+  const genFormat = decideGenerationFormat(offer);
+  const imageHasText = genFormat === 'graphic';
+  const adFormat = resolveAdFormat({ requested: requestedFormat, imageHasText });
 
+  const overlaysByAngle = {};
   const creatives = angles.map((angle) => {
     const copy = adCopy(angle, offer, promo);
+    const overlayLines = overlayLinesForOffer({
+      offer,
+      angle,
+      promo,
+      titles: copy.titles,
+      texts: copy.texts,
+    });
+    overlaysByAngle[angle.id] = overlayLines;
+
     return {
       angle_id: angle.id,
       angle_title: angle.title,
+      ad_format: adFormat,
+      requested_ad_format: requestedFormat,
+      image_has_text: imageHasText,
+      direct_ad_type: adFormat === 'graphic' ? 'ImageAd' : 'TextAd',
       titles: copy.titles,
       texts: copy.texts,
-      image_prompt: buildCreativePrompt({ angle, offer }),
+      // Для товарных: текст только в полях. Для графических: те же данные ещё и на картинке.
+      overlay_lines: imageHasText ? overlayLines : [],
+      image_prompt: buildCreativePrompt({
+        angle,
+        offer,
+        format: genFormat,
+        overlayLines: imageHasText ? overlayLines : [],
+      }),
       sitelinks: [
         { title: 'Оформить карту', description: 'Онлайн за пару минут' },
-        { title: `Промокод ${promo?.code || 'LG2026'}`, description: promo?.note || 'Скидка на выпуск' },
+        {
+          title: `Промокод ${promo?.code || 'LG2026'}`,
+          description: promo?.note || 'Скидка на выпуск',
+        },
         { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
         { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
       ],
@@ -119,47 +167,60 @@ export async function runCreative({ offer, context }) {
             ? /service|subscription/i.test(a)
             : true,
       ),
+      rule:
+        adFormat === 'graphic'
+          ? 'Креатив с надписями оффера → графическое ImageAd (текст на баннере)'
+          : 'Чистая картинка → товарное TextAd (заголовок/текст в настройках объявления)',
     };
   });
 
-  // Generate 1–2 strong visuals when IMAGE_PROVIDER is configured
   const generated = await generateAngleImages({
     angles,
     offer,
     runId,
     limit: Number(process.env.IMAGE_GEN_LIMIT || 2),
+    format: genFormat,
+    overlaysByAngle,
   });
 
   const okImages = generated.filter((g) => g.ok);
   const summaryParts = [
-    `Креатив-брифы: ${creatives.length} углов`,
-    `ассетов в репо: ${assets.length}`,
+    `Формат: ${formatLabel(adFormat)} (${adFormat === 'graphic' ? 'ImageAd' : 'TextAd'})`,
+    `брифы: ${creatives.length}`,
     imgCfg.configured
-      ? `генерация ${imgCfg.provider}: ${okImages.length}/${generated.length}`
-      : 'генерация картинок выключена (IMAGE_PROVIDER)',
+      ? `GPT Image: ${okImages.length}/${generated.length}`
+      : 'генерация выкл',
   ];
 
   return {
     summary: summaryParts.join(' · '),
     creatives: {
+      ad_format: adFormat,
+      requested_ad_format: requestedFormat,
+      image_has_text: imageHasText,
       briefs: creatives,
       existing_assets: assets,
       generated_images: generated,
       image_provider: imgCfg,
       generator_hint:
-        'creatives/rsya/ или GPT Image API: OPENAI_API_KEY + IMAGE_PROVIDER=openai',
-      direct_textad_min_size: '450x450 (лучше 1080x1080 JPG)',
+        'graphic = текст на баннере → ImageAd; product = чистая картинка → TextAd с текстом в полях',
+      direct_textad_min_size: '450x450 (лучше 1080x1080)',
     },
     cursor_prompt: [
       'Ты креатив-агент для РСЯ Яндекс.Директ.',
+      `Формат объявлений: ${adFormat} (${formatLabel(adFormat)}).`,
+      adFormat === 'graphic'
+        ? 'На баннере должны быть надписи с данными оффера. Тип в Директе: ImageAd.'
+        : 'Картинка без текста. Заголовки/тексты только в полях TextAd.',
       `Оффер: ${JSON.stringify({ name: offer.name, promo })}`,
-      `Углы: ${JSON.stringify(angles)}`,
-      `Промпты: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, prompt: c.image_prompt })))}`,
-      `Сгенерированные файлы: ${JSON.stringify(okImages)}`,
-      'Собери баннеры 1080x1080 JPG без брендов платёжек. Не нарушай forbidden.',
+      `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines })))}`,
+      `Файлы: ${JSON.stringify(okImages)}`,
     ].join('\n'),
     context_patch: {
       creatives: {
+        ad_format: adFormat,
+        requested_ad_format: requestedFormat,
+        image_has_text: imageHasText,
         briefs: creatives,
         existing_assets: assets,
         generated_images: generated,

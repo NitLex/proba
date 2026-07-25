@@ -51,8 +51,18 @@ function safeName(s) {
     .slice(0, 48);
 }
 
-/** Strong РСЯ-safe visual prompt (no brands, no payment logos). */
-export function buildCreativePrompt({ angle, offer, size = '1024x1024' }) {
+/**
+ * Strong РСЯ-safe visual prompt.
+ * format=graphic → text ON the image (offer data)
+ * format=product → clean product photo, NO text (copy goes into Direct ad fields)
+ */
+export function buildCreativePrompt({
+  angle,
+  offer,
+  size = '1024x1024',
+  format = 'product',
+  overlayLines = [],
+} = {}) {
   const name = offer?.name || 'цифровая карта';
   const angleHint =
     {
@@ -65,14 +75,32 @@ export function buildCreativePrompt({ angle, offer, size = '1024x1024' }) {
       generic: 'clean fintech product mood, abstract digital card, soft gradient light',
     }[angle?.id] || 'clean fintech product mood';
 
-  return [
-    `Photoreal advertising key visual for Russian display ads, square ${size}.`,
+  const base = [
+    `Photoreal advertising key visual for Russian Yandex Direct display ads, square ${size}.`,
     `Product: digital payment card "${name}". Angle: ${angle?.title || angle?.id || 'main'}.`,
     angleHint,
-    'Cinematic lighting, premium but trustworthy, high contrast focal subject, empty safe text area on the right.',
-    'No logos of Apple Pay, Google Pay, Booking, Visa, Mastercard, banks. No readable small text. No people faces close-up.',
+    'Cinematic lighting, premium but trustworthy, high contrast focal subject.',
+    'No logos of Apple Pay, Google Pay, Booking, Visa, Mastercard, banks. No people faces close-up.',
     'No watermarks. Commercial stock quality.',
-  ].join(' ');
+  ];
+
+  if (format === 'graphic') {
+    const lines = (overlayLines || []).filter(Boolean).slice(0, 3);
+    base.push(
+      'GRAPHIC AD banner: include large clear Russian marketing text ON the image.',
+      lines.length
+        ? `Exact text lines to render (Cyrillic, high contrast, readable): ${lines.map((l) => `"${l}"`).join(' | ')}`
+        : 'Include short Russian headline and promo benefit on the image.',
+      'Typography must be sharp and legible at 1080px. Do not invent extra brand names.',
+    );
+  } else {
+    base.push(
+      'PRODUCT AD photo: pure lifestyle/product image with ZERO text, ZERO letters, ZERO numbers, ZERO watermarks, ZERO UI captions.',
+      'Leave composition clean — all ad copy will be set separately in Yandex Direct fields.',
+    );
+  }
+
+  return base.join(' ');
 }
 
 async function downloadToFile(url, dest) {
@@ -171,19 +199,30 @@ async function genReplicate(prompt, dest) {
 /**
  * Generate one square creative image. Returns { ok, prompt, path?, error?, provider }
  */
-export async function generateCreativeImage({ angle, offer, runId = 'tmp', index = 0 }) {
+export async function generateCreativeImage({
+  angle,
+  offer,
+  runId = 'tmp',
+  index = 0,
+  format = 'product',
+  overlayLines = [],
+} = {}) {
   const cfg = imageGenConfig();
-  const prompt = buildCreativePrompt({ angle, offer });
+  const prompt = buildCreativePrompt({ angle, offer, format, overlayLines });
   const dir = path.join(outRoot, String(runId));
   ensureDir(dir);
-  // Keep .png for GPT Image (often PNG); rename extension based on provider later if needed
-  const dest = path.join(dir, `${safeName(angle?.id || 'angle')}-${index}.png`);
+  const dest = path.join(
+    dir,
+    `${safeName(angle?.id || 'angle')}-${format}-${index}.png`,
+  );
 
   if (cfg.provider === 'none') {
     return {
       ok: false,
       skipped: true,
       provider: 'none',
+      format,
+      image_has_text: format === 'graphic',
       prompt,
       reason: 'OPENAI_API_KEY / IMAGE_PROVIDER not configured',
     };
@@ -200,22 +239,48 @@ export async function generateCreativeImage({ angle, offer, runId = 'tmp', index
     }
 
     const rel = path.relative(path.resolve(__dirname, '../../..'), dest);
-    return { ok: true, prompt, ...result, path: rel };
+    return {
+      ok: true,
+      prompt,
+      ...result,
+      path: rel,
+      format,
+      image_has_text: format === 'graphic',
+    };
   } catch (err) {
     return {
       ok: false,
       provider: cfg.provider,
+      format,
+      image_has_text: format === 'graphic',
       prompt,
       error: err.message || String(err),
     };
   }
 }
 
-export async function generateAngleImages({ angles, offer, runId, limit = 2 }) {
+export async function generateAngleImages({
+  angles,
+  offer,
+  runId,
+  limit = 2,
+  format = 'product',
+  overlaysByAngle = {},
+} = {}) {
   const list = (angles || []).slice(0, limit);
   const out = [];
   for (let i = 0; i < list.length; i++) {
-    out.push(await generateCreativeImage({ angle: list[i], offer, runId, index: i }));
+    const angle = list[i];
+    out.push(
+      await generateCreativeImage({
+        angle,
+        offer,
+        runId,
+        index: i,
+        format,
+        overlayLines: overlaysByAngle[angle.id] || [],
+      }),
+    );
   }
   return out;
 }

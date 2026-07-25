@@ -1,7 +1,19 @@
 /**
  * Direct agent — builds РСЯ plan and optionally creates a DRAFT campaign via API.
  * Never submits ads to moderation. User launches manually.
+ *
+ * Ad format rules (from creatives):
+ * - graphic  → ImageAd (текст на креативе)
+ * - product  → TextAd  (чистая картинка + текст в полях объявления)
  */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '../../../..');
 
 async function directApi(service, body) {
   const token = process.env.YANDEX_DIRECT_TOKEN;
@@ -22,12 +34,44 @@ async function directApi(service, body) {
   return data;
 }
 
+function resolveImageAbs(relOrAbs) {
+  if (!relOrAbs) return null;
+  if (path.isAbsolute(relOrAbs) && fs.existsSync(relOrAbs)) return relOrAbs;
+  const cand = path.resolve(repoRoot, relOrAbs);
+  return fs.existsSync(cand) ? cand : null;
+}
+
+async function uploadAdImage(filePath) {
+  const abs = resolveImageAbs(filePath);
+  if (!abs) return { ok: false, error: `file not found: ${filePath}` };
+  const b64 = fs.readFileSync(abs).toString('base64');
+  const res = await directApi('adimages', {
+    method: 'add',
+    params: { AdImages: [{ ImageData: b64 }] },
+  });
+  const hash = res?.result?.AddResults?.[0]?.AdImageHash || res?.result?.AddResults?.[0]?.Hash;
+  if (!hash) {
+    return { ok: false, error: res?.error || res?.result?.AddResults?.[0]?.Errors || 'no hash', raw: res };
+  }
+  return { ok: true, hash, path: abs };
+}
+
+function pickImageForAngle(generatedImages, angleId) {
+  const list = generatedImages || [];
+  const hit =
+    list.find((g) => g.ok && g.path && String(g.prompt || '').includes(angleId)) ||
+    list.find((g) => g.ok && g.path && (g.format === 'graphic' || g.format === 'product')) ||
+    list.find((g) => g.ok && g.path);
+  return hit?.path || null;
+}
+
 function buildPlan({ offer, context }) {
   const playbook = context.playbook || {};
   const econ = playbook.economics || {};
   const tracker = context.tracker || {};
   const semantics = context.semantics || {};
-  const creatives = context.creatives?.briefs || [];
+  const creativesMeta = context.creatives || {};
+  const creatives = creativesMeta.briefs || [];
   const href =
     tracker.click_url?.split('?')[0] ||
     `${(process.env.ARBTRACK_PUBLIC_URL || 'https://trekerarbitrag.ru').replace(/\/$/, '')}/click/PENDING`;
@@ -35,11 +79,18 @@ function buildPlan({ offer, context }) {
   const cpc = Number(econ.cpc_max || process.env.MAX_CPC_RUB || 7);
   const weekly = Number(econ.weekly_budget || (econ.daily_budget || offer.daily_budget || 5000) * 7);
 
+  const campaignFormat = resolveAdFormat({
+    requested: creativesMeta.ad_format || offer.ad_format || 'auto',
+    imageHasText: creativesMeta.image_has_text,
+  });
+
   return {
-    name: `РСЯ | ${offer.name || 'Offer'} | ${(playbook.angles || []).map((a) => a.id).join('+') || 'test'}`,
+    name: `РСЯ | ${offer.name || 'Offer'} | ${formatLabel(campaignFormat)} | ${(playbook.angles || []).map((a) => a.id).join('+') || 'test'}`,
     network_only: true,
     state: 'OFF',
     moderation: 'DO_NOT_SUBMIT',
+    ad_format: campaignFormat,
+    ad_format_label: formatLabel(campaignFormat),
     strategy: {
       search: 'SERVING_OFF',
       network: 'WB_MAXIMUM_CLICKS',
@@ -62,25 +113,59 @@ function buildPlan({ offer, context }) {
     },
     negatives: semantics.negatives || [],
     ad_groups: (playbook.angles || [{ id: 'generic', title: 'Main' }]).map((angle) => {
-      const brief = creatives.find((c) => c.angle_id === angle.id);
+      const brief = creatives.find((c) => c.angle_id === angle.id) || {};
+      const format = resolveAdFormat({
+        requested: brief.ad_format || campaignFormat,
+        imageHasText: brief.image_has_text,
+      });
       const kws =
         (semantics.groups && semantics.groups[angle.id]) ||
         semantics.keywords?.filter((k) => k.group === angle.id).map((k) => k.phrase) ||
         [];
+      const imagePath = pickImageForAngle(creativesMeta.generated_images, angle.id);
+
+      if (format === 'graphic') {
+        // Графическое: текст на креативе → ImageAd (поля Title/Text не дублируем)
+        return {
+          name: `PPM ${angle.title || angle.id} · графика`,
+          ad_format: 'graphic',
+          direct_ad_type: 'ImageAd',
+          keywords: kws,
+          image_path: imagePath,
+          overlay_lines: brief.overlay_lines || [],
+          ads: [
+            {
+              type: 'ImageAd',
+              href,
+              image_path: imagePath,
+              image_hint: 'баннер с надписями оффера → ImageAd',
+            },
+          ],
+          sitelinks: brief.sitelinks || [],
+          callouts: brief.callouts || [],
+        };
+      }
+
+      // Товарное: чистая картинка + текст в настройках TextAd
       return {
-        name: `PPM ${angle.title || angle.id}`,
+        name: `PPM ${angle.title || angle.id} · товарное`,
+        ad_format: 'product',
+        direct_ad_type: 'TextAd',
         keywords: kws,
-        ads: (brief?.titles || [offer.name || 'Офер']).slice(0, 3).map((title, i) => ({
+        image_path: imagePath,
+        ads: (brief.titles || [offer.name || 'Офер']).slice(0, 3).map((title, i) => ({
+          type: 'TextAd',
           title: String(title).slice(0, 56),
-          text: String((brief?.texts || ['Оформление онлайн'])[i % (brief?.texts?.length || 1)]).slice(
+          text: String((brief.texts || ['Оформление онлайн'])[i % (brief.texts?.length || 1)]).slice(
             0,
             81,
           ),
           href,
-          image_hint: '1080x1080 JPG for TextAd',
+          image_path: imagePath,
+          image_hint: 'чистая картинка без текста + Title/Text в полях',
         })),
-        sitelinks: brief?.sitelinks || [],
-        callouts: brief?.callouts || [],
+        sitelinks: brief.sitelinks || [],
+        callouts: brief.callouts || [],
       };
     }),
     bid_modifiers: {
@@ -89,7 +174,7 @@ function buildPlan({ offer, context }) {
       age_0_17: 0,
       age_55: 50,
     },
-    generated_images: context.creatives?.generated_images || [],
+    generated_images: creativesMeta.generated_images || [],
   };
 }
 
@@ -146,7 +231,6 @@ async function applyDraft(plan) {
     };
   }
 
-  // Keep campaign stopped — user starts manually
   const suspend = await directApi('campaigns', {
     method: 'suspend',
     params: { SelectionCriteria: { Ids: [campaignId] } },
@@ -166,37 +250,67 @@ async function applyDraft(plan) {
       params: { AdGroups: groupBodies },
     });
     log.push({ step: 'adgroups.add', result: addGroups });
-    adGroupIds = (addGroups?.result?.AddResults || [])
-      .map((r) => r.Id)
-      .filter(Boolean);
+    adGroupIds = (addGroups?.result?.AddResults || []).map((r) => r.Id).filter(Boolean);
+  }
+
+  const imageHashCache = new Map();
+
+  async function hashFor(imagePath) {
+    if (!imagePath) return null;
+    if (imageHashCache.has(imagePath)) return imageHashCache.get(imagePath);
+    const uploaded = await uploadAdImage(imagePath);
+    log.push({ step: 'adimages.add', path: imagePath, result: uploaded });
+    const hash = uploaded.ok ? uploaded.hash : null;
+    imageHashCache.set(imagePath, hash);
+    return hash;
   }
 
   for (let i = 0; i < adGroupIds.length; i++) {
     const group = plan.ad_groups[i];
-    const keywords = (group.keywords || [])
-      .slice(0, 40)
-      .map((phrase) => ({
-        Keyword: String(phrase).slice(0, 4096),
-        AdGroupId: adGroupIds[i],
-      }));
+    const keywords = (group.keywords || []).slice(0, 40).map((phrase) => ({
+      Keyword: String(phrase).slice(0, 4096),
+      AdGroupId: adGroupIds[i],
+    }));
     if (keywords.length) {
       const kw = await directApi('keywords', { method: 'add', params: { Keywords: keywords } });
       log.push({ step: `keywords.add:${adGroupIds[i]}`, result: kw });
     }
 
-    const ads = (group.ads || []).slice(0, 3).map((ad) => ({
-      AdGroupId: adGroupIds[i],
-      TextAd: {
-        Title: String(ad.title || 'Оформить онлайн').slice(0, 56),
-        Text: String(ad.text || 'Оформление онлайн').slice(0, 81),
-        Href: ad.href || plan.href,
-        Mobile: 'NO',
-      },
-    }));
-    if (ads.length) {
-      const adRes = await directApi('ads', { method: 'add', params: { Ads: ads } });
+    const adsPayload = [];
+    for (const ad of (group.ads || []).slice(0, 3)) {
+      const hash = await hashFor(ad.image_path || group.image_path);
+
+      if (ad.type === 'ImageAd' || group.direct_ad_type === 'ImageAd') {
+        if (!hash) {
+          log.push({
+            step: `ads.skip_imagead:${adGroupIds[i]}`,
+            error: 'нет hash картинки для ImageAd',
+          });
+          continue;
+        }
+        adsPayload.push({
+          AdGroupId: adGroupIds[i],
+          ImageAd: {
+            AdImageHash: hash,
+            Href: ad.href || plan.href,
+          },
+        });
+      } else {
+        const textAd = {
+          Title: String(ad.title || 'Оформить онлайн').slice(0, 56),
+          Text: String(ad.text || 'Оформление онлайн').slice(0, 81),
+          Href: ad.href || plan.href,
+          Mobile: 'NO',
+        };
+        if (hash) textAd.AdImageHash = hash;
+        adsPayload.push({ AdGroupId: adGroupIds[i], TextAd: textAd });
+      }
+    }
+
+    if (adsPayload.length) {
+      const adRes = await directApi('ads', { method: 'add', params: { Ads: adsPayload } });
       log.push({ step: `ads.add:${adGroupIds[i]}`, result: adRes });
-      // Explicitly DO NOT call ads.moderate — draft only
+      // Explicitly DO NOT call ads.moderate
     }
   }
 
@@ -204,6 +318,7 @@ async function applyDraft(plan) {
     ok: true,
     campaign_id: campaignId,
     ad_group_ids: adGroupIds,
+    ad_format: plan.ad_format,
     state: 'OFF',
     moderation_submitted: false,
     log,
@@ -220,8 +335,9 @@ export async function runDirect({ offer, context, apply = false }) {
   }
 
   const applied = Boolean(applyResult?.ok);
+  const fmt = plan.ad_format_label || formatLabel(plan.ad_format);
   const readyMessage = applied
-    ? `Кампания готова · ID ${applyResult.campaign_id} · черновик (OFF), на модерацию не отправляли — запусти вручную в Директе`
+    ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · черновик (OFF), на модерацию не отправляли`
     : apiReady
       ? apply
         ? `Директ: не удалось создать черновик — ${JSON.stringify(applyResult?.error || applyResult).slice(0, 200)}`
@@ -247,8 +363,8 @@ export async function runDirect({ offer, context, apply = false }) {
     cursor_prompt: [
       'Ты Директ-агент. Кампания должна остаться черновиком OFF.',
       'НЕ вызывай ads.moderate и НЕ запускай показы.',
+      `Формат: ${plan.ad_format} — graphic=ImageAd (текст на баннере), product=TextAd (текст в полях).`,
       JSON.stringify(plan, null, 2),
-      'Не включай Neuro Ads / авторекомендации.',
     ].join('\n'),
     context_patch: {
       direct: {
@@ -257,6 +373,7 @@ export async function runDirect({ offer, context, apply = false }) {
         applied,
         campaign_id: applyResult?.campaign_id || null,
         ready_message: applied ? 'Кампания готова' : null,
+        ad_format: plan.ad_format,
       },
     },
   };
