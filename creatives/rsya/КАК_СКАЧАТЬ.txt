@@ -1,0 +1,17 @@
+Как забрать креативы
+====================
+
+1) TextAd JPG (главное для Директа):
+   creatives/rsya/direct-textad/ppm-travel-1080.jpg
+   creatives/rsya/direct-textad/ppm-services-1080.jpg
+   creatives/rsya/direct-textad/ppm-sbp-1080.jpg
+
+2) Полный пакет brief-размеров:
+   creatives/rsya/ppm-rsya-product-textad.zip
+
+3) Копирайт для полей объявления:
+   creatives/rsya/TEXTAD_COPY.md
+   creatives/rsya/CREATIVE_BRIEFS_PRODUCT_LG2026.json
+
+Загрузка в Директ: adimages.add → AdImageHash на TextAd.
+На картинках текста нет — заголовки/тексты только в полях объявления.
