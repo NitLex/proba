@@ -32,6 +32,6 @@ export function leadgidPostbackInstructions(postbackUrl) {
       { leadgid: '{transaction_id}', arbtrack: 'txid' },
     ],
     offer_url_must_contain: 'aff_sub={clickid}',
-    note: 'В ссылке оффера должен быть aff_sub={clickid}, иначе clickid в постбеке будет пустым',
+    note: 'В ссылке оффера должен быть aff_sub={clickid}, иначе clickid в постбеке будет пустым. Тест LeadGid с clickid=aff_sub_value должен вернуть HTTP 200.',
   };
 }

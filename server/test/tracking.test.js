@@ -169,6 +169,16 @@ describe('api integration', () => {
     assert.ok(overview.revenue >= 10);
   });
 
+  it('LeadGid postback test with fake clickid returns 200', async () => {
+    const pb = await fetch(
+      `${base}/postback?clickid=aff_sub_value&payout=100.1&status=approved&txid=leadgid-test`,
+    );
+    assert.equal(pb.status, 200);
+    const body = await pb.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.unmatched, true);
+  });
+
   it('records site visit and shows admin stats', async () => {
     const visit = await fetch(`${base}/api/analytics/visit`, {
       method: 'POST',
