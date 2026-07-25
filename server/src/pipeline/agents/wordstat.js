@@ -1,8 +1,10 @@
 /**
  * Wordstat / semantics agent.
- * Uses playbook angles; optionally calls Yandex Wordstat XML/API if WORDSTAT_* env set.
- * Without API — generates seed keywords + negatives from angles (usable in Direct).
+ * Live: Yandex Cloud Search API (WORDSTAT / YANDEX_CLOUD_*).
+ * Fallback: heuristic seeds from analyst angles.
  */
+
+import { expandSeeds, wordstatConfig } from '../../lib/wordstat.js';
 
 function seedsFromAngles(angles = []) {
   const seeds = [];
@@ -54,18 +56,14 @@ const DEFAULT_NEGATIVES = [
   'школьник',
 ];
 
-async function fetchWordstatIfConfigured(phrases) {
-  // Placeholder for real Wordstat integration (Partner API / XML).
-  // Env: WORDSTAT_TOKEN — when present, future HTTP call goes here.
-  if (!process.env.WORDSTAT_TOKEN && !process.env.YANDEX_WORDSTAT_TOKEN) {
-    return { mode: 'heuristic', phrases: [] };
+function assignGroup(phrase, angles) {
+  const p = phrase.toLowerCase();
+  for (const a of angles) {
+    if (a.id === 'travel' && /путешеств|границ|поезд|тур|отел|booking/.test(p)) return 'travel';
+    if (a.id === 'services' && /сервис|подписк|доллар|spotify|steam|chatgpt/.test(p)) return 'services';
+    if (a.id === 'premium' && /премиум|курс/.test(p)) return 'premium';
   }
-  // Not fully wired: return marker so UI shows "token present, need live call".
-  return {
-    mode: 'token_present_stub',
-    note: 'WORDSTAT_TOKEN задан, но live-запрос ещё не подключён — используем эвристику + seeds.',
-    phrases: phrases.map((p) => ({ phrase: p, shows: null })),
-  };
+  return angles[0]?.id || 'generic';
 }
 
 export async function runWordstat({ offer, context }) {
@@ -74,13 +72,37 @@ export async function runWordstat({ offer, context }) {
   const seeds = seedsFromAngles(angles);
   if (offer.name) seeds.unshift(String(offer.name).slice(0, 80));
 
-  const remote = await fetchWordstatIfConfigured(seeds);
-  const keywords = seeds.map((phrase, i) => ({
-    phrase,
-    group: angles[i % Math.max(angles.length, 1)]?.id || 'generic',
-    context_bid_hint: playbook.economics?.cpc_max || 7,
-    source: remote.mode === 'heuristic' ? 'heuristic' : 'wordstat_stub',
-  }));
+  const cfg = wordstatConfig();
+  let mode = 'heuristic';
+  let live = null;
+  let keywords = [];
+
+  if (cfg.configured) {
+    live = await expandSeeds(seeds);
+    mode = live.mode;
+    if (live.keywords?.length) {
+      keywords = live.keywords.slice(0, 80).map((k) => ({
+        phrase: k.phrase,
+        shows: k.shows,
+        kind: k.kind,
+        seed: k.seed,
+        group: assignGroup(k.phrase, angles),
+        context_bid_hint: playbook.economics?.cpc_max || 7,
+        source: 'wordstat_live',
+      }));
+    }
+  }
+
+  if (!keywords.length) {
+    mode = cfg.configured ? mode || 'heuristic_fallback' : 'heuristic';
+    keywords = seeds.map((phrase) => ({
+      phrase,
+      shows: null,
+      group: assignGroup(phrase, angles),
+      context_bid_hint: playbook.economics?.cpc_max || 7,
+      source: 'heuristic',
+    }));
+  }
 
   const byGroup = {};
   for (const kw of keywords) {
@@ -88,25 +110,37 @@ export async function runWordstat({ offer, context }) {
     byGroup[kw.group].push(kw.phrase);
   }
 
+  const liveErrors = live?.errors || [];
+
   return {
-    summary: `Семантика: ${keywords.length} фраз, минусов ${DEFAULT_NEGATIVES.length}. Режим: ${remote.mode}.`,
+    summary: cfg.configured
+      ? `Wordstat live (${mode}): ${keywords.length} фраз, ошибок ${liveErrors.length}, seeds ${seeds.length}`
+      : `Семантика heuristic: ${keywords.length} фраз (нет YANDEX_CLOUD_API_KEY + FOLDER_ID)`,
     semantics: {
-      mode: remote.mode,
-      remote_note: remote.note || null,
+      mode,
+      configured: cfg.configured,
+      live_errors: liveErrors,
+      live_meta: live
+        ? { maxSeeds: live.config?.maxSeeds, regions: live.config?.regions, blocks: live.items?.length }
+        : null,
       keywords,
       groups: byGroup,
       negatives: DEFAULT_NEGATIVES,
       autotargeting: 'suspended_on_start',
+      seeds,
     },
     cursor_prompt: [
       'Ты агент семантики (Wordstat) для Яндекс.Директ РСЯ.',
       `Оффер: ${offer.name || ''} / гео ${playbook.geo || offer.geo || ''}`,
+      `Режим сбора: ${mode}`,
       `Углы: ${JSON.stringify(angles)}`,
-      `Seeds: ${JSON.stringify(seeds)}`,
-      'Расширь ключи, дай частотность (если есть Wordstat), кластеры и минус-слова. JSON.',
+      `Топ ключей: ${JSON.stringify(keywords.slice(0, 40))}`,
+      `Минус-слова: ${JSON.stringify(DEFAULT_NEGATIVES)}`,
+      'Дополни кластеры, убери мусор, подготовь финальные списки для групп Travel/Services. Сохрани в docs или creatives при необходимости.',
     ].join('\n'),
     context_patch: {
       semantics: {
+        mode,
         keywords,
         groups: byGroup,
         negatives: DEFAULT_NEGATIVES,

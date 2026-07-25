@@ -1,11 +1,29 @@
 import { Router } from 'express';
 import { AGENT_ROLES, DEFAULT_PIPELINE, executeRun, startPipeline } from '../pipeline/runner.js';
 import { getRun, listRuns } from '../pipeline/store.js';
+import { wordstatConfig } from '../lib/wordstat.js';
+import { cursorAgentsConfig, DEFAULT_CURSOR_SPAWN_AGENTS } from '../lib/cursorAgents.js';
+import { maybeSpawnCursorAgents } from '../pipeline/spawnCursor.js';
 
 const router = Router();
 
 router.get('/roles', (_req, res) => {
-  res.json({ roles: Object.values(AGENT_ROLES), pipeline: DEFAULT_PIPELINE });
+  res.json({
+    roles: Object.values(AGENT_ROLES),
+    pipeline: DEFAULT_PIPELINE,
+    integrations: {
+      wordstat: {
+        configured: wordstatConfig().configured,
+        regions: wordstatConfig().regions,
+      },
+      cursor_agents: {
+        configured: cursorAgentsConfig().configured,
+        repo: cursorAgentsConfig().repoUrl,
+        startingRef: cursorAgentsConfig().startingRef,
+        default_spawn: DEFAULT_CURSOR_SPAWN_AGENTS,
+      },
+    },
+  });
 });
 
 router.get('/runs', (_req, res) => {
@@ -23,7 +41,8 @@ router.get('/runs/:id', (req, res) => {
  * {
  *   name, url, payout, geo, vertical, network, source, epc, promo_code,
  *   daily_budget, notes, funnel, currency, network_offer_id,
- *   dry_run?: bool, apply_direct?: bool, async?: bool, title?: string
+ *   dry_run?: bool, apply_direct?: bool, async?: bool, title?: string,
+ *   spawn_cursor_agents?: bool, cursor_agents?: string[]
  * }
  */
 router.post('/runs', async (req, res, next) => {
@@ -33,6 +52,8 @@ router.post('/runs', async (req, res, next) => {
       dry_run: dryRun = false,
       apply_direct: applyDirect = false,
       async: asyncMode = false,
+      spawn_cursor_agents: spawnCursorAgents = false,
+      cursor_agents: cursorAgents,
       title,
       ...offer
     } = body;
@@ -44,18 +65,41 @@ router.post('/runs', async (req, res, next) => {
     }
 
     const runId = startPipeline(offer, { title });
+    const execOpts = {
+      dryRun,
+      applyDirect,
+      spawnCursorAgents,
+      cursorAgents: Array.isArray(cursorAgents) ? cursorAgents : undefined,
+    };
 
     if (asyncMode) {
       setImmediate(() => {
-        executeRun(runId, { dryRun, applyDirect }).catch((err) => {
+        executeRun(runId, execOpts).catch((err) => {
           console.error('pipeline async error', err);
         });
       });
       return res.status(202).json({ id: runId, status: 'pending', message: 'Pipeline started' });
     }
 
-    const run = await executeRun(runId, { dryRun, applyDirect });
+    const run = await executeRun(runId, execOpts);
     res.status(201).json(run);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Re-spawn Cursor agents for an existing finished run */
+router.post('/runs/:id/spawn-cursor', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const run = getRun(id);
+    if (!run) return res.status(404).json({ error: 'Not found' });
+    const result = await maybeSpawnCursorAgents(id, {
+      spawnCursorAgents: true,
+      cursorAgents: req.body?.cursor_agents,
+      autoCreatePR: req.body?.auto_create_pr,
+    });
+    res.json({ run: getRun(id), spawn: result });
   } catch (err) {
     next(err);
   }

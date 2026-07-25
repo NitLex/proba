@@ -11,6 +11,7 @@ import { runWordstat } from './agents/wordstat.js';
 import { runCreative } from './agents/creative.js';
 import { runTracker } from './agents/tracker.js';
 import { runDirect } from './agents/direct.js';
+import { maybeSpawnCursorAgents } from './spawnCursor.js';
 
 const HANDLERS = {
   analyst: runAnalyst,
@@ -134,6 +135,28 @@ export async function executeRun(runId, options = {}) {
       });
     } else {
       updateRun(runId, { status: 'done', context, error: '' });
+    }
+
+    // Auto-launch Cursor cloud agents for follow-up work (creative / wordstat / direct)
+    if (options.spawnCursorAgents && !failed.length) {
+      try {
+        await maybeSpawnCursorAgents(runId, {
+          spawnCursorAgents: true,
+          cursorAgents: options.cursorAgents,
+          repoUrl: options.repoUrl,
+          startingRef: options.startingRef,
+          autoCreatePR: options.autoCreatePR,
+          model: options.model,
+        });
+      } catch (spawnErr) {
+        const cur = getRun(runId);
+        updateRun(runId, {
+          context: {
+            ...(cur?.context || context),
+            cursor_spawn_error: spawnErr.message || String(spawnErr),
+          },
+        });
+      }
     }
   } catch (err) {
     updateRun(runId, { status: 'failed', context, error: err.message || String(err) });

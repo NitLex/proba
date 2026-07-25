@@ -26,10 +26,12 @@ const STATUS_CLASS = {
 export default function Pipeline() {
   const [roles, setRoles] = useState([]);
   const [pipeline, setPipeline] = useState([]);
+  const [integrations, setIntegrations] = useState(null);
   const [runs, setRuns] = useState([]);
   const [form, setForm] = useState(emptyOffer);
   const [dryRun, setDryRun] = useState(false);
   const [applyDirect, setApplyDirect] = useState(false);
+  const [spawnCursor, setSpawnCursor] = useState(false);
   const [active, setActive] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,6 +43,7 @@ export default function Pipeline() {
       .then(([meta, list]) => {
         setRoles(meta.roles || []);
         setPipeline(meta.pipeline || []);
+        setIntegrations(meta.integrations || null);
         setRuns(list);
       })
       .catch((e) => setMsg(e.message));
@@ -67,13 +70,34 @@ export default function Pipeline() {
         daily_budget: form.daily_budget === '' ? undefined : Number(form.daily_budget),
         dry_run: dryRun,
         apply_direct: applyDirect,
+        spawn_cursor_agents: spawnCursor,
       };
       const run = await api.post('/api/pipeline/runs', body);
       setActive(run);
-      setMsg(run.status === 'done' ? 'Пайплайн завершён' : `Статус: ${run.status}`);
+      const launches = run.context?.cursor_launches || [];
+      const launched = launches.filter((l) => l.ok).length;
+      setMsg(
+        run.status === 'done'
+          ? `Пайплайн завершён${spawnCursor ? ` · Cursor агентов: ${launched}/${launches.length || 0}` : ''}`
+          : `Статус: ${run.status}`,
+      );
       await loadList();
     } catch (err) {
       setMsg(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function spawnCursorAgain() {
+    if (!active?.id) return;
+    setBusy(true);
+    try {
+      const res = await api.post(`/api/pipeline/runs/${active.id}/spawn-cursor`, {});
+      setActive(res.run);
+      setMsg('Cursor-агенты перезапущены');
+    } catch (e) {
+      setMsg(e.message);
     } finally {
       setBusy(false);
     }
@@ -92,6 +116,32 @@ export default function Pipeline() {
       </header>
 
       {msg ? <div className="banner">{msg}</div> : null}
+
+      {integrations ? (
+        <section className="card-block">
+          <h2>Интеграции</h2>
+          <div className="agent-grid">
+            <div className="agent-card">
+              <div className="agent-id">wordstat</div>
+              <strong>Yandex Wordstat</strong>
+              <p className="muted small">
+                {integrations.wordstat?.configured
+                  ? `Live · регионы: ${(integrations.wordstat.regions || []).join(', ')}`
+                  : 'Не настроено — задай YANDEX_CLOUD_API_KEY + YANDEX_CLOUD_FOLDER_ID'}
+              </p>
+            </div>
+            <div className="agent-card">
+              <div className="agent-id">cursor</div>
+              <strong>Cursor Cloud Agents</strong>
+              <p className="muted small">
+                {integrations.cursor_agents?.configured
+                  ? `OK · ${integrations.cursor_agents.repo} @ ${integrations.cursor_agents.startingRef}`
+                  : 'Не настроено — задай CURSOR_API_KEY (+ CURSOR_REPO_URL)'}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="card-block">
         <h2>Агенты</h2>
@@ -214,6 +264,14 @@ export default function Pipeline() {
               />
               Сразу создать кампанию в Директе (нужен API-токен)
             </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={spawnCursor}
+                onChange={(e) => setSpawnCursor(e.target.checked)}
+              />
+              Автозапуск Cursor-субагентов (wordstat / creative / direct)
+            </label>
             <div className="full">
               <button className="btn primary" disabled={busy} type="submit">
                 {busy ? 'Запуск…' : 'Запустить оркестратор'}
@@ -268,9 +326,31 @@ export default function Pipeline() {
             <h2>
               Run #{active.id} — {active.title}
             </h2>
-            <span className={STATUS_CLASS[active.status] || 'pill'}>{active.status}</span>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button type="button" className="btn small" disabled={busy} onClick={spawnCursorAgain}>
+                Spawn Cursor
+              </button>
+              <span className={STATUS_CLASS[active.status] || 'pill'}>{active.status}</span>
+            </div>
           </div>
           {active.error ? <div className="banner bad">{active.error}</div> : null}
+          {active.context?.cursor_launches?.length ? (
+            <div className="banner">
+              Cursor launches:{' '}
+              {active.context.cursor_launches.map((l) => (
+                <span key={`${l.agent}-${l.agent_id || l.error || l.reason}`} style={{ marginRight: 8 }}>
+                  {l.agent}:{' '}
+                  {l.url ? (
+                    <a href={l.url} target="_blank" rel="noreferrer">
+                      {l.agent_id || 'open'}
+                    </a>
+                  ) : (
+                    l.error || l.reason || (l.ok ? 'ok' : 'fail')
+                  )}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           <div className="steps">
             {(active.steps || []).map((s) => (
