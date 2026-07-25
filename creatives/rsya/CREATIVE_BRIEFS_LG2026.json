@@ -1,0 +1,90 @@
+{
+  "offer": "Кредит 365 / Плати по миру",
+  "promo": { "code": "LG2026", "note": "−500 ₽ на открытие карты" },
+  "brand": "Плати по миру",
+  "forbidden": [
+    "обход санкций/ограничений",
+    "гарантии одобрения",
+    "P2P/вывод",
+    "gambling/adult/crypto"
+  ],
+  "sizes": [
+    "300x250",
+    "300x300",
+    "336x280",
+    "728x90",
+    "300x600",
+    "320x100",
+    "1080x450",
+    "1080x1080"
+  ],
+  "angles": [
+    {
+      "id": "premium",
+      "title": "Премиум / выгодный курс",
+      "titles": [
+        "Премиальная карта с выгодным курсом",
+        "Больше выгоды на оплатах"
+      ],
+      "texts": ["Промокод LG2026 — скидка на премиум-выпуск."],
+      "packs": [
+        "creatives/rsya/ppm-rsya-premium-lg2026.zip",
+        "creatives/rsya/ppm-rsya-banners-all.zip",
+        "creatives/rsya/ppm-rsya-premium-7s-1x1.mp4",
+        "creatives/rsya/ppm-rsya-premium-8s-16x9.mp4",
+        "creatives/rsya/direct-textad/ppm-premium-1080.jpg"
+      ]
+    },
+    {
+      "id": "travel",
+      "title": "Путешествия",
+      "titles": [
+        "Виртуальная карта для путешествий",
+        "Оплата за границей без проблем",
+        "Карта для поездок онлайн"
+      ],
+      "texts": [
+        "Оформление онлайн. Пополнение по СБП. Промокод LG2026 — скидка на выпуск.",
+        "Apple Pay и Google Pay. Промокод LG2026."
+      ],
+      "packs": [
+        "creatives/rsya/ppm-rsya-travel-premium-v2.zip",
+        "creatives/rsya/ppm-rsya-travel-7s-1x1.mp4",
+        "creatives/rsya/ppm-rsya-travel-8s-16x9.mp4",
+        "creatives/rsya/direct-textad/ppm-travel-1080.jpg"
+      ]
+    },
+    {
+      "id": "services",
+      "title": "Сервисы",
+      "titles": [
+        "Оплата зарубежных сервисов",
+        "Карта для оплаты подписок",
+        "Карта онлайн за минуты"
+      ],
+      "texts": [
+        "Пополнение по СБП. Промокод LG2026 — на открытие карты.",
+        "Быстрый выпуск. Промокод LG2026."
+      ],
+      "packs": [
+        "creatives/rsya/ppm-rsya-services-premium-v3.zip",
+        "creatives/rsya/ppm-rsya-subscriptions-7s-1x1.mp4",
+        "creatives/rsya/ppm-rsya-subscriptions-8s-16x9.mp4",
+        "creatives/rsya/direct-textad/ppm-services-1080.jpg"
+      ]
+    }
+  ],
+  "generator": "creatives/rsya/generate_banners_lg2026.py",
+  "callouts": [
+    "Оформление онлайн",
+    "Пополнение по СБП",
+    "Карта в валюте",
+    "Промокод LG2026"
+  ],
+  "sitelinks": [
+    { "title": "Оформить карту", "description": "Онлайн за пару минут" },
+    { "title": "Промокод LG2026", "description": "−500 ₽ на открытие карты" },
+    { "title": "Пополнение по СБП", "description": "Рублями с любого банка" },
+    { "title": "Оплата в сервисах", "description": "Поездки и подписки" }
+  ]
+}

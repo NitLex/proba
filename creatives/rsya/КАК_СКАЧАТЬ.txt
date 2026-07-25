@@ -1,0 +1,22 @@
+Как скачать креативы РСЯ (LG2026)
+=================================
+
+1) Баннеры всех углов:
+   creatives/rsya/ppm-rsya-banners-all.zip
+
+2) По углам:
+   - travel:    ppm-rsya-travel-premium-v2.zip
+   - services:  ppm-rsya-services-premium-v3.zip
+   - premium:   ppm-rsya-premium-lg2026.zip
+
+3) Видео 7–8с:
+   ppm-rsya-*-7s-1x1.mp4
+   ppm-rsya-*-8s-16x9.mp4
+
+4) Картинки для текстово-графических объявлений Direct:
+   creatives/rsya/direct-textad/*.jpg  (1080×1080)
+
+Перегенерация:
+  python3 creatives/rsya/generate_banners_lg2026.py
+
+Промокод везде: LG2026 (−500 ₽).
