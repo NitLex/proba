@@ -68,15 +68,30 @@ async function uploadAdImage(filePath) {
   const abs = resolveImageAbs(filePath);
   if (!abs) return { ok: false, error: `file not found: ${filePath}` };
   const b64 = fs.readFileSync(abs).toString('base64');
+  const name = path.basename(abs).slice(0, 255) || 'creative.jpg';
   const res = await directApi('adimages', {
     method: 'add',
-    params: { AdImages: [{ ImageData: b64 }] },
+    params: {
+      AdImages: [
+        {
+          ImageData: b64,
+          Name: name, // required by Direct API
+          Type: 'AUTO',
+        },
+      ],
+    },
   });
-  const hash = res?.result?.AddResults?.[0]?.AdImageHash || res?.result?.AddResults?.[0]?.Hash;
+  const add0 = res?.result?.AddResults?.[0] || {};
+  const hash = add0.AdImageHash || add0.Hash;
   if (!hash) {
-    return { ok: false, error: res?.error || res?.result?.AddResults?.[0]?.Errors || 'no hash', raw: res };
+    return {
+      ok: false,
+      error: res?.error || add0.Errors || 'no hash',
+      raw: res,
+      path: abs,
+    };
   }
-  return { ok: true, hash, path: abs };
+  return { ok: true, hash, path: abs, name, type: add0.Type || null };
 }
 
 function pickImageForAngle(generatedImages, angleId) {
@@ -348,6 +363,11 @@ async function applyDraft(plan) {
     }
   }
 
+  const imageUploads = log.filter((l) => l.step === 'adimages.add');
+  const imageOk = imageUploads.filter((l) => l.result?.ok).length;
+  const imageFail = imageUploads.filter((l) => l.result && !l.result.ok).length;
+  const neededImages = (plan.ad_groups || []).some((g) => g.image_path || g.ads?.some((a) => a.image_path));
+
   return {
     ok: true,
     campaign_id: campaignId,
@@ -355,6 +375,11 @@ async function applyDraft(plan) {
     ad_format: plan.ad_format,
     state: 'OFF',
     moderation_submitted: false,
+    images: { attempted: imageUploads.length, ok: imageOk, failed: imageFail },
+    warning:
+      neededImages && imageFail > 0 && imageOk === 0
+        ? 'Креативы не загрузились в Директ (adimages) — объявления без картинок'
+        : null,
     log,
   };
 }
@@ -379,8 +404,9 @@ export async function runDirect({ offer, context, apply = false }) {
     throw new Error(`Директ: не удалось создать черновик — ${details.slice(0, 400)}`);
   }
 
+  const imgWarn = applyResult?.warning;
   const readyMessage = applied
-    ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · черновик (OFF), на модерацию не отправляли`
+    ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · черновик (OFF)${imgWarn ? ` · ⚠ ${imgWarn}` : ', на модерацию не отправляли'}`
     : apiReady
       ? 'Директ: план готов (apply_direct=false — в аккаунте не создавали)'
       : 'Директ: план готов (токена нет — только спецификация)';

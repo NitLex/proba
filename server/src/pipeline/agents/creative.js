@@ -192,7 +192,7 @@ export async function runCreative({ offer, context }) {
     `Формат: ${formatLabel(adFormat)} (${adFormat === 'graphic' ? 'ImageAd' : 'TextAd'})`,
     `брифы: ${creatives.length}`,
     imgCfg.configured
-      ? `GPT Image: ${okImages.length}/${generated.length}`
+      ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
       : 'генерация выкл',
   ];
 
