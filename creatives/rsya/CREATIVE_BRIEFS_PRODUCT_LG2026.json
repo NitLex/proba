@@ -1,0 +1,140 @@
+{
+  "offer": "Плати по миру - Выпуск карты",
+  "promo": {
+    "code": "LG2026",
+    "note": "−500 ₽ (если актуально)"
+  },
+  "brand": "Плати по миру",
+  "ad_format": "product",
+  "direct_ad_type": "TextAd",
+  "image_has_text": false,
+  "rule": "Чистая картинка → товарное TextAd (заголовок/текст в настройках объявления)",
+  "forbidden": [
+    "обход санкций/ограничений",
+    "гарантии одобрения",
+    "P2P/вывод",
+    "gambling/adult/crypto",
+    "бренды Apple Pay / Google Pay / Booking"
+  ],
+  "sizes": [
+    "300x250",
+    "300x300",
+    "336x280",
+    "728x90",
+    "300x600",
+    "320x100",
+    "1080x450",
+    "1080x1080"
+  ],
+  "sitelinks": [
+    {
+      "title": "Оформить карту",
+      "description": "Онлайн за пару минут"
+    },
+    {
+      "title": "Промокод LG2026",
+      "description": "−500 ₽ (если актуально)"
+    },
+    {
+      "title": "Пополнение по СБП",
+      "description": "Рублями с любого банка"
+    },
+    {
+      "title": "Оплата в сервисах",
+      "description": "Поездки и подписки"
+    }
+  ],
+  "callouts": [
+    "Оформление онлайн",
+    "Пополнение по СБП",
+    "Цифровая карта",
+    "Промокод LG2026"
+  ],
+  "generator": "creatives/rsya/generate_product_textad.py",
+  "angles": [
+    {
+      "id": "travel",
+      "title": "Поездки / travel-оплаты",
+      "ad_format": "product",
+      "image_has_text": false,
+      "direct_ad_type": "TextAd",
+      "titles": [
+        "Цифровая карта для поездок",
+        "Оплата в поездках онлайн",
+        "Карта для путешествий"
+      ],
+      "title2": [
+        "Оформление онлайн",
+        "Пополнение по СБП",
+        "Промокод LG2026"
+      ],
+      "texts": [
+        "Оформление онлайн. Пополнение по СБП. Промокод LG2026 — скидка на выпуск.",
+        "Быстрый выпуск. Промокод LG2026. Пополнение рублями."
+      ],
+      "overlay_lines": [],
+      "packs": [
+        "creatives/rsya/ppm-rsya-travel-product.zip",
+        "creatives/rsya/direct-textad/ppm-travel-1080.jpg"
+      ]
+    },
+    {
+      "id": "services",
+      "title": "Подписки и онлайн-сервисы",
+      "ad_format": "product",
+      "image_has_text": false,
+      "direct_ad_type": "TextAd",
+      "titles": [
+        "Оплата подписок онлайн",
+        "Карта для сервисов",
+        "Карта онлайн за минуты"
+      ],
+      "title2": [
+        "Быстрый выпуск",
+        "Карта онлайн",
+        "Промокод LG2026"
+      ],
+      "texts": [
+        "Пополнение по СБП. Промокод LG2026 — на открытие карты.",
+        "Быстрый выпуск. Промокод LG2026."
+      ],
+      "overlay_lines": [],
+      "packs": [
+        "creatives/rsya/ppm-rsya-services-product.zip",
+        "creatives/rsya/direct-textad/ppm-services-1080.jpg"
+      ]
+    },
+    {
+      "id": "sbp",
+      "title": "Быстрый выпуск + СБП",
+      "ad_format": "product",
+      "image_has_text": false,
+      "direct_ad_type": "TextAd",
+      "titles": [
+        "Карта с пополнением по СБП",
+        "Выпуск карты онлайн",
+        "Цифровая карта за минуты"
+      ],
+      "title2": [
+        "Промокод LG2026",
+        "Пополнение рублями",
+        "Оформление онлайн"
+      ],
+      "texts": [
+        "Промокод LG2026. Пополнение рублями по СБП.",
+        "Быстрый выпуск онлайн. Пополнение по СБП. Промокод LG2026."
+      ],
+      "overlay_lines": [],
+      "packs": [
+        "creatives/rsya/ppm-rsya-sbp-product.zip",
+        "creatives/rsya/direct-textad/ppm-sbp-1080.jpg"
+      ]
+    }
+  ],
+  "packs_all": [
+    "creatives/rsya/ppm-rsya-product-textad-all.zip",
+    "creatives/rsya/ppm-rsya-travel-product.zip",
+    "creatives/rsya/ppm-rsya-services-product.zip",
+    "creatives/rsya/ppm-rsya-sbp-product.zip"
+  ]
+}
