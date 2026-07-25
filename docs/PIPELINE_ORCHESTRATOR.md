@@ -63,28 +63,37 @@
 
 ## Креативы
 
-### Рекомендуемо на RU VPS: YandexART
-OpenAI GPT Image с российского IP отвечает `Country, region, or territory not supported`.
-На VPS используем **YandexART** (те же `YANDEX_CLOUD_API_KEY` + `YANDEX_CLOUD_FOLDER_ID`, что Wordstat).
+### Рекомендуемо: GPT Image (оплаченный OpenAI)
+С российского IP OpenAI отвечает `Country, region, or territory not supported`.
+Решение — **OPENAI_RELAY_URL** на не-RU хосте (ключ OpenAI не светится через чужие free-proxy).
 
 ```bash
+# 1) на не-RU машине / Cloudflare Worker:
+OPENAI_API_KEY=sk-...
+OPENAI_RELAY_SECRET=long-random
+node scripts/openai-image-relay-server.mjs
+# или: scripts/openai-image-relay-worker.js → wrangler deploy
+
+# 2) на RU VPS:
+IMAGE_PROVIDER=openai
+OPENAI_RELAY_URL=http://127.0.0.1:8787   # или https://xxx.workers.dev
+OPENAI_RELAY_SECRET=long-random
+# OPENAI_API_KEY на VPS не обязателен, если ключ только в relay
+```
+
+Альтернатива: личный `OPENAI_HTTP_PROXY` (EU/US) + `undici` на VPS.
+
+Тихий откат на YandexART **выключен** (YandexART часто даёт «иероглифы»).
+Включить только явно: `OPENAI_ALLOW_YANDEX_FALLBACK=1`.
+
+### Запасной: YandexART
+```bash
 IMAGE_PROVIDER=yandex_art
-# уже должны быть:
 YANDEX_CLOUD_API_KEY=...
 YANDEX_CLOUD_FOLDER_ID=...
 ```
 
-`IMAGE_PROVIDER=auto` (по умолчанию) сам выберет YandexART, если cloud-ключи есть.
-
-### Опционально: GPT Image через прокси
-```bash
-IMAGE_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1
-OPENAI_HTTP_PROXY=http://user:pass@HOST:PORT   # EU/US HTTP(S) proxy
-```
-
-Если OpenAI вернул geo-ошибку, а YandexART настроен — будет **авто-fallback** на YandexART.
+`IMAGE_PROVIDER=auto` выберет YandexART, если cloud-ключи есть.
 
 ## Секреты на VPS
 
@@ -93,10 +102,11 @@ PIPELINE_TRACKER_MODE=local
 ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
 YANDEX_DIRECT_TOKEN=...
 YANDEX_DIRECT_LOGIN=...
-YANDEX_CLOUD_API_KEY=...
-YANDEX_CLOUD_FOLDER_ID=...
 LEADGID_TOKEN=...
-IMAGE_PROVIDER=yandex_art
+IMAGE_PROVIDER=openai
+OPENAI_RELAY_URL=http://127.0.0.1:8787
+OPENAI_RELAY_SECRET=...
+# OPENAI_API_KEY=...  # можно только в relay
 YANDEX_CLOUD_API_KEY=...
 YANDEX_CLOUD_FOLDER_ID=...
 ```

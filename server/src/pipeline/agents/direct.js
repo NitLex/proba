@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
+import { directApi } from '../../lib/directApi.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -25,25 +26,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
-
-async function directApi(service, body) {
-  const token = process.env.YANDEX_DIRECT_TOKEN;
-  const login = process.env.YANDEX_DIRECT_LOGIN;
-  if (!token || !login) return { skipped: true, reason: 'no_token' };
-
-  const res = await fetch(`https://api.direct.yandex.com/json/v5/${service}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Client-Login': login,
-      'Accept-Language': 'ru',
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  return data;
-}
 
 /** Direct StartDate must be >= today in Europe/Moscow, not UTC. */
 export function moscowDateISO(d = new Date()) {

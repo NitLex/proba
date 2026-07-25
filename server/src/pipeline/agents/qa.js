@@ -3,25 +3,8 @@
  * Verifies click redirects, ad-review bots, postback template, optional Direct campaign.
  */
 
+import { directApi } from '../../lib/directApi.js';
 import { runSmokeSuite } from '../../lib/smokeCheck.js';
-
-async function directApi(service, body) {
-  const token = process.env.YANDEX_DIRECT_TOKEN;
-  const login = process.env.YANDEX_DIRECT_LOGIN;
-  if (!token || !login) return { skipped: true, reason: 'no_token' };
-
-  const res = await fetch(`https://api.direct.yandex.com/json/v5/${service}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Client-Login': login,
-      'Accept-Language': 'ru',
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
 
 export async function runQa({ offer, context, dryRun }) {
   const tracker = context.tracker || {};

@@ -3,10 +3,13 @@
  *
  * Providers:
  *   - yandex_art  → YandexART (работает с RU VPS; YANDEX_CLOUD_API_KEY + FOLDER_ID)
- *   - openai      → GPT Image API (нужен не-RU IP или OPENAI_HTTP_PROXY)
+ *   - openai      → GPT Image API (нужен OPENAI_RELAY_URL / OPENAI_HTTP_PROXY / не-RU IP)
  *   - replicate   → FLUX
- *   - auto        → yandex_art если есть cloud-ключи, иначе openai; при geo-ошибке OpenAI → YandexART
+ *   - auto        → yandex_art если есть cloud-ключи, иначе openai
  *   - none
+ *
+ * Fallback: при IMAGE_PROVIDER=openai geo-ошибка → YandexART только если
+ * OPENAI_ALLOW_YANDEX_FALLBACK=1. Иначе ошибка явно (не подменяем на «иероглифы»).
  */
 import fs from 'fs';
 import path from 'path';
@@ -41,23 +44,26 @@ export function resolveImageProvider() {
 export function imageGenConfig() {
   const provider = resolveImageProvider();
   const yc = yandexCloudKeys();
+  const relay = String(process.env.OPENAI_RELAY_URL || '').replace(/\/$/, '');
+  const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
   const configured =
     (provider === 'yandex_art' && yc.configured) ||
-    (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
+    (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY || relay)) ||
     (provider === 'replicate' && Boolean(process.env.REPLICATE_API_TOKEN));
 
   let model = null;
   if (provider === 'openai') model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
   if (provider === 'yandex_art') model = process.env.YANDEX_ART_MODEL || 'yandex-art/latest';
 
-  const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
   let note = 'Не настроено — задай YANDEX_CLOUD_* (YandexART) или OPENAI_API_KEY';
   if (configured) {
     if (provider === 'yandex_art') note = `YandexART · ${model}`;
     else if (provider === 'openai') {
-      note = proxy
-        ? `GPT Image API · ${model} · через proxy`
-        : `GPT Image API · ${model} (с RU VPS нужен OPENAI_HTTP_PROXY или IMAGE_PROVIDER=yandex_art)`;
+      if (relay) note = `GPT Image API · ${model} · через OPENAI_RELAY_URL`;
+      else if (proxy) note = `GPT Image API · ${model} · через proxy`;
+      else {
+        note = `GPT Image API · ${model} (с RU VPS нужен OPENAI_RELAY_URL или OPENAI_HTTP_PROXY)`;
+      }
     } else note = `Live · ${provider}`;
   }
 
@@ -66,7 +72,9 @@ export function imageGenConfig() {
     configured,
     model,
     proxy: Boolean(proxy),
+    relay: Boolean(relay),
     yandex_art_ready: yc.configured,
+    allow_yandex_fallback: String(process.env.OPENAI_ALLOW_YANDEX_FALLBACK || '') === '1',
     note,
   };
 }
@@ -195,20 +203,23 @@ async function openaiFetch(url, init) {
     return undici.fetch(url, { ...init, dispatcher: agent });
   } catch (err) {
     throw new Error(
-      `OPENAI_HTTP_PROXY задан, но undici proxy недоступен: ${err.message}. Используй IMAGE_PROVIDER=yandex_art`,
+      `OPENAI_HTTP_PROXY задан, но undici proxy недоступен: ${err.message}. Поставь undici или OPENAI_RELAY_URL`,
     );
   }
 }
 
 /**
- * GPT Image API — с RU VPS обычно нужен OPENAI_HTTP_PROXY.
+ * GPT Image API — с RU VPS: OPENAI_RELAY_URL (предпочтительно) или OPENAI_HTTP_PROXY.
  */
 async function genOpenAI(prompt, dest) {
+  const relay = String(process.env.OPENAI_RELAY_URL || '').replace(/\/$/, '');
   const key = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
   const quality = process.env.OPENAI_IMAGE_QUALITY || 'medium';
   const size = process.env.OPENAI_IMAGE_SIZE || '1024x1024';
   const isGptImage = /^gpt-image/i.test(model);
+
+  if (!relay && !key) throw new Error('openai: нужен OPENAI_API_KEY или OPENAI_RELAY_URL');
 
   const body = {
     model,
@@ -220,12 +231,21 @@ async function genOpenAI(prompt, dest) {
   if (isGptImage) body.quality = quality;
   else body.response_format = 'b64_json';
 
-  const res = await openaiFetch('https://api.openai.com/v1/images/generations', {
+  const endpoint = relay
+    ? `${relay}/v1/images/generations`
+    : 'https://api.openai.com/v1/images/generations';
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (relay) {
+    const secret = process.env.OPENAI_RELAY_SECRET || key || '';
+    if (secret) headers.Authorization = `Bearer ${secret}`;
+  } else {
+    headers.Authorization = `Bearer ${key}`;
+  }
+
+  const res = await openaiFetch(endpoint, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -236,11 +256,24 @@ async function genOpenAI(prompt, dest) {
 
   if (item.b64_json) {
     writeBase64Image(item.b64_json, dest);
-    return { provider: 'openai', model, path: dest, format: 'b64_json' };
+    return {
+      provider: 'openai',
+      model,
+      path: dest,
+      format: 'b64_json',
+      via: relay ? 'relay' : 'direct',
+    };
   }
   if (item.url) {
     await downloadToFile(item.url, dest);
-    return { provider: 'openai', model, path: dest, url: item.url, format: 'url' };
+    return {
+      provider: 'openai',
+      model,
+      path: dest,
+      url: item.url,
+      format: 'url',
+      via: relay ? 'relay' : 'direct',
+    };
   }
   throw new Error('openai: no b64_json or url in response');
 }
@@ -371,8 +404,10 @@ export async function generateCreativeImage({
     try {
       result = await generateWithProvider(cfg.provider, prompt, dest);
     } catch (err) {
-      // OpenAI geo-block → automatic YandexART fallback
+      // OpenAI geo-block → YandexART only when explicitly allowed
+      const allowFallback = String(process.env.OPENAI_ALLOW_YANDEX_FALLBACK || '') === '1';
       if (
+        allowFallback &&
         cfg.provider === 'openai' &&
         isGeoBlockedError(err) &&
         yandexCloudKeys().configured
@@ -385,6 +420,10 @@ export async function generateCreativeImage({
           fallback_reason: err.message,
           prompt_used: yaPrompt,
         };
+      } else if (cfg.provider === 'openai' && isGeoBlockedError(err)) {
+        throw new Error(
+          `${err.message}. С RU VPS задай OPENAI_RELAY_URL (scripts/openai-image-relay-server.mjs) или OPENAI_HTTP_PROXY. Тихий откат на YandexART отключён — включи OPENAI_ALLOW_YANDEX_FALLBACK=1 если нужен.`,
+        );
       } else {
         throw err;
       }
