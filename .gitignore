@@ -8,3 +8,12 @@ client/dist/
 .DS_Store
 *.log
 .env
+creatives/rsya/product-textad/
+creatives/rsya/banners/
+creatives/rsya/banners-v2/
+creatives/rsya/banners-v3/
+creatives/rsya/banners-lg2026/
+creatives/rsya/_all/
+creatives/rsya/__pycache__/
+__pycache__/
+*.pyc
