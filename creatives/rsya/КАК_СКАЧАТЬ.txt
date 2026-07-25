@@ -1,0 +1,12 @@
+Баннеры РСЯ «Плати по миру» — все размеры
+
+Файл: ppm-rsya-banners-all.zip (~8 MB)
+Внутри: travel / subscriptions / premium — PNG точных размеров под графические объявления Яндекса.
+
+Как скачать:
+1) Из этого репозитория (GitHub):
+   - открой файл creatives/rsya/ppm-rsya-banners-all.zip
+   - кнопка Download / View raw
+2) Из чата Cloud Agent Cursor:
+   - панель Artifacts / файлы агента
+   - путь /opt/cursor/artifacts/banners/ppm-rsya-banners-all.zip

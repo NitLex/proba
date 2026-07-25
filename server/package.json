@@ -7,7 +7,11 @@
     "dev": "node --watch src/index.js",
     "start": "NODE_ENV=production node src/index.js",
     "seed": "node src/seed.js",
-    "test": "node --test test/*.test.js"
+    "setup:ppm": "node src/setup-ppm.js",
+    "check:leadgid": "node src/lib/leadgid.js",
+    "test": "node --test test/*.test.js",
+    "setup:ppm:remote": "node src/setup-ppm-remote.js",
+    "pipeline": "node src/cli-pipeline.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

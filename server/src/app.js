@@ -9,7 +9,9 @@ import postbackRouter from './routes/postback.js';
 import campaignsRouter from './routes/campaigns.js';
 import statsRouter from './routes/stats.js';
 import bundlesRouter from './routes/bundles.js';
+import pipelineRouter from './routes/pipeline.js';
 import { crudRouter } from './routes/crud.js';
+import './pipeline/store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +72,7 @@ export function createApp() {
   );
   app.use('/api/stats', statsRouter);
   app.use('/api/bundles', bundlesRouter);
+  app.use('/api/pipeline', pipelineRouter);
 
   app.use(trackRouter);
   app.use(postbackRouter);

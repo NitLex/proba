@@ -6,12 +6,16 @@
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "seed": "npm run seed --prefix server",
+    "setup:ppm": "npm run setup:ppm --prefix server",
+    "check:leadgid": "npm run check:leadgid --prefix server",
     "dev": "concurrently -n server,client -c teal,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
-    "test": "npm test --prefix server"
+    "test": "npm test --prefix server",
+    "setup:ppm:remote": "npm run setup:ppm:remote --prefix server",
+    "pipeline": "npm run pipeline --prefix server --"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
