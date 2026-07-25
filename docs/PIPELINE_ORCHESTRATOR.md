@@ -19,7 +19,9 @@
         ↓
    [direct]  план РСЯ + черновик OFF (без ads.moderate)
         ↓
-   Сообщение: «Кампания готова» — запуск вручную
+   [qa]  smoke: click / bots / postback / Direct draft
+        ↓
+   «Кампания готова» + отчёт QA — запуск вручную
 ```
 
 | Агент | Что делает |
@@ -29,6 +31,7 @@
 | `creative` | Брифы + GPT Image: **графическое** (текст на баннере) или **товарное** (чистая картинка) |
 | `tracker` | Source / offer / campaign в ArbTrack, click + postback |
 | `direct` | Черновик **OFF** + handbook из [справки Директа](https://yandex.ru/support/direct/ru/); ImageAd/TextAd; **без авто-модерации** |
+| `qa` | Smoke: click `302`, YandexBot/YaDirectFetcher не `403`, редирект на оффер, шаблон postback, кампания Директа |
 
 ## «Обучение» Директ-агента
 

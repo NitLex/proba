@@ -77,21 +77,28 @@ export default function Pipeline() {
       const run = await api.post('/api/pipeline/runs', body);
       setActive(run);
       const ready = run.context?.direct?.ready_message || run.steps?.find((s) => s.agent === 'direct')?.output?.ready_message;
+      const qa = run.context?.qa;
       const launches = run.context?.cursor_launches || [];
       const launched = launches.filter((l) => l.ok).length;
       const directStep = run.steps?.find((s) => s.agent === 'direct');
+      const qaStep = run.steps?.find((s) => s.agent === 'qa');
       const directFail =
         directStep?.status === 'failed' ||
         /не удалось создать черновик/i.test(directStep?.output?.summary || run.error || '');
-      if (run.status === 'done' && ready) {
-        setMsg(`${ready}. Проверь Директ и запусти сам — на модерацию не отправляли.`);
+      const qaFail = qaStep?.status === 'failed' || /QA smoke fail/i.test(run.error || '');
+      if (qaFail) {
+        setMsg(`QA не пройден: ${run.error || qaStep?.error || qa?.summary || 'проверь click/bots'}`);
+      } else if (run.status === 'done' && ready) {
+        setMsg(
+          `${ready}${qa?.ok ? ' · ссылки/клики проверены' : ''}. Запусти кампанию в Директе сам — на модерацию не отправляли.`,
+        );
       } else if (directFail) {
         setMsg(
           `Директ не создал кампанию: ${run.error || directStep?.error || directStep?.output?.summary || 'ошибка API'}`,
         );
       } else if (run.status === 'done') {
         setMsg(
-          `Пайплайн завершён${spawnCursor ? ` · Cursor агентов: ${launched}/${launches.length || 0}` : ''}`,
+          `Пайплайн завершён${qa?.ok ? ' · QA ok' : ''}${spawnCursor ? ` · Cursor агентов: ${launched}/${launches.length || 0}` : ''}`,
         );
       } else {
         setMsg(`Статус: ${run.status}${run.error ? ` — ${run.error}` : ''}`);
@@ -422,6 +429,20 @@ export default function Pipeline() {
           <div style={{ padding: '1rem' }}>
             {active.context?.direct?.ready_message ? (
               <div className="banner ok">{active.context.direct.ready_message}</div>
+            ) : null}
+            {active.context?.qa ? (
+              <div className={`banner ${active.context.qa.ok ? 'ok' : 'bad'}`}>
+                QA: {active.context.qa.summary || (active.context.qa.ok ? 'ok' : 'fail')}
+                {active.context.qa.checks?.length ? (
+                  <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem' }}>
+                    {active.context.qa.checks.map((c) => (
+                      <li key={c.id}>
+                        <code>{c.id}</code> — {c.summary}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             ) : null}
             {active.error ? <div className="banner bad">{active.error}</div> : null}
             {active.context?.cursor_launches?.length ? (

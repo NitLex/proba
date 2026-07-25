@@ -14,9 +14,10 @@ await import('../src/pipeline/store.js');
 const { runPipeline, AGENT_ROLES, DEFAULT_PIPELINE } = await import('../src/pipeline/runner.js');
 
 test('roles and default graph exist', () => {
-  assert.equal(Object.keys(AGENT_ROLES).length >= 5, true);
+  assert.equal(Object.keys(AGENT_ROLES).length >= 6, true);
   assert.equal(DEFAULT_PIPELINE[0].agent, 'analyst');
   assert.ok(DEFAULT_PIPELINE.find((s) => s.agent === 'direct'));
+  assert.ok(DEFAULT_PIPELINE.find((s) => s.agent === 'qa'));
 });
 
 test('pipeline dry-run completes all agents', async () => {
@@ -36,7 +37,7 @@ test('pipeline dry-run completes all agents', async () => {
   );
 
   assert.equal(run.status, 'done');
-  assert.equal(run.steps.length, 5);
+  assert.equal(run.steps.length, 6);
   assert.ok(run.steps.every((s) => s.status === 'done'));
   assert.ok(run.context.playbook);
   assert.equal(run.context.playbook.analysis_scope, 'global_market');
@@ -44,10 +45,12 @@ test('pipeline dry-run completes all agents', async () => {
   assert.ok(run.context.semantics?.keywords?.length);
   assert.ok(run.context.creatives?.briefs?.length);
   assert.ok(run.context.direct?.plan);
+  assert.ok(run.context.qa?.skipped);
   assert.ok(run.steps.find((s) => s.agent === 'analyst').output.cursor_prompt);
 });
 
 test('pipeline creates tracker entities when not dry-run', async () => {
+  process.env.PIPELINE_SKIP_QA = '1';
   const run = await runPipeline(
     {
       name: 'Pipeline Live Offer',
@@ -64,6 +67,7 @@ test('pipeline creates tracker entities when not dry-run', async () => {
     .prepare(`SELECT * FROM campaigns WHERE key = ?`)
     .get(run.context.tracker.campaign.key);
   assert.ok(camp);
+  delete process.env.PIPELINE_SKIP_QA;
 });
 
 after(() => {

@@ -11,6 +11,7 @@ import { runWordstat } from './agents/wordstat.js';
 import { runCreative } from './agents/creative.js';
 import { runTracker } from './agents/tracker.js';
 import { runDirect } from './agents/direct.js';
+import { runQa } from './agents/qa.js';
 import { maybeSpawnCursorAgents } from './spawnCursor.js';
 
 const HANDLERS = {
@@ -19,6 +20,7 @@ const HANDLERS = {
   creative: runCreative,
   tracker: runTracker,
   direct: runDirect,
+  qa: runQa,
 };
 
 function nowIso() {
@@ -104,6 +106,8 @@ export async function executeRun(runId, options = {}) {
               ...(result.creatives ? { creatives: result.creatives } : {}),
               ...(result.tracker ? { tracker: result.tracker } : {}),
               ...(result.direct ? { direct: result.direct } : {}),
+              ...(result.qa ? { qa: result.qa } : {}),
+              ...(result.ready_message ? { ready_message: result.ready_message } : {}),
               cursor_prompt: result.cursor_prompt,
               agent_role: AGENT_ROLES[step.agent] || { id: step.agent },
             };

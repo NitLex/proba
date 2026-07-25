@@ -34,9 +34,15 @@ export const AGENT_ROLES = {
     description:
       'РСЯ-черновик OFF по handbook справки Директа (support/direct): стратегия, модерация, ImageAd/TextAd. Без авто-модерации.',
   },
+  qa: {
+    id: 'qa',
+    name: 'QA / smoke',
+    description:
+      'После сборки: click 302, YandexBot/YaDirectFetcher не 403, редирект на оффер, postback-шаблон, кампания Директа.',
+  },
 };
 
-/** Default DAG: analyst first, then parallel research/creative/tracker, then direct. */
+/** Default DAG: analyst → parallel → direct → qa smoke. */
 export const DEFAULT_PIPELINE = [
   { agent: 'analyst', title: 'Глобальный анализ рынка', dependsOn: [] },
   { agent: 'wordstat', title: 'Семантика и Wordstat', dependsOn: ['analyst'] },
@@ -46,5 +52,10 @@ export const DEFAULT_PIPELINE = [
     agent: 'direct',
     title: 'Параметры Яндекс.Директ',
     dependsOn: ['analyst', 'wordstat', 'creative', 'tracker'],
+  },
+  {
+    agent: 'qa',
+    title: 'Проверка ссылок и кликов',
+    dependsOn: ['tracker', 'direct'],
   },
 ];
