@@ -136,7 +136,7 @@ export async function runCreative({ offer, context }) {
       ad_format: adFormat,
       requested_ad_format: requestedFormat,
       image_has_text: imageHasText,
-      direct_ad_type: adFormat === 'graphic' ? 'ImageAd' : 'TextAd',
+      direct_ad_type: 'TextAd',
       titles: copy.titles,
       texts: copy.texts,
       // Для товарных: текст только в полях. Для графических: те же данные ещё и на картинке.
@@ -179,7 +179,7 @@ export async function runCreative({ offer, context }) {
       ),
       rule:
         adFormat === 'graphic'
-          ? 'Креатив с надписями оффера → графическое ImageAd (текст на баннере)'
+          ? 'Креатив с надписями оффера → TextAd + AdImageHash (текст на баннере)'
           : 'Чистая картинка → товарное TextAd (заголовок/текст в настройках объявления)',
     };
   });
@@ -195,7 +195,7 @@ export async function runCreative({ offer, context }) {
 
   const okImages = generated.filter((g) => g.ok);
   const summaryParts = [
-    `Формат: ${formatLabel(adFormat)} (${adFormat === 'graphic' ? 'ImageAd' : 'TextAd'})`,
+    `Формат: ${formatLabel(adFormat)} (TextAd + картинка)`,
     `брифы: ${creatives.length}`,
     imgCfg.configured
       ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
