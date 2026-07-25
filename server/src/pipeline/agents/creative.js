@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateAngleImages, imageGenConfig, buildCreativePrompt } from '../../lib/imageGen.js';
+import {
+  generateAngleImages,
+  imageGenConfig,
+  buildCreativePromptForProvider,
+} from '../../lib/imageGen.js';
 import {
   normalizeAdFormat,
   resolveAdFormat,
@@ -131,7 +135,7 @@ export async function runCreative({ offer, context }) {
       texts: copy.texts,
       // Для товарных: текст только в полях. Для графических: те же данные ещё и на картинке.
       overlay_lines: imageHasText ? overlayLines : [],
-      image_prompt: buildCreativePrompt({
+      image_prompt: buildCreativePromptForProvider(imgCfg.provider || 'yandex_art', {
         angle,
         offer,
         format: genFormat,

@@ -134,6 +134,33 @@ export function buildCreativePrompt({
   return base.join(' ');
 }
 
+/** YandexART has a hard ~500 char prompt limit. */
+export function buildCreativePromptForProvider(provider, args) {
+  const full = buildCreativePrompt(args);
+  if (provider !== 'yandex_art') return full;
+
+  const { angle, offer, format = 'product', overlayLines = [] } = args || {};
+  const name = String(offer?.name || 'цифровая карта').slice(0, 40);
+  const angleTitle = angle?.title || angle?.id || 'main';
+  if (format === 'graphic') {
+    const lines = (overlayLines || []).filter(Boolean).slice(0, 2).join(' / ');
+    return [
+      `Рекламный баннер 1:1, финтех карта «${name}», угол ${angleTitle}.`,
+      lines ? `Крупный читаемый русский текст на баннере: ${lines}.` : 'Короткий русский заголовок на баннере.',
+      'Премиальный стиль, без логотипов банков и платёжных систем, без лиц крупным планом.',
+    ]
+      .join(' ')
+      .slice(0, 500);
+  }
+  return [
+    `Предметное фото 1:1 цифровой платёжной карты «${name}», угол ${angleTitle}.`,
+    'Чистая картинка БЕЗ текста, букв и цифр. Коммерческий стиль, мягкий свет.',
+    'Без логотипов Apple Pay, Google Pay, Visa, Mastercard, банков.',
+  ]
+    .join(' ')
+    .slice(0, 500);
+}
+
 async function downloadToFile(url, dest) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`download ${res.status}`);
@@ -245,7 +272,7 @@ async function genYandexArt(prompt, dest) {
           seed: String(Date.now() % 1_000_000_000),
           aspectRatio: { widthRatio: '1', heightRatio: '1' },
         },
-        messages: [{ weight: '1', text: prompt.slice(0, 4500) }],
+        messages: [{ weight: '1', text: prompt.slice(0, 500) }],
       }),
     },
   );
@@ -321,7 +348,8 @@ export async function generateCreativeImage({
   overlayLines = [],
 } = {}) {
   const cfg = imageGenConfig();
-  const prompt = buildCreativePrompt({ angle, offer, format, overlayLines });
+  const promptArgs = { angle, offer, format, overlayLines };
+  const prompt = buildCreativePromptForProvider(cfg.provider, promptArgs);
   const dir = path.join(outRoot, String(runId));
   ensureDir(dir);
   const dest = path.join(dir, `${safeName(angle?.id || 'angle')}-${format}-${index}.png`);
@@ -349,8 +377,14 @@ export async function generateCreativeImage({
         isGeoBlockedError(err) &&
         yandexCloudKeys().configured
       ) {
-        result = await genYandexArt(prompt, dest);
-        result = { ...result, fallback_from: 'openai', fallback_reason: err.message };
+        const yaPrompt = buildCreativePromptForProvider('yandex_art', promptArgs);
+        result = await genYandexArt(yaPrompt, dest);
+        result = {
+          ...result,
+          fallback_from: 'openai',
+          fallback_reason: err.message,
+          prompt_used: yaPrompt,
+        };
       } else {
         throw err;
       }
