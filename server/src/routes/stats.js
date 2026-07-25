@@ -18,9 +18,35 @@ function dateFilter(from, to, column = 'created_at') {
   return { sql: clauses.length ? clauses.join(' AND ') : '1=1', params };
 }
 
+/** Dominant currency for aggregated stats (by period click volume, else latest campaign). */
+function userDisplayCurrency(uid, from, to) {
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const top = db
+    .prepare(
+      `SELECT COALESCE(NULLIF(c.currency, ''), 'USD') AS currency, COUNT(*) AS cnt
+       FROM clicks cl
+       JOIN campaigns c ON c.id = cl.campaign_id
+       WHERE c.user_id = ? AND ${cf.sql}
+       GROUP BY c.currency
+       ORDER BY cnt DESC
+       LIMIT 1`
+    )
+    .get(uid, ...cf.params);
+  if (top?.currency) return top.currency;
+
+  const latest = db
+    .prepare(
+      `SELECT COALESCE(NULLIF(currency, ''), 'USD') AS currency
+       FROM campaigns WHERE user_id = ? ORDER BY id DESC LIMIT 1`
+    )
+    .get(uid);
+  return latest?.currency || 'USD';
+}
+
 router.get('/overview', (req, res) => {
   const uid = req.user.id;
   const { from, to } = req.query;
+  const currency = userDisplayCurrency(uid, from, to);
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
 
@@ -67,6 +93,7 @@ router.get('/overview', (req, res) => {
     roi: cost > 0 ? round((profit / cost) * 100) : null,
     cr: clickCount > 0 ? round((conversions / clickCount) * 100) : 0,
     epc: clickCount > 0 ? round(revenue / clickCount) : 0,
+    currency,
   });
 });
 
@@ -83,6 +110,7 @@ router.get('/by-campaign', (req, res) => {
         c.name,
         c.key,
         c.status,
+        COALESCE(NULLIF(c.currency, ''), 'USD') AS currency,
         COALESCE(s.name, '—') AS source_name,
         COALESCE(o.name, '—') AS offer_name,
         COUNT(cl.id) AS clicks,
@@ -131,6 +159,7 @@ router.get('/by-offer', (req, res) => {
         o.network,
         o.geo,
         o.payout,
+        COALESCE(NULLIF(o.currency, ''), 'USD') AS currency,
         COUNT(cl.id) AS clicks,
         COALESCE(SUM(cl.cost), 0) AS cost,
         COALESCE(cv.conversions, 0) AS conversions,
@@ -169,6 +198,7 @@ router.get('/by-source', (req, res) => {
       `SELECT
         s.id,
         s.name,
+        COALESCE(NULLIF(s.currency, ''), 'USD') AS currency,
         COUNT(cl.id) AS clicks,
         COALESCE(SUM(cl.cost), 0) AS cost,
         COALESCE(cv.conversions, 0) AS conversions,
@@ -200,6 +230,7 @@ router.get('/by-source', (req, res) => {
 router.get('/by-day', (req, res) => {
   const uid = req.user.id;
   const { from, to } = req.query;
+  const currency = userDisplayCurrency(uid, from, to);
   const cf = dateFilter(from, to, 'cl.created_at');
   const vf = dateFilter(from, to, 'cv.created_at');
 
@@ -245,7 +276,9 @@ router.get('/by-day', (req, res) => {
     map.set(r.day, cur);
   }
 
-  const enriched = [...map.values()].sort((a, b) => a.day.localeCompare(b.day)).map(enrichRow);
+  const enriched = [...map.values()]
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .map((r) => enrichRow({ ...r, currency }));
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(
       res,
@@ -260,6 +293,7 @@ router.get('/by-day', (req, res) => {
 router.get('/by-token', (req, res) => {
   const uid = req.user.id;
   const { from, to } = req.query;
+  const currency = userDisplayCurrency(uid, from, to);
   const tokenField = ['token1', 'token2', 'token3', 'token4', 'token5'].includes(
     String(req.query.token || '')
   )
@@ -323,7 +357,7 @@ router.get('/by-token', (req, res) => {
 
   const enriched = [...map.values()]
     .sort((a, b) => b.clicks - a.clicks)
-    .map(enrichRow);
+    .map((r) => enrichRow({ ...r, currency }));
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-token.csv', enriched, statsColumns());
   }
@@ -438,6 +472,7 @@ function enrichRow(row) {
   const profit = revenue - cost;
   return {
     ...row,
+    currency: row.currency || 'USD',
     clicks,
     cost: round(cost),
     revenue: round(revenue),

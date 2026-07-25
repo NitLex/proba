@@ -43,6 +43,8 @@ export default function Stats() {
     }
   }
 
+  const cur = overview?.currency || 'USD';
+
   return (
     <div>
       <div className="page-head">
@@ -72,7 +74,7 @@ export default function Stats() {
           <div className="metric">
             <div className="metric-label">Profit</div>
             <div className={`metric-value ${overview.profit >= 0 ? 'pos' : 'neg'}`}>
-              {money(overview.profit)}
+              {money(overview.profit, cur)}
             </div>
           </div>
           <div className="metric">
@@ -126,7 +128,9 @@ export default function Stats() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.map((r) => {
+                const rowCur = r.currency || cur;
+                return (
                 <tr key={r.id ?? r.day ?? r.name}>
                   <td>{r.name || r.day}</td>
                   {group === 'by-campaign' && <td>{r.source_name}</td>}
@@ -135,13 +139,13 @@ export default function Stats() {
                   <td>{num(r.clicks)}</td>
                   <td>{num(r.conversions)}</td>
                   <td>{pct(r.cr)}</td>
-                  <td>{money(r.cost)}</td>
-                  <td>{money(r.revenue)}</td>
-                  <td className={r.profit >= 0 ? 'pos' : 'neg'}>{money(r.profit)}</td>
+                  <td>{money(r.cost, rowCur)}</td>
+                  <td>{money(r.revenue, rowCur)}</td>
+                  <td className={r.profit >= 0 ? 'pos' : 'neg'}>{money(r.profit, rowCur)}</td>
                   <td>{r.roi == null ? '—' : pct(r.roi)}</td>
-                  <td>{money(r.epc)}</td>
+                  <td>{money(r.epc, rowCur)}</td>
                 </tr>
-              ))}
+              );})}
               {!rows.length && (
                 <tr>
                   <td colSpan={12}>

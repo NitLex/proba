@@ -27,6 +27,7 @@ export default function Dashboard() {
   }, [from, to]);
 
   const maxClicks = Math.max(...byDay.map((d) => d.clicks), 1);
+  const cur = overview?.currency || 'USD';
 
   return (
     <div>
@@ -50,11 +51,11 @@ export default function Dashboard() {
           <Metric label="Уники" value={num(overview.uniques)} />
           <Metric label="Конверсии" value={num(overview.conversions)} />
           <Metric label="CR" value={pct(overview.cr)} />
-          <Metric label="Cost" value={money(overview.cost)} />
-          <Metric label="Revenue" value={money(overview.revenue)} />
+          <Metric label="Cost" value={money(overview.cost, cur)} />
+          <Metric label="Revenue" value={money(overview.revenue, cur)} />
           <Metric
             label="Profit"
-            value={money(overview.profit)}
+            value={money(overview.profit, cur)}
             tone={overview.profit >= 0 ? 'pos' : 'neg'}
           />
           <Metric label="ROI" value={overview.roi == null ? '—' : pct(overview.roi)} />
@@ -105,7 +106,9 @@ export default function Dashboard() {
                     <td>{c.name}</td>
                     <td>{num(c.clicks)}</td>
                     <td>{num(c.conversions)}</td>
-                    <td className={c.profit >= 0 ? 'pos' : 'neg'}>{money(c.profit)}</td>
+                    <td className={c.profit >= 0 ? 'pos' : 'neg'}>
+                      {money(c.profit, c.currency || cur)}
+                    </td>
                   </tr>
                 ))}
                 {!campaigns.length && (
