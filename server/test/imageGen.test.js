@@ -4,21 +4,27 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-test('imageGenConfig prefers GPT Image when OPENAI_API_KEY set', async () => {
-  const prevProvider = process.env.IMAGE_PROVIDER;
-  const prevKey = process.env.OPENAI_API_KEY;
-  delete process.env.IMAGE_PROVIDER;
-  process.env.OPENAI_API_KEY = 'sk-test';
+test('imageGenConfig auto prefers YandexART when cloud keys set', async () => {
+  const prev = {
+    IMAGE_PROVIDER: process.env.IMAGE_PROVIDER,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    YANDEX_CLOUD_API_KEY: process.env.YANDEX_CLOUD_API_KEY,
+    YANDEX_CLOUD_FOLDER_ID: process.env.YANDEX_CLOUD_FOLDER_ID,
+  };
+  process.env.IMAGE_PROVIDER = 'auto';
+  delete process.env.OPENAI_API_KEY;
+  process.env.YANDEX_CLOUD_API_KEY = 'test-key';
+  process.env.YANDEX_CLOUD_FOLDER_ID = 'folder1';
   const { imageGenConfig, resolveImageProvider } = await import('../src/lib/imageGen.js');
-  assert.equal(resolveImageProvider(), 'openai');
+  assert.equal(resolveImageProvider(), 'yandex_art');
   const cfg = imageGenConfig();
   assert.equal(cfg.configured, true);
-  assert.equal(cfg.provider, 'openai');
-  assert.match(cfg.note, /GPT Image/);
-  if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
-  else process.env.IMAGE_PROVIDER = prevProvider;
-  if (prevKey === undefined) delete process.env.OPENAI_API_KEY;
-  else process.env.OPENAI_API_KEY = prevKey;
+  assert.equal(cfg.provider, 'yandex_art');
+  assert.match(cfg.note, /YandexART/);
+  for (const [k, v] of Object.entries(prev)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
 });
 
 test('generateCreativeImage writes b64 from GPT Image API mock', async () => {

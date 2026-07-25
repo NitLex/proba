@@ -348,12 +348,19 @@ export async function runDirect({ offer, context, apply = false }) {
 
   const applied = Boolean(applyResult?.ok);
   const fmt = plan.ad_format_label || formatLabel(plan.ad_format);
+  const applyError = apply && apiReady && !applied
+    ? applyResult?.error || applyResult || 'unknown'
+    : null;
+
+  if (applyError) {
+    const details = typeof applyError === 'string' ? applyError : JSON.stringify(applyError);
+    throw new Error(`Директ: не удалось создать черновик — ${details.slice(0, 400)}`);
+  }
+
   const readyMessage = applied
     ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · черновик (OFF), на модерацию не отправляли`
     : apiReady
-      ? apply
-        ? `Директ: не удалось создать черновик — ${JSON.stringify(applyResult?.error || applyResult).slice(0, 200)}`
-        : 'Директ: план готов (apply_direct=false — в аккаунте не создавали)'
+      ? 'Директ: план готов (apply_direct=false — в аккаунте не создавали)'
       : 'Директ: план готов (токена нет — только спецификация)';
 
   return {

@@ -42,26 +42,30 @@
 
 Правило: текст либо на креативе (графика), либо в настройках объявления (товарка) — не дублируем.
 
-## Креативы — GPT Image API
+## Креативы
 
-Ключ: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)  
-Документация: [Image generation](https://platform.openai.com/docs/guides/image-generation)
+### Рекомендуемо на RU VPS: YandexART
+OpenAI GPT Image с российского IP отвечает `Country, region, or territory not supported`.
+На VPS используем **YandexART** (те же `YANDEX_CLOUD_API_KEY` + `YANDEX_CLOUD_FOLDER_ID`, что Wordstat).
 
-В `SECRETS.env` / `.env`:
+```bash
+IMAGE_PROVIDER=yandex_art
+# уже должны быть:
+YANDEX_CLOUD_API_KEY=...
+YANDEX_CLOUD_FOLDER_ID=...
+```
 
+`IMAGE_PROVIDER=auto` (по умолчанию) сам выберет YandexART, если cloud-ключи есть.
+
+### Опционально: GPT Image через прокси
 ```bash
 IMAGE_PROVIDER=openai
 OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1          # или gpt-image-2 / gpt-image-1.5
-# OPENAI_IMAGE_QUALITY=medium           # low | medium | high
-# OPENAI_IMAGE_SIZE=1024x1024
+OPENAI_IMAGE_MODEL=gpt-image-1
+OPENAI_HTTP_PROXY=http://user:pass@HOST:PORT   # EU/US HTTP(S) proxy
 ```
 
-Если `OPENAI_API_KEY` задан, а `IMAGE_PROVIDER` пустой — оркестратор сам выберет `openai`.
-
-Без ключа агент пишет image-промпты и использует готовые ассеты из `creatives/rsya/`.
-
-> Для GPT Image иногда нужна [Organization Verification](https://platform.openai.com/settings/organization/general) в кабинете OpenAI.
+Если OpenAI вернул geo-ошибку, а YandexART настроен — будет **авто-fallback** на YandexART.
 
 ## Секреты на VPS
 
@@ -73,9 +77,9 @@ YANDEX_DIRECT_LOGIN=...
 YANDEX_CLOUD_API_KEY=...
 YANDEX_CLOUD_FOLDER_ID=...
 LEADGID_TOKEN=...
-IMAGE_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1
+IMAGE_PROVIDER=yandex_art
+YANDEX_CLOUD_API_KEY=...
+YANDEX_CLOUD_FOLDER_ID=...
 ```
 
 ## UI

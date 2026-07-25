@@ -1,7 +1,12 @@
 /**
  * Image generation for РСЯ creatives.
- * Primary: GPT Image API (OpenAI) — IMAGE_PROVIDER=openai + OPENAI_API_KEY
- * Optional fallbacks: replicate | useapi_mj | none
+ *
+ * Providers:
+ *   - yandex_art  → YandexART (работает с RU VPS; YANDEX_CLOUD_API_KEY + FOLDER_ID)
+ *   - openai      → GPT Image API (нужен не-RU IP или OPENAI_HTTP_PROXY)
+ *   - replicate   → FLUX
+ *   - auto        → yandex_art если есть cloud-ключи, иначе openai; при geo-ошибке OpenAI → YandexART
+ *   - none
  */
 import fs from 'fs';
 import path from 'path';
@@ -10,33 +15,59 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outRoot = path.resolve(__dirname, '../../../creatives/pipeline');
 
+function yandexCloudKeys() {
+  const apiKey =
+    process.env.YANDEX_CLOUD_API_KEY ||
+    process.env.WORDSTAT_API_KEY ||
+    process.env.YANDEX_ART_API_KEY ||
+    '';
+  const folderId =
+    process.env.YANDEX_CLOUD_FOLDER_ID ||
+    process.env.WORDSTAT_FOLDER_ID ||
+    process.env.YANDEX_ART_FOLDER_ID ||
+    '';
+  return { apiKey, folderId, configured: Boolean(apiKey && folderId) };
+}
+
 export function resolveImageProvider() {
-  const explicit = String(process.env.IMAGE_PROVIDER || '').toLowerCase().trim();
-  if (explicit) return explicit;
-  // Default: GPT Image API when key is present
+  const explicit = String(process.env.IMAGE_PROVIDER || 'auto').toLowerCase().trim();
+  if (explicit && explicit !== 'auto') return explicit;
+  // auto: prefer YandexART on RU (no geo block), else OpenAI
+  if (yandexCloudKeys().configured) return 'yandex_art';
   if (process.env.OPENAI_API_KEY) return 'openai';
   return 'none';
 }
 
 export function imageGenConfig() {
   const provider = resolveImageProvider();
+  const yc = yandexCloudKeys();
   const configured =
+    (provider === 'yandex_art' && yc.configured) ||
     (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
-    (provider === 'replicate' && Boolean(process.env.REPLICATE_API_TOKEN)) ||
-    (provider === 'useapi_mj' && Boolean(process.env.USEAPI_TOKEN));
-  const model =
-    provider === 'openai'
-      ? process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
-      : null;
+    (provider === 'replicate' && Boolean(process.env.REPLICATE_API_TOKEN));
+
+  let model = null;
+  if (provider === 'openai') model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+  if (provider === 'yandex_art') model = process.env.YANDEX_ART_MODEL || 'yandex-art/latest';
+
+  const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
+  let note = 'Не настроено — задай YANDEX_CLOUD_* (YandexART) или OPENAI_API_KEY';
+  if (configured) {
+    if (provider === 'yandex_art') note = `YandexART · ${model}`;
+    else if (provider === 'openai') {
+      note = proxy
+        ? `GPT Image API · ${model} · через proxy`
+        : `GPT Image API · ${model} (с RU VPS нужен OPENAI_HTTP_PROXY или IMAGE_PROVIDER=yandex_art)`;
+    } else note = `Live · ${provider}`;
+  }
+
   return {
     provider: configured ? provider : 'none',
     configured,
     model,
-    note: configured
-      ? provider === 'openai'
-        ? `GPT Image API · ${model}`
-        : `Live · ${provider}`
-      : 'Не настроено — задай OPENAI_API_KEY (GPT Image API)',
+    proxy: Boolean(proxy),
+    yandex_art_ready: yc.configured,
+    note,
   };
 }
 
@@ -117,10 +148,33 @@ function writeBase64Image(b64, dest) {
   return dest;
 }
 
+function isGeoBlockedError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('country') ||
+    msg.includes('region') ||
+    msg.includes('territory not supported') ||
+    msg.includes('not available in your country')
+  );
+}
+
+/** Optional proxy for OpenAI (EU/US HTTP(S) proxy). Uses undici if present. */
+async function openaiFetch(url, init) {
+  const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
+  if (!proxy) return fetch(url, init);
+  try {
+    const undici = await import('undici');
+    const agent = new undici.ProxyAgent(proxy);
+    return undici.fetch(url, { ...init, dispatcher: agent });
+  } catch (err) {
+    throw new Error(
+      `OPENAI_HTTP_PROXY задан, но undici proxy недоступен: ${err.message}. Используй IMAGE_PROVIDER=yandex_art`,
+    );
+  }
+}
+
 /**
- * GPT Image API (Images generations).
- * Default model: gpt-image-1 (override via OPENAI_IMAGE_MODEL=gpt-image-2 etc.)
- * Response is usually b64_json.
+ * GPT Image API — с RU VPS обычно нужен OPENAI_HTTP_PROXY.
  */
 async function genOpenAI(prompt, dest) {
   const key = process.env.OPENAI_API_KEY;
@@ -136,15 +190,10 @@ async function genOpenAI(prompt, dest) {
     size,
   };
 
-  if (isGptImage) {
-    body.quality = quality;
-    // GPT Image returns b64_json; do not send legacy response_format=url
-  } else {
-    // Legacy DALL·E fallback
-    body.response_format = 'b64_json';
-  }
+  if (isGptImage) body.quality = quality;
+  else body.response_format = 'b64_json';
 
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
+  const res = await openaiFetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${key}`,
@@ -167,6 +216,63 @@ async function genOpenAI(prompt, dest) {
     return { provider: 'openai', model, path: dest, url: item.url, format: 'url' };
   }
   throw new Error('openai: no b64_json or url in response');
+}
+
+/**
+ * YandexART — работает с российского VPS на тех же ключах, что Wordstat.
+ * Docs: foundationModels/v1/imageGenerationAsync
+ */
+async function genYandexArt(prompt, dest) {
+  const { apiKey, folderId, configured } = yandexCloudKeys();
+  if (!configured) throw new Error('YandexART: нужен YANDEX_CLOUD_API_KEY + YANDEX_CLOUD_FOLDER_ID');
+
+  const modelName = process.env.YANDEX_ART_MODEL || 'yandex-art/latest';
+  const modelUri = modelName.startsWith('art://')
+    ? modelName
+    : `art://${folderId}/${modelName.replace(/^\/+/, '')}`;
+
+  const create = await fetch(
+    'https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Api-Key ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        modelUri,
+        generationOptions: {
+          seed: String(Date.now() % 1_000_000_000),
+          aspectRatio: { widthRatio: '1', heightRatio: '1' },
+        },
+        messages: [{ weight: '1', text: prompt.slice(0, 4500) }],
+      }),
+    },
+  );
+  const created = await create.json();
+  if (!create.ok) {
+    throw new Error(created?.message || created?.error || `yandex_art ${create.status}`);
+  }
+  const opId = created.id;
+  if (!opId) throw new Error('yandex_art: no operation id');
+
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const poll = await fetch(`https://operation.api.cloud.yandex.net/operations/${opId}`, {
+      headers: { Authorization: `Api-Key ${apiKey}` },
+    });
+    const op = await poll.json();
+    if (op.error) throw new Error(op.error.message || JSON.stringify(op.error));
+    if (op.done) {
+      const b64 = op.response?.image;
+      if (!b64) throw new Error('yandex_art: empty image in operation response');
+      // YandexART returns JPEG base64
+      const jpegDest = dest.replace(/\.png$/i, '.jpg');
+      writeBase64Image(b64, jpegDest);
+      return { provider: 'yandex_art', model: modelUri, path: jpegDest, format: 'b64_json', operation_id: opId };
+    }
+  }
+  throw new Error('yandex_art: timeout waiting for image');
 }
 
 async function genReplicate(prompt, dest) {
@@ -196,6 +302,13 @@ async function genReplicate(prompt, dest) {
   return { provider: 'replicate', path: dest, url };
 }
 
+async function generateWithProvider(provider, prompt, dest) {
+  if (provider === 'yandex_art') return genYandexArt(prompt, dest);
+  if (provider === 'openai') return genOpenAI(prompt, dest);
+  if (provider === 'replicate') return genReplicate(prompt, dest);
+  throw new Error(`Unknown IMAGE_PROVIDER ${provider}`);
+}
+
 /**
  * Generate one square creative image. Returns { ok, prompt, path?, error?, provider }
  */
@@ -211,10 +324,7 @@ export async function generateCreativeImage({
   const prompt = buildCreativePrompt({ angle, offer, format, overlayLines });
   const dir = path.join(outRoot, String(runId));
   ensureDir(dir);
-  const dest = path.join(
-    dir,
-    `${safeName(angle?.id || 'angle')}-${format}-${index}.png`,
-  );
+  const dest = path.join(dir, `${safeName(angle?.id || 'angle')}-${format}-${index}.png`);
 
   if (cfg.provider === 'none') {
     return {
@@ -224,21 +334,30 @@ export async function generateCreativeImage({
       format,
       image_has_text: format === 'graphic',
       prompt,
-      reason: 'OPENAI_API_KEY / IMAGE_PROVIDER not configured',
+      reason: 'Нет YandexART / OPENAI_API_KEY',
     };
   }
 
   try {
     let result;
-    if (cfg.provider === 'openai') result = await genOpenAI(prompt, dest);
-    else if (cfg.provider === 'replicate') result = await genReplicate(prompt, dest);
-    else if (cfg.provider === 'useapi_mj') {
-      throw new Error('useapi_mj отключён — используй GPT Image API (OPENAI_API_KEY)');
-    } else {
-      throw new Error(`Unknown IMAGE_PROVIDER ${cfg.provider}`);
+    try {
+      result = await generateWithProvider(cfg.provider, prompt, dest);
+    } catch (err) {
+      // OpenAI geo-block → automatic YandexART fallback
+      if (
+        cfg.provider === 'openai' &&
+        isGeoBlockedError(err) &&
+        yandexCloudKeys().configured
+      ) {
+        result = await genYandexArt(prompt, dest);
+        result = { ...result, fallback_from: 'openai', fallback_reason: err.message };
+      } else {
+        throw err;
+      }
     }
 
-    const rel = path.relative(path.resolve(__dirname, '../../..'), dest);
+    const absPath = result.path || dest;
+    const rel = path.relative(path.resolve(__dirname, '../../..'), absPath);
     return {
       ok: true,
       prompt,

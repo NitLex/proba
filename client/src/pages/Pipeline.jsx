@@ -79,8 +79,16 @@ export default function Pipeline() {
       const ready = run.context?.direct?.ready_message || run.steps?.find((s) => s.agent === 'direct')?.output?.ready_message;
       const launches = run.context?.cursor_launches || [];
       const launched = launches.filter((l) => l.ok).length;
+      const directStep = run.steps?.find((s) => s.agent === 'direct');
+      const directFail =
+        directStep?.status === 'failed' ||
+        /не удалось создать черновик/i.test(directStep?.output?.summary || run.error || '');
       if (run.status === 'done' && ready) {
         setMsg(`${ready}. Проверь Директ и запусти сам — на модерацию не отправляли.`);
+      } else if (directFail) {
+        setMsg(
+          `Директ не создал кампанию: ${run.error || directStep?.error || directStep?.output?.summary || 'ошибка API'}`,
+        );
       } else if (run.status === 'done') {
         setMsg(
           `Пайплайн завершён${spawnCursor ? ` · Cursor агентов: ${launched}/${launches.length || 0}` : ''}`,
@@ -161,11 +169,11 @@ export default function Pipeline() {
               <div className="mono" style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
                 images
               </div>
-              <strong>GPT Image</strong>
+              <strong>Креативы</strong>
               <p className="hint">
                 {integrations.images?.configured
                   ? integrations.images.note
-                  : 'Нужен OPENAI_API_KEY (GPT Image API)'}
+                  : 'Нужен YandexART (YANDEX_CLOUD_*) или OpenAI + proxy'}
               </p>
             </div>
             <div className="subpanel">
