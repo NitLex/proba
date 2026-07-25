@@ -12,7 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import { buildAdLinkFields } from '../../lib/adHref.js';
-import { directApi } from '../../lib/directApi.js';
+import { directApiRetry } from '../../lib/directApi.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -52,7 +52,7 @@ async function uploadAdImage(filePath) {
   if (!abs) return { ok: false, error: `file not found: ${filePath}` };
   const b64 = fs.readFileSync(abs).toString('base64');
   const name = path.basename(abs).slice(0, 255) || 'creative.jpg';
-  const res = await directApi('adimages', {
+  const res = await directApiRetry('adimages', {
     method: 'add',
     params: {
       AdImages: [
@@ -84,6 +84,51 @@ function pickImageForAngle(generatedImages, angleId) {
     list.find((g) => g.ok && g.path && (g.format === 'graphic' || g.format === 'product')) ||
     list.find((g) => g.ok && g.path);
   return hit?.path || null;
+}
+
+const ANGLE_KEYWORD_FALLBACK = {
+  travel: [
+    'карта для поездок',
+    'карта для путешествий',
+    'оплата за границей картой',
+    'виртуальная карта для путешествий',
+  ],
+  services: [
+    'карта для подписок',
+    'оплата зарубежных сервисов',
+    'виртуальная карта для сервисов',
+    'карта для онлайн сервисов',
+  ],
+  sbp: [
+    'карта с пополнением по сбп',
+    'выпуск карты онлайн',
+    'открыть карту онлайн',
+    'виртуальная карта сбп',
+  ],
+  premium: ['премиальная виртуальная карта', 'карта с выгодным курсом'],
+  generic: ['виртуальная карта онлайн', 'выпуск цифровой карты'],
+};
+
+/** Ensure every ad group gets keywords even if Wordstat clustered into one angle. */
+export function keywordsForAngle(angle, semantics = {}, playbook = {}) {
+  const id = angle?.id || 'generic';
+  const fromGroup = semantics.groups?.[id] || [];
+  const fromList = (semantics.keywords || [])
+    .filter((k) => k.group === id)
+    .map((k) => k.phrase);
+  let kws = [...fromGroup, ...fromList].filter(Boolean);
+  if (!kws.length) {
+    const hooks = (angle?.hooks || playbook.angles?.find((a) => a.id === id)?.hooks || []).filter(
+      Boolean,
+    );
+    const pool = (semantics.keywords || []).map((k) => k.phrase).filter(Boolean);
+    kws = [...hooks, ...(ANGLE_KEYWORD_FALLBACK[id] || ANGLE_KEYWORD_FALLBACK.generic), ...pool.slice(0, 8)];
+  }
+  return [...new Set(kws.map((p) => String(p).trim()).filter(Boolean))];
+}
+
+function countAddOk(res) {
+  return (res?.result?.AddResults || []).filter((r) => r.Id && !(r.Errors || []).length).length;
 }
 
 function buildPlan({ offer, context }) {
@@ -159,10 +204,7 @@ function buildPlan({ offer, context }) {
         requested: brief.ad_format || campaignFormat,
         imageHasText: brief.image_has_text,
       });
-      const kws =
-        (semantics.groups && semantics.groups[angle.id]) ||
-        semantics.keywords?.filter((k) => k.group === angle.id).map((k) => k.phrase) ||
-        [];
+      const kws = keywordsForAngle(angle, semantics, playbook);
       const imagePath = pickImageForAngle(creativesMeta.generated_images, angle.id);
       const link = buildAdLinkFields({ clickUrl: trackerClick, offer, angle });
 
@@ -219,12 +261,23 @@ function buildPlan({ offer, context }) {
   };
 }
 
+async function listCampaignAdGroupIds(campaignId) {
+  const res = await directApiRetry('adgroups', {
+    method: 'get',
+    params: {
+      SelectionCriteria: { CampaignIds: [campaignId] },
+      FieldNames: ['Id', 'Name'],
+    },
+  });
+  return (res?.result?.AdGroups || []).map((g) => g.Id).filter(Boolean);
+}
+
 async function applyDraft(plan) {
   const log = [];
   const weeklyMicros = Math.round(plan.strategy.weekly_spend_limit_rub * 1_000_000);
   const cpcMicros = Math.round(plan.strategy.bid_ceiling_rub * 1_000_000);
 
-  const addCampaign = await directApi('campaigns', {
+  const addCampaign = await directApiRetry('campaigns', {
     method: 'add',
     params: {
       Campaigns: [
@@ -272,7 +325,8 @@ async function applyDraft(plan) {
     };
   }
 
-  const suspend = await directApi('campaigns', {
+  // DRAFT campaigns cannot be suspended — ignore expected 8300
+  const suspend = await directApiRetry('campaigns', {
     method: 'suspend',
     params: { SelectionCriteria: { Ids: [campaignId] } },
   });
@@ -286,15 +340,36 @@ async function applyDraft(plan) {
 
   let adGroupIds = [];
   if (groupBodies.length) {
-    const addGroups = await directApi('adgroups', {
+    const addGroups = await directApiRetry('adgroups', {
       method: 'add',
       params: { AdGroups: groupBodies },
     });
     log.push({ step: 'adgroups.add', result: addGroups });
     adGroupIds = (addGroups?.result?.AddResults || []).map((r) => r.Id).filter(Boolean);
+
+    // Transient 1000 can still create groups — reconcile by GET
+    if (!adGroupIds.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+      adGroupIds = await listCampaignAdGroupIds(campaignId);
+      log.push({
+        step: 'adgroups.reconcile',
+        result: { ad_group_ids: adGroupIds, after_error: Boolean(addGroups?.error) },
+      });
+    }
+    if (!adGroupIds.length && addGroups?.error) {
+      return {
+        ok: false,
+        campaign_id: campaignId,
+        ad_group_ids: [],
+        log,
+        error: addGroups.error,
+      };
+    }
   }
 
   const imageHashCache = new Map();
+  let keywordsAdded = 0;
+  let adsAdded = 0;
 
   async function hashFor(imagePath) {
     if (!imagePath) return null;
@@ -307,14 +382,15 @@ async function applyDraft(plan) {
   }
 
   for (let i = 0; i < adGroupIds.length; i++) {
-    const group = plan.ad_groups[i];
+    const group = plan.ad_groups[i] || plan.ad_groups[0] || {};
     const keywords = (group.keywords || []).slice(0, 40).map((phrase) => ({
       Keyword: String(phrase).slice(0, 4096),
       AdGroupId: adGroupIds[i],
     }));
     if (keywords.length) {
-      const kw = await directApi('keywords', { method: 'add', params: { Keywords: keywords } });
+      const kw = await directApiRetry('keywords', { method: 'add', params: { Keywords: keywords } });
       log.push({ step: `keywords.add:${adGroupIds[i]}`, result: kw });
+      keywordsAdded += countAddOk(kw);
     }
 
     const adsPayload = [];
@@ -329,7 +405,6 @@ async function applyDraft(plan) {
           });
           continue;
         }
-        // ImageAd: domain comes from Href only (no DisplayUrlPath in API)
         adsPayload.push({
           AdGroupId: adGroupIds[i],
           ImageAd: {
@@ -351,8 +426,9 @@ async function applyDraft(plan) {
     }
 
     if (adsPayload.length) {
-      const adRes = await directApi('ads', { method: 'add', params: { Ads: adsPayload } });
+      const adRes = await directApiRetry('ads', { method: 'add', params: { Ads: adsPayload } });
       log.push({ step: `ads.add:${adGroupIds[i]}`, result: adRes });
+      adsAdded += countAddOk(adRes);
       // Explicitly DO NOT call ads.moderate
     }
   }
@@ -362,18 +438,27 @@ async function applyDraft(plan) {
   const imageFail = imageUploads.filter((l) => l.result && !l.result.ok).length;
   const neededImages = (plan.ad_groups || []).some((g) => g.image_path || g.ads?.some((a) => a.image_path));
 
+  const incomplete = adsAdded === 0 || adGroupIds.length === 0;
+  const warnings = [];
+  if (neededImages && imageFail > 0 && imageOk === 0) {
+    warnings.push('Креативы не загрузились в Директ (adimages) — объявления без картинок');
+  }
+  if (adsAdded === 0) warnings.push('Объявления не созданы');
+  if (keywordsAdded === 0) warnings.push('Ключевые фразы не созданы');
+
   return {
-    ok: true,
+    ok: !incomplete,
     campaign_id: campaignId,
     ad_group_ids: adGroupIds,
     ad_format: plan.ad_format,
     state: 'OFF',
     moderation_submitted: false,
+    counts: { ad_groups: adGroupIds.length, keywords: keywordsAdded, ads: adsAdded },
     images: { attempted: imageUploads.length, ok: imageOk, failed: imageFail },
-    warning:
-      neededImages && imageFail > 0 && imageOk === 0
-        ? 'Креативы не загрузились в Директ (adimages) — объявления без картинок'
-        : null,
+    warning: warnings.length ? warnings.join(' · ') : null,
+    error: incomplete
+      ? warnings.join(' · ') || 'Кампания создана без объявлений/групп'
+      : null,
     log,
   };
 }
@@ -399,8 +484,9 @@ export async function runDirect({ offer, context, apply = false }) {
   }
 
   const imgWarn = applyResult?.warning;
+  const counts = applyResult?.counts;
   const readyMessage = applied
-    ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · черновик (OFF)${imgWarn ? ` · ⚠ ${imgWarn}` : ', на модерацию не отправляли'}`
+    ? `Кампания готова · ID ${applyResult.campaign_id} · ${fmt} · групп ${counts?.ad_groups ?? '—'} · объявл. ${counts?.ads ?? '—'} · ключей ${counts?.keywords ?? '—'} · черновик (OFF)${imgWarn ? ` · ⚠ ${imgWarn}` : ', на модерацию не отправляли'}`
     : apiReady
       ? 'Директ: план готов (apply_direct=false — в аккаунте не создавали)'
       : 'Директ: план готов (токена нет — только спецификация)';
@@ -412,6 +498,19 @@ export async function runDirect({ offer, context, apply = false }) {
     playbook: context.playbook,
     tracker: context.tracker,
   });
+
+  // Keep context lean: full apply log stays in step output only
+  const applySummary = applyResult
+    ? {
+        ok: applyResult.ok,
+        campaign_id: applyResult.campaign_id,
+        ad_group_ids: applyResult.ad_group_ids,
+        counts: applyResult.counts,
+        images: applyResult.images,
+        warning: applyResult.warning,
+        error: applyResult.error || null,
+      }
+    : null;
 
   return {
     summary: readyMessage,
@@ -449,6 +548,7 @@ export async function runDirect({ offer, context, apply = false }) {
         api_ready: apiReady,
         applied,
         campaign_id: applyResult?.campaign_id || null,
+        apply_summary: applySummary,
         ready_message: applied ? 'Кампания готова' : null,
         ad_format: plan.ad_format,
       },

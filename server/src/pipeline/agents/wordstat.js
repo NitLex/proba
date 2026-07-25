@@ -58,12 +58,25 @@ const DEFAULT_NEGATIVES = [
 
 function assignGroup(phrase, angles) {
   const p = phrase.toLowerCase();
-  for (const a of angles) {
-    if (a.id === 'travel' && /путешеств|границ|поезд|тур|отел|booking/.test(p)) return 'travel';
-    if (a.id === 'services' && /сервис|подписк|доллар|spotify|steam|chatgpt/.test(p)) return 'services';
-    if (a.id === 'premium' && /премиум|курс/.test(p)) return 'premium';
+  const has = (id) => angles.some((a) => a.id === id);
+  if (has('sbp') && /сбп|выпуск карт|открыть карт|пополнен/.test(p)) return 'sbp';
+  if (has('services') && /сервис|подписк|доллар|spotify|steam|chatgpt|онлайн.?оплат/.test(p)) {
+    return 'services';
   }
+  if (has('travel') && /путешеств|границ|поезд|тур|отел|booking|за рубеж/.test(p)) return 'travel';
+  if (has('premium') && /премиум|курс/.test(p)) return 'premium';
   return angles[0]?.id || 'generic';
+}
+
+/** If clustering collapsed into one angle, seed empty groups from angle hooks/fallbacks. */
+function ensureGroupsHaveKeywords(byGroup, angles, keywords) {
+  const pool = keywords.map((k) => k.phrase).filter(Boolean);
+  for (const a of angles) {
+    if ((byGroup[a.id] || []).length) continue;
+    const hooks = (a.hooks || []).filter(Boolean);
+    byGroup[a.id] = [...new Set([...hooks, ...pool.slice(0, 6)])].slice(0, 20);
+  }
+  return byGroup;
 }
 
 export async function runWordstat({ offer, context }) {
@@ -104,11 +117,12 @@ export async function runWordstat({ offer, context }) {
     }));
   }
 
-  const byGroup = {};
+  let byGroup = {};
   for (const kw of keywords) {
     byGroup[kw.group] = byGroup[kw.group] || [];
     byGroup[kw.group].push(kw.phrase);
   }
+  byGroup = ensureGroupsHaveKeywords(byGroup, angles, keywords);
 
   const liveErrors = live?.errors || [];
 

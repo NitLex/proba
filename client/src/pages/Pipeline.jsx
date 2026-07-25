@@ -478,6 +478,18 @@ export default function Pipeline() {
             {active.context?.direct?.ready_message ? (
               <div className="banner ok">{active.context.direct.ready_message}</div>
             ) : null}
+            {active.context?.direct?.apply_summary ? (
+              <div
+                className={`banner ${active.context.direct.apply_summary.ok ? 'ok' : 'bad'}`}
+              >
+                Директ apply: групп {active.context.direct.apply_summary.counts?.ad_groups ?? 0}
+                {' · '}объявл. {active.context.direct.apply_summary.counts?.ads ?? 0}
+                {' · '}ключей {active.context.direct.apply_summary.counts?.keywords ?? 0}
+                {active.context.direct.apply_summary.warning
+                  ? ` · ⚠ ${active.context.direct.apply_summary.warning}`
+                  : ''}
+              </div>
+            ) : null}
             {active.context?.qa ? (
               <div className={`banner ${active.context.qa.ok ? 'ok' : 'bad'}`}>
                 QA: {active.context.qa.summary || (active.context.qa.ok ? 'ok' : 'fail')}
