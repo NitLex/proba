@@ -7,7 +7,9 @@
     "dev": "node --watch src/index.js",
     "start": "NODE_ENV=production node src/index.js",
     "seed": "node src/seed.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "apply:direct": "node src/apply-direct-plan.js",
+    "apply:direct:dry": "node src/apply-direct-plan.js --dry-run"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

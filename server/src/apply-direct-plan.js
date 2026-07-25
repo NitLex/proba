@@ -1,22 +1,29 @@
 #!/usr/bin/env node
 /**
- * Apply a full РСЯ TextCampaign plan to Yandex Direct API v5.
+ * Apply a full РСЯ TextCampaign plan to Yandex Direct API v5 as a DRAFT (OFF).
  *
  * Requires: YANDEX_DIRECT_TOKEN + YANDEX_DIRECT_LOGIN in SECRETS.env / .env
  *
  * Usage:
- *   node src/apply-direct-plan.js [path/to/plan.json] [--dry-run] [--resume]
- *   npm run apply:direct --prefix server
+ *   node src/apply-direct-plan.js [path/to/plan.json] [--dry-run]
+ *   npm run apply:direct --prefix server -- path/to/plan.json
  *
  * Flags:
- *   --dry-run   validate + print payload, no API writes
- *   --resume    after apply, resume campaign if Status=ACCEPTED
- *   --campaign-id=N  update existing campaign instead of creating
+ *   --dry-run              validate + print payload, no API writes
+ *   --campaign-id=N        update existing campaign instead of creating
+ *   --submit-moderation    ONLY if explicitly needed (default: DO NOT call ads.moderate)
+ *   --resume               resume serving after ACCEPTED (default: keep OFF)
+ *
+ * Defaults for pipeline Direct agent:
+ *   - StartDate = Europe/Moscow today (not UTC)
+ *   - campaigns.suspend after create → state OFF
+ *   - never ads.moderate unless --submit-moderation
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadEnv, mask } from './lib/env.js';
+import { directStartDate } from './lib/directDate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -36,11 +43,12 @@ loadEnv();
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const wantResume = args.includes('--resume');
+const submitModeration = args.includes('--submit-moderation');
 const campArg = args.find((a) => a.startsWith('--campaign-id='));
 const existingCampaignId = campArg ? Number(campArg.split('=')[1]) : null;
 const planPath =
   args.find((a) => !a.startsWith('--')) ||
-  path.join(ROOT, 'direct/plans/rsya-kredit365-premium-travel-services.json');
+  path.join(ROOT, 'direct/plans/rsya-ppm-product-travel-services-sbp.json');
 
 function rubToMicros(rub) {
   return Math.round(Number(rub) * 1_000_000);
@@ -106,12 +114,12 @@ function campaignSettings(plan) {
   }));
 }
 
-function buildCampaignBody(plan) {
+export function buildCampaignBody(plan, { startDate } = {}) {
   const weekly = rubToMicros(plan.strategy.weekly_spend_limit_rub);
   const ceiling = rubToMicros(plan.strategy.bid_ceiling_rub);
   return {
     Name: clip(plan.name, 255),
-    StartDate: new Date().toISOString().slice(0, 10),
+    StartDate: startDate || directStartDate(),
     TimeZone: 'Europe/Moscow',
     NegativeKeywords: { Items: (plan.negatives || []).slice(0, LIMITS.negative) },
     TextCampaign: {
@@ -145,26 +153,41 @@ async function uploadImage(imagePath) {
   return hash;
 }
 
+function resolveGroupImage(group) {
+  return group.image || group.image_path || group.ads?.find((a) => a.image_path)?.image_path || null;
+}
+
 async function applyPlan(plan) {
   const href = plan.href;
   const regionIds = plan.region_ids || [225];
+  const startDate = directStartDate();
+  const draftOnly =
+    plan.moderation === 'DO_NOT_SUBMIT' || plan.state === 'OFF' || !submitModeration;
+
   const out = {
     plan_name: plan.name,
     href,
     dry_run: dryRun,
+    draft_only: draftOnly,
+    moderation_submitted: false,
+    start_date: startDate,
+    timezone: 'Europe/Moscow',
     neuro_ads: 'OFF',
     direct_helps_auto: 'OFF',
+    ad_format: plan.ad_format || 'product',
     steps: {},
   };
 
   if (dryRun) {
-    out.steps.campaign = { preview: buildCampaignBody(plan) };
+    out.steps.campaign = { preview: buildCampaignBody(plan, { startDate }) };
     out.steps.ad_groups = plan.ad_groups.map((g) => ({
       name: g.name,
       keywords: g.keywords?.length || 0,
       ads: g.ads?.length || 0,
-      image: g.image,
+      image: resolveGroupImage(g),
+      direct_ad_type: g.direct_ad_type || 'TextAd',
     }));
+    out.steps.moderation = { skipped: true, reason: 'draft_only / DO_NOT_SUBMIT' };
     return out;
   }
 
@@ -173,26 +196,30 @@ async function applyPlan(plan) {
   if (!campaignId) {
     const add = await directApi('campaigns', {
       method: 'add',
-      params: { Campaigns: [buildCampaignBody(plan)] },
+      params: { Campaigns: [buildCampaignBody(plan, { startDate })] },
     });
     const { ids, errors } = firstIds(add.AddResults);
     if (!ids[0]) throw new Error(`campaigns.add failed: ${JSON.stringify(errors || add)}`);
     campaignId = ids[0];
-    out.steps.campaign = { action: 'add', id: campaignId, raw: add };
+    out.steps.campaign = { action: 'add', id: campaignId, start_date: startDate, raw: add };
   } else {
+    const body = buildCampaignBody(plan, { startDate });
+    delete body.StartDate;
     const upd = await directApi('campaigns', {
       method: 'update',
-      params: {
-        Campaigns: [
-          {
-            Id: campaignId,
-            ...buildCampaignBody(plan),
-            StartDate: undefined,
-          },
-        ],
-      },
+      params: { Campaigns: [{ Id: campaignId, ...body }] },
     });
     out.steps.campaign = { action: 'update', id: campaignId, raw: upd };
+  }
+
+  // Keep draft OFF — never start serving from this script by default
+  try {
+    out.steps.suspend = await directApi('campaigns', {
+      method: 'suspend',
+      params: { SelectionCriteria: { Ids: [campaignId] } },
+    });
+  } catch (e) {
+    out.steps.suspend_error = String(e.message || e);
   }
 
   // 2) Ad groups
@@ -247,22 +274,22 @@ async function applyPlan(plan) {
     out.steps.callouts_error = String(e.message || e);
   }
 
-  // 4) Images, keywords, ads per group
+  // 4) Images, keywords, ads per group (TextAd / product)
   const adIds = [];
   const imageHashes = {};
   for (let i = 0; i < plan.ad_groups.length; i++) {
     const g = plan.ad_groups[i];
     const gid = groupIds[i];
+    const imagePath = resolveGroupImage(g);
 
     let imageHash = null;
-    if (g.image) {
-      imageHash = await uploadImage(g.image);
+    if (imagePath) {
+      imageHash = await uploadImage(imagePath);
       imageHashes[g.name] = imageHash;
     }
 
     const kws = (g.keywords || []).filter(Boolean);
     if (kws.length) {
-      // batch ≤ 1000
       for (let off = 0; off < kws.length; off += 900) {
         const chunk = kws.slice(off, off + 900).map((Keyword) => ({
           Keyword: clip(Keyword, 4096),
@@ -290,13 +317,17 @@ async function applyPlan(plan) {
       const adsRes = await directApi('ads', { method: 'add', params: { Ads: ads } });
       const ids = firstIds(adsRes.AddResults).ids;
       adIds.push(...ids);
-      out.steps[`ads_group_${i}`] = { group_id: gid, ad_ids: ids, errors: firstIds(adsRes.AddResults).errors };
+      out.steps[`ads_group_${i}`] = {
+        group_id: gid,
+        ad_ids: ids,
+        errors: firstIds(adsRes.AddResults).errors,
+      };
     }
   }
   out.steps.images = imageHashes;
   out.steps.ad_ids = adIds;
 
-  // 5) Bid modifiers (male+female × ages — GENDER_NONE rejected by API)
+  // 5) Bid modifiers
   const bm = plan.bid_modifiers || {};
   const ageMap = [
     ['AGE_25_34', bm.age_25_34 ?? 115],
@@ -322,19 +353,26 @@ async function applyPlan(plan) {
     out.steps.bid_modifiers_error = String(e.message || e);
   }
 
-  // 6) Moderate
-  if (adIds.length) {
+  // 6) Moderation — OFF by default (pipeline: DO_NOT_SUBMIT)
+  if (submitModeration && adIds.length) {
     try {
       out.steps.moderate = await directApi('ads', {
         method: 'moderate',
         params: { SelectionCriteria: { Ids: adIds } },
       });
+      out.moderation_submitted = true;
     } catch (e) {
       out.steps.moderate_error = String(e.message || e);
     }
+  } else {
+    out.steps.moderate = {
+      skipped: true,
+      reason: 'DO_NOT_SUBMIT — draft OFF, user launches moderation manually',
+    };
+    out.moderation_submitted = false;
   }
 
-  // 7) Snapshot + optional resume
+  // 7) Snapshot + optional resume (only with --resume AND --submit-moderation flow)
   const camp = await directApi('campaigns', {
     method: 'get',
     params: {
@@ -355,15 +393,15 @@ async function applyPlan(plan) {
   } else {
     out.steps.resume = {
       skipped: true,
-      reason:
-        status === 'MODERATION'
-          ? 'waiting_moderation — resume after ACCEPTED'
-          : `status=${status} state=${state}`,
+      reason: wantResume
+        ? `status=${status} state=${state}`
+        : 'draft_only — keep OFF, do not resume',
     };
   }
 
   out.campaign_id = campaignId;
   out.applied = true;
+  out.state = 'OFF';
   return out;
 }
 
@@ -399,13 +437,16 @@ async function main() {
     process.exit(1);
   }
   const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
-  console.log('=== Apply Direct plan ===');
+  console.log('=== Apply Direct plan (draft OFF) ===');
   console.log('plan:', planPath);
   console.log('name:', plan.name);
   console.log('href:', plan.href);
+  console.log('StartDate (MSK):', directStartDate());
   console.log('token:', mask(process.env.YANDEX_DIRECT_TOKEN || ''));
   console.log('login:', process.env.YANDEX_DIRECT_LOGIN || '(empty)');
   console.log('dryRun:', dryRun);
+  console.log('submitModeration:', submitModeration);
+  console.log('resume:', wantResume);
 
   let result;
   try {
@@ -413,19 +454,22 @@ async function main() {
   } catch (e) {
     result = {
       applied: false,
+      draft_only: true,
+      moderation_submitted: false,
       error: String(e.message || e),
       code: e.code || null,
       plan_name: plan.name,
       href: plan.href,
+      start_date: directStartDate(),
       hint:
         e.code === 'NO_TOKEN'
           ? 'Положи YANDEX_DIRECT_TOKEN и YANDEX_DIRECT_LOGIN в SECRETS.env и перезапусти: npm run apply:direct --prefix server'
-          : 'Проверь ответ API / права приложения Директа',
+          : 'Проверь ответ API / права приложения Директа / StartDate (MSK)',
     };
     console.error('APPLY FAILED:', result.error);
   }
 
-  if (result.applied && wantResume && result.campaign_id) {
+  if (result.applied && wantResume && result.campaign_id && submitModeration) {
     console.log('Polling moderation for resume…');
     result.poll = await pollAndResume(result.campaign_id);
   }
@@ -433,17 +477,32 @@ async function main() {
   const outDir = path.join(ROOT, 'direct/apply-results');
   fs.mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const outFile = path.join(outDir, `rsya-kredit365-${stamp}.json`);
+  const outFile = path.join(outDir, `rsya-ppm-product-${stamp}.json`);
   fs.writeFileSync(outFile, JSON.stringify(result, null, 2));
-  // also latest pointer
   fs.writeFileSync(path.join(outDir, 'latest.json'), JSON.stringify(result, null, 2));
   console.log('wrote', outFile);
-  console.log(JSON.stringify({ applied: result.applied, campaign_id: result.campaign_id, error: result.error }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        applied: result.applied,
+        campaign_id: result.campaign_id,
+        draft_only: result.draft_only,
+        moderation_submitted: result.moderation_submitted,
+        start_date: result.start_date,
+        error: result.error,
+      },
+      null,
+      2,
+    ),
+  );
 
   if (!result.applied && !dryRun) process.exit(2);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

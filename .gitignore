@@ -10,3 +10,5 @@ client/dist/
 .env
 SECRETS.env
 env.local
+direct/apply-results/rsya-ppm-product-*.json
+server/node_modules/

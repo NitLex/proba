@@ -1,0 +1,49 @@
+{
+  "agent": "direct",
+  "branch": "cursor/ppm-direct-99b4",
+  "applied": false,
+  "draft_only": true,
+  "moderation_submitted": false,
+  "campaign_id": null,
+  "plan_name": "РСЯ | Плати по миру - Выпуск карты | товарное | travel+services+sbp",
+  "href": "https://trekerarbitrag.ru/click/DBSKE5N0",
+  "plan_path": "direct/plans/rsya-ppm-product-travel-services-sbp.json",
+  "ad_format": "product",
+  "direct_ad_type": "TextAd",
+  "creatives": [
+    "creatives/rsya/direct-textad/ppm-travel-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-services-1080.jpg",
+    "creatives/rsya/direct-textad/ppm-premium-1080.jpg"
+  ],
+  "settings": {
+    "state": "OFF",
+    "moderation": "DO_NOT_SUBMIT",
+    "neuro_ads": "OFF",
+    "direct_helps_auto": "OFF",
+    "network": "WB_MAXIMUM_CLICKS",
+    "bid_ceiling_rub": 5,
+    "weekly_spend_limit_rub": 35000,
+    "region_ids": [225]
+  },
+  "previous_error": {
+    "Code": 5005,
+    "Message": "Поле задано неверно",
+    "Details": "Значение даты в поле StartDate не может быть меньше текущей даты",
+    "root_cause": "StartDate from UTC toISOString while TimeZone=Europe/Moscow",
+    "fix": "server/src/lib/directDate.js → directStartDate()"
+  },
+  "dry_run_ok": true,
+  "dry_run_start_date_msk": "2026-07-26",
+  "dry_run_note": "At apply time UTC was still 2026-07-25 — old code would send StartDate=2026-07-25 and hit 5005 again; MSK calendar correctly yields 2026-07-26",
+  "error": "YANDEX_DIRECT_TOKEN / YANDEX_DIRECT_LOGIN missing in cloud-agent workspace",
+  "code": "NO_TOKEN",
+  "blocker": "Cursor cloud agent was spawned without SECRETS.env. Orchestrator reported api_ready=true, but OAuth secrets are not injected into cloud sub-agents.",
+  "next_steps": [
+    "На машине оркестратора с SECRETS.env: npm run apply:direct:dry && npm run apply:direct",
+    "Скрипт создаст черновик OFF (suspend), без ads.moderate",
+    "StartDate в preview должен быть календарём Europe/Moscow (не UTC)",
+    "В UI Директа: проверить → модерация → запуск вручную",
+    "Не включать Neuro Ads / Direct Helps auto"
+  ],
+  "apply_command": "npm run apply:direct"
+}
