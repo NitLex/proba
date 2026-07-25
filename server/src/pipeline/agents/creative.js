@@ -213,14 +213,14 @@ export async function runCreative({ offer, context }) {
       generated_images: generated,
       image_provider: imgCfg,
       generator_hint:
-        'graphic = текст на баннере → ImageAd; product = чистая картинка → TextAd с текстом в полях',
+        'graphic = текст на баннере → TextAd+картинка (квадрат GPT); product = чистая картинка → TextAd',
       direct_textad_min_size: '450x450 (лучше 1080x1080)',
     },
     cursor_prompt: [
       'Ты креатив-агент для РСЯ Яндекс.Директ.',
       `Формат объявлений: ${adFormat} (${formatLabel(adFormat)}).`,
       adFormat === 'graphic'
-        ? 'На баннере должны быть надписи с данными оффера. Тип в Директе: ImageAd.'
+        ? 'На баннере надписи оффера. В Директе TEXT_CAMPAIGN: TextAd + AdImageHash (не ImageAd).'
         : 'Картинка без текста. Заголовки/тексты только в полях TextAd.',
       `Оффер: ${JSON.stringify({ name: offer.name, promo })}`,
       `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines })))}`,

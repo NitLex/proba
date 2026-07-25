@@ -51,7 +51,7 @@ function emptyForm() {
     traffic_source_id: '',
     cost_model: 'cpc',
     cost_value: 0,
-    currency: 'USD',
+    currency: 'RUB',
     status: 'active',
     unique_hours: 24,
     block_bots: false,
@@ -109,7 +109,7 @@ function mapCampaignToForm(r) {
     traffic_source_id: r.traffic_source_id || '',
     cost_model: r.cost_model,
     cost_value: r.cost_value,
-    currency: r.currency || 'USD',
+    currency: r.currency || 'RUB',
     status: r.status,
     unique_hours: r.unique_hours ?? 24,
     block_bots: !!r.block_bots,
@@ -192,7 +192,7 @@ export default function Campaigns() {
       landing_id: defaultPath.landing_id || null,
       cost_model: form.cost_model,
       cost_value: Number(form.cost_value || 0),
-      currency: form.currency || 'USD',
+      currency: form.currency || 'RUB',
       status: form.status,
       unique_hours: Number(form.unique_hours || 24),
       block_bots: !!form.block_bots,
@@ -311,7 +311,7 @@ export default function Campaigns() {
                         {rot}
                       </div>
                     </td>
-                    <td>{money(r.cost_value, r.currency || 'USD')}</td>
+                    <td>{money(r.cost_value, r.currency || 'RUB')}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status}</span>
                     </td>
@@ -419,7 +419,7 @@ export default function Campaigns() {
                   Валюта
                 </LabelWithHint>
                 <CurrencySelect
-                  value={form.currency || 'USD'}
+                  value={form.currency || 'RUB'}
                   onChange={(currency) => setForm({ ...form, currency })}
                 />
               </label>

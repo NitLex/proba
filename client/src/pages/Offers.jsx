@@ -6,7 +6,7 @@ const empty = {
   name: '',
   url: '',
   payout: 0,
-  currency: 'USD',
+  currency: 'RUB',
   geo: '',
   network: '',
   status: 'active',
@@ -80,7 +80,7 @@ export default function Offers() {
                   <td>{r.name}</td>
                   <td>{r.network || '—'}</td>
                   <td>{r.geo || '—'}</td>
-                  <td>{money(r.payout, r.currency || 'USD')}</td>
+                  <td>{money(r.payout, r.currency || 'RUB')}</td>
                   <td>
                     <code className="mono" title={r.url}>
                       {r.url.slice(0, 48)}…
@@ -163,7 +163,7 @@ export default function Offers() {
                   Валюта
                 </LabelWithHint>
                 <CurrencySelect
-                  value={form.currency || 'USD'}
+                  value={form.currency || 'RUB'}
                   onChange={(currency) => setForm({ ...form, currency })}
                 />
               </label>

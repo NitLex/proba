@@ -98,6 +98,7 @@ export async function executeRun(runId, options = {}) {
               context: waveContext,
               dryRun,
               apply: step.agent === 'direct' ? applyDirect : undefined,
+              ownerUserId: options.ownerUserId || waveContext.owner_user_id || null,
             });
             const output = {
               summary: result.summary,
@@ -111,6 +112,16 @@ export async function executeRun(runId, options = {}) {
               cursor_prompt: result.cursor_prompt,
               agent_role: AGENT_ROLES[step.agent] || { id: step.agent },
             };
+            if (result?.failed) {
+              updateStep(step.id, {
+                status: 'failed',
+                input: { offer_keys: Object.keys(offer) },
+                output,
+                error: result.summary || 'agent failed',
+                finished_at: nowIso(),
+              });
+              return result;
+            }
             updateStep(step.id, {
               status: 'done',
               input: { offer_keys: Object.keys(offer) },

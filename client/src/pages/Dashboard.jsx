@@ -27,7 +27,7 @@ export default function Dashboard() {
   }, [from, to]);
 
   const maxClicks = Math.max(...byDay.map((d) => d.clicks), 1);
-  const cur = overview?.currency || 'USD';
+  const cur = overview?.currency || 'RUB';
 
   return (
     <div>

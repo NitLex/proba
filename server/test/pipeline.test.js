@@ -10,6 +10,14 @@ process.env.PIPELINE_TRACKER_MODE = 'local';
 
 const { initSchema, db } = await import('../src/db.js');
 initSchema();
+const { hashPassword } = await import('../src/lib/auth.js');
+const owner = db
+  .prepare(
+    `INSERT INTO users (username, password_hash, email, telegram, is_admin)
+     VALUES ('owner', ?, 'owner@test.local', '@owner_user', 1)`,
+  )
+  .run(hashPassword('secret1'));
+const OWNER_ID = Number(owner.lastInsertRowid);
 await import('../src/pipeline/store.js');
 const { runPipeline, AGENT_ROLES, DEFAULT_PIPELINE } = await import('../src/pipeline/runner.js');
 
@@ -58,15 +66,18 @@ test('pipeline creates tracker entities when not dry-run', async () => {
       payout: 500,
       geo: 'RU',
       vertical: 'Fintech',
+      currency: 'RUB',
     },
-    { dryRun: false, applyDirect: false },
+    { dryRun: false, applyDirect: false, ownerUserId: OWNER_ID },
   );
-  assert.equal(run.status, 'done');
+  assert.equal(run.status, 'done', run.error || '');
   assert.ok(run.context.tracker?.campaign?.key);
   const camp = db
     .prepare(`SELECT * FROM campaigns WHERE key = ?`)
     .get(run.context.tracker.campaign.key);
   assert.ok(camp);
+  assert.equal(camp.user_id, OWNER_ID);
+  assert.equal(camp.currency, 'RUB');
   delete process.env.PIPELINE_SKIP_QA;
 });
 

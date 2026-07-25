@@ -6,7 +6,7 @@ const empty = {
   name: '',
   postback_url: '',
   cost_param: 'cost',
-  currency: 'USD',
+  currency: 'RUB',
   token1: '',
   token2: '',
   token3: '',
@@ -136,7 +136,7 @@ export default function Sources() {
                   Валюта
                 </LabelWithHint>
                 <CurrencySelect
-                  value={form.currency || 'USD'}
+                  value={form.currency || 'RUB'}
                   onChange={(currency) => setForm({ ...form, currency })}
                 />
               </label>

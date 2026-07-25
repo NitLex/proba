@@ -40,7 +40,15 @@ function userDisplayCurrency(uid, from, to) {
        FROM campaigns WHERE user_id = ? ORDER BY id DESC LIMIT 1`
     )
     .get(uid);
-  return latest?.currency || 'USD';
+  if (latest?.currency) return latest.currency;
+
+  const offerCur = db
+    .prepare(
+      `SELECT COALESCE(NULLIF(currency, ''), 'RUB') AS currency
+       FROM offers WHERE user_id = ? ORDER BY id DESC LIMIT 1`,
+    )
+    .get(uid);
+  return offerCur?.currency || 'RUB';
 }
 
 router.get('/overview', (req, res) => {
@@ -430,7 +438,8 @@ router.get('/recent-clicks', (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const rows = db
     .prepare(
-      `SELECT cl.*, c.name AS campaign_name, o.name AS offer_name, s.name AS source_name
+      `SELECT cl.*, c.name AS campaign_name, c.currency AS currency,
+              o.name AS offer_name, s.name AS source_name
        FROM clicks cl
        JOIN campaigns c ON c.id = cl.campaign_id
        LEFT JOIN offers o ON o.id = cl.offer_id

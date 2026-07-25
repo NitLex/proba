@@ -43,7 +43,7 @@ export default function Stats() {
     }
   }
 
-  const cur = overview?.currency || 'USD';
+  const cur = overview?.currency || 'RUB';
 
   return (
     <div>

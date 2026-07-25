@@ -83,7 +83,7 @@ export default function Logs() {
                     <td>{c.source_name || '—'}</td>
                     <td>{c.country || '—'}</td>
                     <td>{c.device}</td>
-                    <td>{money(c.cost)}</td>
+                    <td>{money(c.cost, c.currency || 'RUB')}</td>
                     <td className="mono">
                       {[c.token1, c.token2, c.token3].filter(Boolean).join(' · ') || '—'}
                     </td>

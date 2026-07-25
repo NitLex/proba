@@ -52,7 +52,7 @@ export function LabelWithHint({ children, hint }) {
 
 export function CurrencySelect({ value, onChange, className = 'select', id }) {
   const { popular, rest } = currencyOptionsCached;
-  const current = value || 'USD';
+  const current = value || 'RUB';
   const known = new Set([...popular, ...rest].map((c) => c.code));
 
   return (

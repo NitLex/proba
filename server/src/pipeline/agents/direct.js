@@ -3,8 +3,8 @@
  * Never submits ads to moderation. User launches manually.
  *
  * Ad format rules (from creatives):
- * - graphic  → ImageAd (текст на креативе)
- * - product  → TextAd  (чистая картинка + текст в полях объявления)
+ * - graphic  → TextAd + AdImageHash (текст уже на креативе; ImageAd/TextImageAd не для TEXT_CAMPAIGN 1024)
+ * - product  → TextAd + AdImageHash (чистая картинка + текст в полях объявления)
  */
 
 import fs from 'fs';
@@ -209,24 +209,28 @@ function buildPlan({ offer, context }) {
       const link = buildAdLinkFields({ clickUrl: trackerClick, offer, angle });
 
       if (format === 'graphic') {
-        // Графическое: текст на креативе → ImageAd (поля Title/Text не дублируем)
+        // TEXT_CAMPAIGN не принимает ImageAd; TextImageAd требует спец. размеры баннера.
+        // Квадрат GPT 1024 → TextAd + AdImageHash (текст уже на картинке, поля Title/Text обязательны в API).
         return {
           name: `PPM ${angle.title || angle.id} · графика`,
           ad_format: 'graphic',
-          direct_ad_type: 'ImageAd',
+          direct_ad_type: 'TextAd',
           keywords: kws,
           image_path: imagePath,
           overlay_lines: brief.overlay_lines || [],
           display_preview: link.display_preview,
-          ads: [
-            {
-              type: 'ImageAd',
-              href: link.href,
-              display_url_path: link.display_url_path,
-              image_path: imagePath,
-              image_hint: 'баннер с надписями оффера → ImageAd',
-            },
-          ],
+          ads: (brief.titles || [offer.name || 'Офер']).slice(0, 3).map((title, i) => ({
+            type: 'TextAd',
+            title: String(title).slice(0, 56),
+            text: String((brief.texts || ['Оформление онлайн'])[i % (brief.texts?.length || 1)]).slice(
+              0,
+              81,
+            ),
+            href: link.href,
+            display_url_path: link.display_url_path,
+            image_path: imagePath,
+            image_hint: 'графика 1024: TextAd + картинка с надписями (не ImageAd/TextImageAd)',
+          })),
           sitelinks: brief.sitelinks || [],
           callouts: brief.callouts || [],
         };
@@ -397,32 +401,23 @@ async function applyDraft(plan) {
     for (const ad of (group.ads || []).slice(0, 3)) {
       const hash = await hashFor(ad.image_path || group.image_path);
 
-      if (ad.type === 'ImageAd' || group.direct_ad_type === 'ImageAd') {
-        if (!hash) {
-          log.push({
-            step: `ads.skip_imagead:${adGroupIds[i]}`,
-            error: 'нет hash картинки для ImageAd',
-          });
-          continue;
-        }
-        adsPayload.push({
-          AdGroupId: adGroupIds[i],
-          ImageAd: {
-            AdImageHash: hash,
-            Href: ad.href || plan.href,
-          },
+      // Always TextAd for TEXT_CAMPAIGN (graphic = image with text baked in + Title/Text fields)
+      if ((ad.type === 'ImageAd' || group.direct_ad_type === 'ImageAd') && !hash) {
+        log.push({
+          step: `ads.skip_imagead:${adGroupIds[i]}`,
+          error: 'нет hash картинки для графического объявления',
         });
-      } else {
-        const textAd = {
-          Title: String(ad.title || 'Оформить онлайн').slice(0, 56),
-          Text: String(ad.text || 'Оформление онлайн').slice(0, 81),
-          Href: ad.href || plan.href,
-          Mobile: 'NO',
-        };
-        if (ad.display_url_path) textAd.DisplayUrlPath = String(ad.display_url_path).slice(0, 20);
-        if (hash) textAd.AdImageHash = hash;
-        adsPayload.push({ AdGroupId: adGroupIds[i], TextAd: textAd });
+        continue;
       }
+      const textAd = {
+        Title: String(ad.title || group.overlay_lines?.[0] || 'Оформить онлайн').slice(0, 56),
+        Text: String(ad.text || group.overlay_lines?.[1] || 'Оформление онлайн').slice(0, 81),
+        Href: ad.href || plan.href,
+        Mobile: 'NO',
+      };
+      if (ad.display_url_path) textAd.DisplayUrlPath = String(ad.display_url_path).slice(0, 20);
+      if (hash) textAd.AdImageHash = hash;
+      adsPayload.push({ AdGroupId: adGroupIds[i], TextAd: textAd });
     }
 
     if (adsPayload.length) {
@@ -480,7 +475,62 @@ export async function runDirect({ offer, context, apply = false }) {
 
   if (applyError) {
     const details = typeof applyError === 'string' ? applyError : JSON.stringify(applyError);
-    throw new Error(`Директ: не удалось создать черновик — ${details.slice(0, 400)}`);
+    const knowledge = getDirectKnowledgeBrief();
+    const operator_checklist = buildDirectOperatorChecklist({
+      plan,
+      offer,
+      playbook: context.playbook,
+      tracker: context.tracker,
+    });
+    const applySummary = {
+      ok: false,
+      campaign_id: applyResult?.campaign_id || null,
+      ad_group_ids: applyResult?.ad_group_ids || [],
+      counts: applyResult?.counts || null,
+      images: applyResult?.images || null,
+      warning: applyResult?.warning || null,
+      error: details.slice(0, 400),
+    };
+    // Return structured failure (do not throw bare) so UI keeps apply log / campaign id
+    return {
+      summary: `Директ: черновик неполный — ${details.slice(0, 200)}`,
+      ready_message: null,
+      failed: true,
+      direct: {
+        plan,
+        knowledge,
+        operator_checklist,
+        api_ready: apiReady,
+        applied: false,
+        draft_only: true,
+        moderation_submitted: false,
+        campaign_id: applyResult?.campaign_id || null,
+        apply_result: applyResult,
+        apply_summary: applySummary,
+        ready_message: null,
+        user_action: applyResult?.campaign_id
+          ? `Кампания ${applyResult.campaign_id} создана, но объявления/ключи не залились — проверь лог apply`
+          : 'Черновик не создан',
+      },
+      cursor_prompt: [
+        directAgentSystemPrompt(),
+        '',
+        `Ошибка apply: ${details.slice(0, 400)}`,
+        JSON.stringify(applySummary, null, 2),
+      ].join('\n'),
+      context_patch: {
+        direct: {
+          plan,
+          knowledge,
+          operator_checklist,
+          api_ready: apiReady,
+          applied: false,
+          campaign_id: applyResult?.campaign_id || null,
+          apply_summary: applySummary,
+          ad_format: plan.ad_format,
+        },
+      },
+    };
   }
 
   const imgWarn = applyResult?.warning;

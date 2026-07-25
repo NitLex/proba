@@ -110,18 +110,27 @@ router.post('/runs', async (req, res, next) => {
     }
 
     const { offer, enrich } = await enrichOfferInput(rawOffer);
+    if (!offer.currency) offer.currency = 'RUB';
     const runId = startPipeline(offer, {
       title: title || `Оффер: ${offer.name || offer.url}`,
     });
 
     const cur = getRun(runId);
-    updateRun(runId, { context: { ...(cur?.context || {}), enrich, run_id: runId } });
+    updateRun(runId, {
+      context: {
+        ...(cur?.context || {}),
+        enrich,
+        run_id: runId,
+        owner_user_id: req.user?.id || null,
+      },
+    });
 
     const execOpts = {
       dryRun,
       applyDirect,
       spawnCursorAgents,
       cursorAgents: Array.isArray(cursorAgents) ? cursorAgents : undefined,
+      ownerUserId: req.user?.id || null,
     };
 
     if (asyncMode) {
