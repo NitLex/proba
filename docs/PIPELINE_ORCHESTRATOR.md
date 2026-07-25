@@ -111,12 +111,23 @@ YANDEX_CLOUD_API_KEY=...
 YANDEX_CLOUD_FOLDER_ID=...
 ```
 
+## Домен в объявлении (вместо trekerarbitrag.ru)
+
+В превью Директ всегда показывает **хост из Href**. Подменить на `payservices.ru` нельзя «косметикой» — только если клик реально идёт через этот домен:
+
+1. Купи/привяжи домен → DNS **A** на IP VPS  
+2. Nginx: добавь `server_name payservices.ru` (+ certbot)  
+3. В `.env` или в UI оркестратора: `AD_DISPLAY_DOMAIN=payservices.ru` / поле «Домен в объявлении»  
+4. Пайплайн сделает Href `https://payservices.ru/click/...` и `DisplayUrlPath` (`karta/poezdki` и т.п.)
+
+Без своего домена уже сейчас ставится смысловой **путь**: `trekerarbitrag.ru/karta/poezdki`.
+
 ## UI
 
 **Оркестратор** → `/pipeline`
 
 1. Вставь URL оффера  
-2. (опционально) доп. поля / dry-run / Cursor spawn  
+2. (опционально) доп. поля / домен в объявлении / dry-run / Cursor spawn  
 3. Запуск → в конце **«Кампания готова»**  
 4. Сам открой Директ → проверь → модерация → старт
 

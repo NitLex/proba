@@ -91,9 +91,9 @@ function safeName(s) {
 }
 
 /**
- * Strong РСЯ-safe visual prompt.
+ * Scroll-stopping РСЯ visual prompt (GPT Image).
  * format=graphic → text ON the image (offer data)
- * format=product → clean product photo, NO text (copy goes into Direct ad fields)
+ * format=product → clean product/lifestyle photo, NO text (copy in Direct fields)
  */
 export function buildCreativePrompt({
   angle,
@@ -103,39 +103,57 @@ export function buildCreativePrompt({
   overlayLines = [],
 } = {}) {
   const name = offer?.name || 'цифровая карта';
-  const angleHint =
-    {
-      travel:
-        'travel mood, passport and boarding pass abstract shapes, soft blue sky gradient, suitcase silhouette',
-      services:
-        'modern app subscriptions mood, soft neon accents, abstract phone screen glow, clean fintech UI shapes',
-      premium: 'premium dark navy and gold accents, elegant card silhouette, soft bokeh lights',
-      sbp: 'fast payment mood, abstract QR and wave lines, clean mint and charcoal palette',
-      generic: 'clean fintech product mood, abstract digital card, soft gradient light',
-    }[angle?.id] || 'clean fintech product mood';
+  const angleScenes = {
+    travel: [
+      'Hero scene: matte navy payment card resting on open burgundy passport + boarding pass on a hard-shell suitcase,',
+      'airport lounge window bokeh with sunrise sky, sense of departure and freedom,',
+      'one sharp focal card, shallow depth of field, warm-cool contrast (gold chip vs cool blue ambient).',
+    ].join(' '),
+    services: [
+      'Hero scene: sleek black card beside a modern smartphone showing only abstract colorful app-icon blur (no readable UI text),',
+      'desk lifestyle of online subscriptions — soft mint/charcoal palette, clean reflections,',
+      'thumb-stopping center composition, premium fintech product photography.',
+    ].join(' '),
+    premium: [
+      'Hero scene: dark navy-and-gold card on black marble with soft caustic light streaks,',
+      'luxury but trustworthy mood, specular highlights on chip, shallow bokeh,',
+      'editorial product still-life, high contrast silhouette.',
+    ].join(' '),
+    sbp: [
+      'Hero scene: card and abstract mint light-wave motion suggesting instant ruble top-up,',
+      'clean charcoal background, dynamic diagonal energy without clutter,',
+      'fast-payment vibe, crisp edges, modern commercial look.',
+    ].join(' '),
+    generic: [
+      'Hero scene: digital payment card as the single dominant subject, soft gradient atmosphere,',
+      'premium commercial still-life, strong focal contrast.',
+    ].join(' '),
+  };
+  const scene = angleScenes[angle?.id] || angleScenes.generic;
 
   const base = [
-    `Photoreal advertising key visual for Russian Yandex Direct display ads, square ${size}.`,
-    `Product: digital payment card "${name}". Angle: ${angle?.title || angle?.id || 'main'}.`,
-    angleHint,
-    'Cinematic lighting, premium but trustworthy, high contrast focal subject.',
-    'No logos of Apple Pay, Google Pay, Booking, Visa, Mastercard, banks. No people faces close-up.',
-    'No watermarks. Commercial stock quality.',
+    `Award-style photoreal key visual for Russian Yandex Direct РСЯ feed ads, square ${size}.`,
+    `Must stop the scroll in 0.5s: bold subject, emotional desire, clear story — not a flat stock template.`,
+    `Product: digital payment card for "${name}". Angle: ${angle?.title || angle?.id || 'main'}.`,
+    scene,
+    'Cinematic lighting, tactile materials, micro-contrast, magazine ad quality.',
+    'Composition: subject occupies ~55-70% of frame, negative space for balance, no cluttered collage.',
+    'Strict bans: no Visa/Mastercard/Apple Pay/Google Pay/Booking/bank logos, no real brand UI, no faces close-up, no watermarks, no QR codes with readable data.',
   ];
 
   if (format === 'graphic') {
     const lines = (overlayLines || []).filter(Boolean).slice(0, 3);
     base.push(
-      'GRAPHIC AD banner: include large clear Russian marketing text ON the image.',
+      'GRAPHIC AD: large sharp Cyrillic marketing text ON the image as the hook headline.',
       lines.length
-        ? `Exact text lines to render (Cyrillic, high contrast, readable): ${lines.map((l) => `"${l}"`).join(' | ')}`
-        : 'Include short Russian headline and promo benefit on the image.',
-      'Typography must be sharp and legible at 1080px. Do not invent extra brand names.',
+        ? `Exact text lines (perfect Cyrillic, high contrast, no typos): ${lines.map((l) => `"${l}"`).join(' | ')}`
+        : 'Short punchy Russian headline + one benefit line on the image.',
+      'Typography: bold modern sans, huge readable at mobile size, max 3 lines, no fake logos.',
     );
   } else {
     base.push(
-      'PRODUCT AD photo: pure lifestyle/product image with ZERO text, ZERO letters, ZERO numbers, ZERO watermarks, ZERO UI captions.',
-      'Leave composition clean — all ad copy will be set separately in Yandex Direct fields.',
+      'PRODUCT / lifestyle AD: ZERO text, ZERO letters, ZERO numbers, ZERO captions, ZERO UI labels on the image.',
+      'Card face must be blank (no embossed numbers/names). Desire comes from scene and light only — ad copy is separate.',
     );
   }
 
@@ -153,17 +171,17 @@ export function buildCreativePromptForProvider(provider, args) {
   if (format === 'graphic') {
     const lines = (overlayLines || []).filter(Boolean).slice(0, 2).join(' / ');
     return [
-      `Рекламный баннер 1:1, финтех карта «${name}», угол ${angleTitle}.`,
-      lines ? `Крупный читаемый русский текст на баннере: ${lines}.` : 'Короткий русский заголовок на баннере.',
-      'Премиальный стиль, без логотипов банков и платёжных систем, без лиц крупным планом.',
+      `Цепляющий баннер 1:1, карта «${name}», ${angleTitle}: яркий сюжет, стоп-скролл.`,
+      lines ? `Крупный чёткий русский текст: ${lines}.` : 'Короткий цепляющий русский заголовок.',
+      'Премиум, без логотипов банков/Visa/Apple Pay, без лиц крупно.',
     ]
       .join(' ')
       .slice(0, 500);
   }
   return [
-    `Предметное фото 1:1 цифровой платёжной карты «${name}», угол ${angleTitle}.`,
-    'Чистая картинка БЕЗ текста, букв и цифр. Коммерческий стиль, мягкий свет.',
-    'Без логотипов Apple Pay, Google Pay, Visa, Mastercard, банков.',
+    `Цепляющее фото 1:1 карты «${name}», сюжет ${angleTitle}, эмоция поездки/оплаты.`,
+    'БЕЗ текста/букв/цифр на фото. Кинематографичный свет, крупный объект.',
+    'Без логотипов Visa, Mastercard, Apple Pay, банков.',
   ]
     .join(' ')
     .slice(0, 500);

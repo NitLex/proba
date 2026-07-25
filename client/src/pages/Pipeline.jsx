@@ -14,6 +14,7 @@ const emptyOffer = {
   promo_code: '',
   notes: '',
   ad_format: 'auto',
+  display_domain: '',
 };
 
 const STATUS_CLASS = {
@@ -330,6 +331,19 @@ export default function Pipeline() {
                     placeholder="LG2026"
                   />
                 </label>
+                <label className="lbl">
+                  Домен в объявлении
+                  <input
+                    className="field"
+                    value={form.display_domain}
+                    onChange={(e) => setForm({ ...form, display_domain: e.target.value })}
+                    placeholder="payservices.ru"
+                  />
+                </label>
+                <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                  Показывается вместо trekerarbitrag.ru. Домен должен смотреть на этот трекер (DNS + SSL).
+                  Путь подставится сам: payservices.ru/karta/poezdki
+                </p>
                 <label className="lbl full">
                   Заметки
                   <textarea

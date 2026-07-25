@@ -51,7 +51,8 @@ test('buildCreativePrompt differs for graphic vs product', () => {
     format: 'graphic',
     overlayLines: ['Цифровая карта', 'Промокод LG2026'],
   });
-  assert.match(product, /ZERO text|PRODUCT AD/i);
+  assert.match(product, /ZERO text|PRODUCT|scroll/i);
   assert.match(graphic, /GRAPHIC AD|Exact text lines|Промокод LG2026/i);
+  assert.match(product, /suitcase|passport|travel|departure/i);
   assert.notEqual(product, graphic);
 });

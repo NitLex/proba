@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
+import { buildAdLinkFields } from '../../lib/adHref.js';
 import { directApi } from '../../lib/directApi.js';
 import {
   buildDirectOperatorChecklist,
@@ -92,9 +93,10 @@ function buildPlan({ offer, context }) {
   const semantics = context.semantics || {};
   const creativesMeta = context.creatives || {};
   const creatives = creativesMeta.briefs || [];
-  const href =
+  const trackerClick =
     tracker.click_url?.split('?')[0] ||
     `${(process.env.ARBTRACK_PUBLIC_URL || 'https://trekerarbitrag.ru').replace(/\/$/, '')}/click/PENDING`;
+  const defaultLink = buildAdLinkFields({ clickUrl: trackerClick, offer });
 
   const cpc = Number(econ.cpc_max || process.env.MAX_CPC_RUB || 7);
   const weekly = Number(econ.weekly_budget || (econ.daily_budget || offer.daily_budget || 5000) * 7);
@@ -141,7 +143,10 @@ function buildPlan({ offer, context }) {
     geo: playbook.geo || offer.geo || 'RU',
     region_ids: [225],
     tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
-    href,
+    href: defaultLink.href,
+    display_domain: defaultLink.display_domain,
+    display_preview: defaultLink.display_preview,
+    tracker_click_url: trackerClick,
     settings: {
       ...DIRECT_RSYA_PLAYBOOK.settings_defaults,
       neuro_ads: 'OFF',
@@ -159,6 +164,7 @@ function buildPlan({ offer, context }) {
         semantics.keywords?.filter((k) => k.group === angle.id).map((k) => k.phrase) ||
         [];
       const imagePath = pickImageForAngle(creativesMeta.generated_images, angle.id);
+      const link = buildAdLinkFields({ clickUrl: trackerClick, offer, angle });
 
       if (format === 'graphic') {
         // Графическое: текст на креативе → ImageAd (поля Title/Text не дублируем)
@@ -169,10 +175,12 @@ function buildPlan({ offer, context }) {
           keywords: kws,
           image_path: imagePath,
           overlay_lines: brief.overlay_lines || [],
+          display_preview: link.display_preview,
           ads: [
             {
               type: 'ImageAd',
-              href,
+              href: link.href,
+              display_url_path: link.display_url_path,
               image_path: imagePath,
               image_hint: 'баннер с надписями оффера → ImageAd',
             },
@@ -189,6 +197,7 @@ function buildPlan({ offer, context }) {
         direct_ad_type: 'TextAd',
         keywords: kws,
         image_path: imagePath,
+        display_preview: link.display_preview,
         ads: (brief.titles || [offer.name || 'Офер']).slice(0, 3).map((title, i) => ({
           type: 'TextAd',
           title: String(title).slice(0, 56),
@@ -196,7 +205,8 @@ function buildPlan({ offer, context }) {
             0,
             81,
           ),
-          href,
+          href: link.href,
+          display_url_path: link.display_url_path,
           image_path: imagePath,
           image_hint: 'чистая картинка без текста + Title/Text в полях',
         })),
@@ -319,6 +329,7 @@ async function applyDraft(plan) {
           });
           continue;
         }
+        // ImageAd: domain comes from Href only (no DisplayUrlPath in API)
         adsPayload.push({
           AdGroupId: adGroupIds[i],
           ImageAd: {
@@ -333,6 +344,7 @@ async function applyDraft(plan) {
           Href: ad.href || plan.href,
           Mobile: 'NO',
         };
+        if (ad.display_url_path) textAd.DisplayUrlPath = String(ad.display_url_path).slice(0, 20);
         if (hash) textAd.AdImageHash = hash;
         adsPayload.push({ AdGroupId: adGroupIds[i], TextAd: textAd });
       }
