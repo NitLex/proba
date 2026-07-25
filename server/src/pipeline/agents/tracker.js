@@ -138,7 +138,9 @@ export async function runTracker({ offer, context, dryRun }) {
   const campaignName =
     offer.campaign_name ||
     `РСЯ → ${offer.name || 'Offer'} (${playbook.geo || offer.geo || 'RU'})`;
-  const useRemote = remoteConfigured();
+  // Local orchestrator can force local DB via PIPELINE_TRACKER_MODE=local (tests / offline)
+  const useRemote =
+    remoteConfigured() && String(process.env.PIPELINE_TRACKER_MODE || 'remote') !== 'local';
   const base = publicClickBase();
   const postbackTemplate = `${base}/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}`;
 

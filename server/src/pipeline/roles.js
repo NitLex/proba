@@ -6,9 +6,9 @@
 export const AGENT_ROLES = {
   analyst: {
     id: 'analyst',
-    name: 'Аналитик связок',
+    name: 'Аналитик рынка',
     description:
-      'Разбирает вводные по офферу, ищет похожие связки в базе ArbTrack, предлагает углы, гео, CPC и риски.',
+      'Глобальный разбор: метрики сети, Wordstat, типичные связки арбитража по вертикали/источникам. Наша БД — только вторичный сигнал.',
   },
   wordstat: {
     id: 'wordstat',
@@ -38,7 +38,7 @@ export const AGENT_ROLES = {
 
 /** Default DAG: analyst first, then parallel research/creative/tracker, then direct. */
 export const DEFAULT_PIPELINE = [
-  { agent: 'analyst', title: 'Анализ оффера и связок', dependsOn: [] },
+  { agent: 'analyst', title: 'Глобальный анализ рынка', dependsOn: [] },
   { agent: 'wordstat', title: 'Семантика и Wordstat', dependsOn: ['analyst'] },
   { agent: 'creative', title: 'Креативы и тексты', dependsOn: ['analyst'] },
   { agent: 'tracker', title: 'Настройка трекера', dependsOn: ['analyst'] },

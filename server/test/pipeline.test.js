@@ -6,6 +6,7 @@ import path from 'path';
 
 const tmpDb = path.join(os.tmpdir(), `arbtrack-pipeline-${Date.now()}.db`);
 process.env.DB_PATH = tmpDb;
+process.env.PIPELINE_TRACKER_MODE = 'local';
 
 const { initSchema, db } = await import('../src/db.js');
 initSchema();
@@ -44,6 +45,8 @@ test('pipeline dry-run completes all agents', async () => {
   assert.equal(run.steps.length, 5);
   assert.ok(run.steps.every((s) => s.status === 'done'));
   assert.ok(run.context.playbook);
+  assert.equal(run.context.playbook.analysis_scope, 'global_market');
+  assert.ok(run.context.playbook.market?.competitor_sources?.length);
   assert.ok(run.context.semantics?.keywords?.length);
   assert.ok(run.context.creatives?.briefs?.length);
   assert.ok(run.context.direct?.plan);

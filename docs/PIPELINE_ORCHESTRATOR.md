@@ -32,7 +32,7 @@
 
 | Агент | Что делает |
 |-------|------------|
-| `analyst` | Разбирает оффер, ищет похожие связки в `bundles`, углы, CPC, риски |
+| `analyst` | **Глобальный** разбор: LeadGid-метрики, Wordstat, market-playbooks по вертикали; наша БД `bundles` только как история |
 | `wordstat` | Live Wordstat (Yandex Cloud) или эвристика + минус-слова |
 | `creative` | Брифы заголовков/текстов/sitelinks, список ассетов из `creatives/rsya` |
 | `tracker` | Создаёт source/offer/campaign в ArbTrack, click + postback URL |
