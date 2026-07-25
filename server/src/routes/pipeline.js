@@ -7,6 +7,7 @@ import { remoteBase, remoteConfigured } from '../lib/arbtrackRemote.js';
 import { maybeSpawnCursorAgents } from '../pipeline/spawnCursor.js';
 import { imageGenConfig } from '../lib/imageGen.js';
 import { enrichOfferInput } from '../lib/offerEnrich.js';
+import { DIRECT_DOC_SOURCES } from '../pipeline/knowledge/direct-handbook.js';
 
 const router = Router();
 
@@ -45,6 +46,10 @@ router.get('/roles', (_req, res) => {
         login: process.env.YANDEX_DIRECT_LOGIN || null,
         draft_only: true,
         note: 'Кампания создаётся OFF, без ads.moderate — запуск вручную',
+        handbook: {
+          help_root: 'https://yandex.ru/support/direct/ru/',
+          sources: DIRECT_DOC_SOURCES.length,
+        },
       },
       images: imageGenConfig(),
       secrets: {

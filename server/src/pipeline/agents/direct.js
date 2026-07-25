@@ -11,6 +11,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
+import {
+  buildDirectOperatorChecklist,
+  directAgentSystemPrompt,
+  DIRECT_HARD_RULES,
+  DIRECT_RSYA_PLAYBOOK,
+  getDirectKnowledgeBrief,
+} from '../knowledge/direct-handbook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
@@ -96,6 +103,9 @@ function buildPlan({ offer, context }) {
     imageHasText: creativesMeta.image_has_text,
   });
 
+  const handbookNegatives = DIRECT_RSYA_PLAYBOOK.negatives_seed || [];
+  const negatives = [...new Set([...(semantics.negatives || []), ...handbookNegatives])];
+
   return {
     name: `РСЯ | ${offer.name || 'Offer'} | ${formatLabel(campaignFormat)} | ${(playbook.angles || []).map((a) => a.id).join('+') || 'test'}`,
     network_only: true,
@@ -103,27 +113,27 @@ function buildPlan({ offer, context }) {
     moderation: 'DO_NOT_SUBMIT',
     ad_format: campaignFormat,
     ad_format_label: formatLabel(campaignFormat),
+    knowledge: {
+      help_root: 'https://yandex.ru/support/direct/ru/',
+      strategy_why: DIRECT_RSYA_PLAYBOOK.recommended_strategy.why,
+      hard_rules: DIRECT_HARD_RULES.slice(0, 6),
+    },
     strategy: {
-      search: 'SERVING_OFF',
-      network: 'WB_MAXIMUM_CLICKS',
+      search: DIRECT_RSYA_PLAYBOOK.recommended_strategy.search,
+      network: DIRECT_RSYA_PLAYBOOK.recommended_strategy.network,
       bid_ceiling_rub: cpc,
       weekly_spend_limit_rub: weekly,
     },
     geo: playbook.geo || offer.geo || 'RU',
     region_ids: [225],
-    tracking_params:
-      'utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}',
+    tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
     href,
     settings: {
-      ENABLE_SITE_MONITORING: 'YES',
-      ENABLE_COMPANY_INFO: 'NO',
-      ENABLE_AREA_OF_INTEREST_TARGETING: 'NO',
-      ALTERNATIVE_TEXTS_ENABLED: 'NO',
-      ADD_METRICA_TAG: 'NO',
+      ...DIRECT_RSYA_PLAYBOOK.settings_defaults,
       neuro_ads: 'OFF',
       direct_helps_auto: 'OFF',
     },
-    negatives: semantics.negatives || [],
+    negatives,
     ad_groups: (playbook.angles || [{ id: 'generic', title: 'Main' }]).map((angle) => {
       const brief = creatives.find((c) => c.angle_id === angle.id) || {};
       const format = resolveAdFormat({
@@ -180,12 +190,7 @@ function buildPlan({ offer, context }) {
         callouts: brief.callouts || [],
       };
     }),
-    bid_modifiers: {
-      age_25_34: 115,
-      age_35_44: 115,
-      age_0_17: 0,
-      age_55: 50,
-    },
+    bid_modifiers: { ...DIRECT_RSYA_PLAYBOOK.bid_modifiers_defaults },
     generated_images: creativesMeta.generated_images || [],
   };
 }
@@ -363,11 +368,16 @@ export async function runDirect({ offer, context, apply = false }) {
       ? 'Директ: план готов (apply_direct=false — в аккаунте не создавали)'
       : 'Директ: план готов (токена нет — только спецификация)';
 
+  const knowledge = getDirectKnowledgeBrief();
+  const operator_checklist = buildDirectOperatorChecklist({ plan, offer });
+
   return {
     summary: readyMessage,
     ready_message: applied ? 'Кампания готова' : null,
     direct: {
       plan,
+      knowledge,
+      operator_checklist,
       api_ready: apiReady,
       applied,
       draft_only: true,
@@ -380,14 +390,20 @@ export async function runDirect({ offer, context, apply = false }) {
         : null,
     },
     cursor_prompt: [
-      'Ты Директ-агент. Кампания должна остаться черновиком OFF.',
-      'НЕ вызывай ads.moderate и НЕ запускай показы.',
-      `Формат: ${plan.ad_format} — graphic=ImageAd (текст на баннере), product=TextAd (текст в полях).`,
+      directAgentSystemPrompt(),
+      '',
+      `Формат текущего запуска: ${plan.ad_format} (${plan.ad_format_label}).`,
+      'План кампании (JSON):',
       JSON.stringify(plan, null, 2),
+      '',
+      'Чеклист для оператора:',
+      JSON.stringify(operator_checklist, null, 2),
     ].join('\n'),
     context_patch: {
       direct: {
         plan,
+        knowledge,
+        operator_checklist,
         api_ready: apiReady,
         applied,
         campaign_id: applyResult?.campaign_id || null,

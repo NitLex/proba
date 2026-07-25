@@ -32,7 +32,7 @@ export const AGENT_ROLES = {
     id: 'direct',
     name: 'Директ-агент',
     description:
-      'РСЯ-черновик OFF: ImageAd если креатив с надписями, TextAd если товарное (текст в настройках). Без модерации.',
+      'РСЯ-черновик OFF по handbook справки Директа (support/direct): стратегия, модерация, ImageAd/TextAd. Без авто-модерации.',
   },
 };
 
