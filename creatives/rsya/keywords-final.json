@@ -1,0 +1,737 @@
+{
+  "offer": "Плати по миру - Выпуск карты",
+  "geo": "RU",
+  "region_ids": [
+    225
+  ],
+  "channel": "Yandex Direct РСЯ",
+  "source": "wordstat_live+cleanup",
+  "mode": "live",
+  "notes": [
+    "Сырой Wordstat live зашумлён сидом «карта онлайн»: осадки, СВО, натальные, навигаторы, платные дороги.",
+    "Углы аналитика: Travel / Services / SBP (не Premium). Services почти не пришли из live — добиты эвристикой.",
+    "Синяя карта / SIM / межевание / ТВ-ассоциации к «оформление за минуты» вычищены.",
+    "Seed «Плати по миру - Выпуск карты» дал Invalid query — не использовать бренд с тире как Wordstat-запрос."
+  ],
+  "groups": {
+    "travel": {
+      "title": "Путешествия / оплата за границей",
+      "keywords": [
+        {
+          "phrase": "карта для поездок",
+          "shows": 10375,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для оплаты за границей",
+          "shows": 6379,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в беларусь",
+          "shows": 1327,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в китай",
+          "shows": 1274,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в белоруссию",
+          "shows": 1108,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "виртуальная карта для оплаты за границей",
+          "shows": 1092,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "лучшие карты для поездок",
+          "shows": 603,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "оформить карту для оплаты за границей",
+          "shows": 587,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для оплаты за границей для россиян",
+          "shows": 564,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "какую карту для оплаты за границей",
+          "shows": 513,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "виртуальная карта для путешествий",
+          "shows": 490,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездок за границу",
+          "shows": 481,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта банка для оплаты за границей",
+          "shows": 467,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карты для оплаты за границей 2026",
+          "shows": 429,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "банковская карта для оплаты за границей",
+          "shows": 424,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "какие карты лучше для поездок",
+          "shows": 422,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "карта для поездки в турцию",
+          "shows": 399,
+          "source": "wordstat_live",
+          "group": "travel"
+        },
+        {
+          "phrase": "банковская карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты за рубежом",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для отпуска",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для поездок за рубеж",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для путешествий",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для путешествий за границу",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для туристов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата за границей",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата за границей виртуальной картой",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата за границей картой",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "цифровая карта для поездок",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    },
+    "services": {
+      "title": "Зарубежные сервисы и подписки",
+      "keywords": [
+        {
+          "phrase": "виртуальная карта в долларах",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для зарубежных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта для сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта usd",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "зарубежные сервисы",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта в валюте",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для зарубежных подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для зарубежных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для онлайн подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для оплаты сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "онлайн карта для сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата зарубежных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата иностранных сервисов",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оплата сервисов онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "цифровая карта для подписок",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    },
+    "sbp": {
+      "title": "Быстрый выпуск + СБП",
+      "keywords": [
+        {
+          "phrase": "быстрый выпуск карты",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "виртуальная карта за минуты",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "выпуск виртуальной карты",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "выпуск карты онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "выпустить карту онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта за минуты",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта онлайн с СБП",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "карта с пополнением по СБП",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оформить виртуальную карту",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "оформление карты онлайн",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "пополнение по СБП",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "промокод на выпуск",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "промокод на карту",
+          "shows": null,
+          "source": "heuristic"
+        },
+        {
+          "phrase": "цифровая карта онлайн",
+          "shows": null,
+          "source": "heuristic"
+        }
+      ]
+    }
+  },
+  "negatives": [
+    "бесплатно",
+    "халява",
+    "взлом",
+    "кряк",
+    "скачать",
+    "торрент",
+    "работа",
+    "вакансия",
+    "займ",
+    "микрозайм",
+    "кредит наличными",
+    "казино",
+    "ставки",
+    "1xbet",
+    "крипта",
+    "bitcoin",
+    "p2p",
+    "обнал",
+    "для детей",
+    "школьник",
+    "осадки",
+    "осадок",
+    "погода",
+    "яндекс карты",
+    "навигатор",
+    "маршрут",
+    "мапс",
+    "карта сайта",
+    "бензин",
+    "сво",
+    "натальная",
+    "матрица судьбы",
+    "медкарта",
+    "межевание",
+    "синяя карта",
+    "сим карта",
+    "симки",
+    "платная дорога",
+    "платный проезд",
+    "смотреть онлайн",
+    "блог",
+    "пусть говорят",
+    "из бумаги",
+    "картатай",
+    "в реальном времени",
+    "украина",
+    "игры в поездку",
+    "госуслуги"
+  ],
+  "rejected": [
+    {
+      "phrase": "карты онлайн",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 2974631
+    },
+    {
+      "phrase": "карта онлайн в реальном",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 390937
+    },
+    {
+      "phrase": "карта осадок онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 385762
+    },
+    {
+      "phrase": "карта осадков онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 385754
+    },
+    {
+      "phrase": "карты онлайн бесплатно",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 332747
+    },
+    {
+      "phrase": "карты онлайн время",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 329487
+    },
+    {
+      "phrase": "карта в реальном времени онлайн",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 322671
+    },
+    {
+      "phrase": "карта на сегодня онлайн",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 228352
+    },
+    {
+      "phrase": "карта сайта",
+      "reason": "junk/irrelevant association",
+      "shows": 215548
+    },
+    {
+      "phrase": "онлайн карта без карты",
+      "reason": "geo/weather map intent (not payment card)",
+      "shows": 213682
+    },
+    {
+      "phrase": "карта сво онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 210964
+    },
+    {
+      "phrase": "онлайн карта бензина",
+      "reason": "junk/irrelevant association",
+      "shows": 206531
+    },
+    {
+      "phrase": "карта украины онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 199168
+    },
+    {
+      "phrase": "карта сво на сегодня онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 196693
+    },
+    {
+      "phrase": "карта украины сегодня онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 192425
+    },
+    {
+      "phrase": "карта сво на украине онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 186435
+    },
+    {
+      "phrase": "карта сво на украине сегодня онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 185775
+    },
+    {
+      "phrase": "натальная карта онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 176609
+    },
+    {
+      "phrase": "электронная карта",
+      "reason": "too generic electronic card",
+      "shows": 154833
+    },
+    {
+      "phrase": "займы онлайн на карту",
+      "reason": "junk/irrelevant association",
+      "shows": 148931
+    },
+    {
+      "phrase": "карта осадка онлайн в реальном",
+      "reason": "junk/irrelevant association",
+      "shows": 147774
+    },
+    {
+      "phrase": "карта осадков онлайн в реальном",
+      "reason": "junk/irrelevant association",
+      "shows": 147774
+    },
+    {
+      "phrase": "матрица онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 147484
+    },
+    {
+      "phrase": "где бензин карта онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 141714
+    },
+    {
+      "phrase": "карта погоды онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 137632
+    },
+    {
+      "phrase": "яндекс карты онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 135033
+    },
+    {
+      "phrase": "карта осадков онлайн времени",
+      "reason": "junk/irrelevant association",
+      "shows": 117665
+    },
+    {
+      "phrase": "карта осадков онлайн в реальном времени",
+      "reason": "junk/irrelevant association",
+      "shows": 117577
+    },
+    {
+      "phrase": "навигатор онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 85045
+    },
+    {
+      "phrase": "платная дорога оплатить",
+      "reason": "junk/irrelevant association",
+      "shows": 83890
+    },
+    {
+      "phrase": "оплатить платную дорогу",
+      "reason": "junk/irrelevant association",
+      "shows": 83806
+    },
+    {
+      "phrase": "схема онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 37528
+    },
+    {
+      "phrase": "моя электронная карта",
+      "reason": "too generic electronic card",
+      "shows": 27494
+    },
+    {
+      "phrase": "пусть говорят все выпуски",
+      "reason": "junk/irrelevant association",
+      "shows": 24926
+    },
+    {
+      "phrase": "построить маршрут на карте",
+      "reason": "junk/irrelevant association",
+      "shows": 20117
+    },
+    {
+      "phrase": "навигатор онлайн проложить маршрут",
+      "reason": "junk/irrelevant association",
+      "shows": 19492
+    },
+    {
+      "phrase": "мапс карты",
+      "reason": "junk/irrelevant association",
+      "shows": 18173
+    },
+    {
+      "phrase": "пусть говорят 2026 все выпуски",
+      "reason": "junk/irrelevant association",
+      "shows": 16452
+    },
+    {
+      "phrase": "оплатить платный проезд",
+      "reason": "junk/irrelevant association",
+      "shows": 15060
+    },
+    {
+      "phrase": "что можно сделать из бумаги легко",
+      "reason": "junk/irrelevant association",
+      "shows": 11373
+    },
+    {
+      "phrase": "сколько стоит межевание",
+      "reason": "junk/irrelevant association",
+      "shows": 9583
+    },
+    {
+      "phrase": "сколько стоит межевание участка",
+      "reason": "junk/irrelevant association",
+      "shows": 6552
+    },
+    {
+      "phrase": "как оплатить проезд по платной дороге",
+      "reason": "junk/irrelevant association",
+      "shows": 5446
+    },
+    {
+      "phrase": "блог путешественника",
+      "reason": "junk/irrelevant association",
+      "shows": 3658
+    },
+    {
+      "phrase": "путешественники смотреть онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 3565
+    },
+    {
+      "phrase": "медкарта онлайн",
+      "reason": "junk/irrelevant association",
+      "shows": 2328
+    },
+    {
+      "phrase": "маршрут 7п",
+      "reason": "junk/irrelevant association",
+      "shows": 1713
+    },
+    {
+      "phrase": "я тебя не скоро позабуду",
+      "reason": "junk/irrelevant association",
+      "shows": 1679
+    },
+    {
+      "phrase": "как платить за платную дорогу",
+      "reason": "junk/irrelevant association",
+      "shows": 1485
+    },
+    {
+      "phrase": "синяя карта для поездки в беларусь",
+      "reason": "junk/irrelevant association",
+      "shows": 971
+    },
+    {
+      "phrase": "навигатор онлайн проложить маршрут пешком",
+      "reason": "junk/irrelevant association",
+      "shows": 952
+    },
+    {
+      "phrase": "синяя карта для поездки в белоруссию",
+      "reason": "junk/irrelevant association",
+      "shows": 906
+    },
+    {
+      "phrase": "игры в поездку без интернета",
+      "reason": "junk/irrelevant association",
+      "shows": 775
+    },
+    {
+      "phrase": "сим карты для поездок",
+      "reason": "junk/irrelevant association",
+      "shows": 757
+    },
+    {
+      "phrase": "купить синюю карту для поездки",
+      "reason": "junk/irrelevant association",
+      "shows": 706
+    },
+    {
+      "phrase": "84г маршрут",
+      "reason": "junk/irrelevant association",
+      "shows": 702
+    },
+    {
+      "phrase": "купить синюю карту для поездки в белоруссию",
+      "reason": "junk/irrelevant association",
+      "shows": 632
+    },
+    {
+      "phrase": "картатай",
+      "reason": "junk/irrelevant association",
+      "shows": 539
+    },
+    {
+      "phrase": "знать мир на пять",
+      "reason": "junk/irrelevant association",
+      "shows": 516
+    },
+    {
+      "phrase": "этот мир придуман не нами минус",
+      "reason": "junk/irrelevant association",
+      "shows": 498
+    },
+    {
+      "phrase": "как оплатить платную дорогу через госуслуги",
+      "reason": "junk/irrelevant association",
+      "shows": 470
+    },
+    {
+      "phrase": "скачать карту для поездок",
+      "reason": "download intent (minus)",
+      "shows": 426
+    },
+    {
+      "phrase": "а может просто негром стать текст",
+      "reason": "junk/irrelevant association",
+      "shows": 417
+    }
+  ],
+  "autotargeting": "suspended_on_start",
+  "bid_hint_rub": 5,
+  "stats": {
+    "raw_phrases": 80,
+    "kept_travel": 30,
+    "kept_services": 18,
+    "kept_sbp": 14,
+    "rejected": 63,
+    "negatives": 48
+  }
+}
