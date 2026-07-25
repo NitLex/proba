@@ -286,9 +286,18 @@ function looksFinancial(offer = {}, playbook = {}) {
 }
 
 /** Checklist returned in Direct agent output for the human operator. */
-export function buildDirectOperatorChecklist({ plan, offer, playbook } = {}) {
+export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } = {}) {
   const fin = looksFinancial(offer, playbook);
+  const postback = tracker?.postback_url || '';
   const items = [
+    {
+      id: 'leadgid_postback',
+      text: postback
+        ? `LeadGid: вставь постбэк вручную (API не ставит): ${postback}`
+        : 'LeadGid: вставь постбэк вручную в кабинете оффера (шаблон в блоке оркестратора)',
+      required: true,
+      copy: postback || null,
+    },
     {
       id: 'review_draft',
       text: 'Открой черновик в Директе и проверь группы/объявления/минус-слова',

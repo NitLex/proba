@@ -32,11 +32,19 @@ test('fintech checklist marks docs required', () => {
     plan: { href: 'https://trekerarbitrag.ru/click/x', ad_format: 'product' },
     offer: { name: 'Плати по миру', vertical: 'Fintech' },
     playbook: { angles: [{ id: 'travel', title: 'Поездки' }] },
+    tracker: {
+      postback_url:
+        'https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}',
+    },
   });
   const docs = list.find((i) => i.id === 'docs_if_needed');
   assert.equal(docs.required, true);
   assert.ok(list.find((i) => i.id === 'placements_day2'));
   assert.ok(list.find((i) => i.id === 'bid_modifiers'));
+  const pb = list.find((i) => i.id === 'leadgid_postback');
+  assert.ok(pb?.required);
+  assert.match(pb.text, /postback\?clickid=/);
+  assert.ok(pb.copy);
 });
 
 test('direct knowledge brief and system prompt mention help root', () => {

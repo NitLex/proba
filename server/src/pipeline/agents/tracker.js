@@ -1,4 +1,8 @@
 import { db } from '../../db.js';
+import {
+  buildLeadgidPostbackUrl,
+  leadgidPostbackInstructions,
+} from '../../lib/leadgidPostback.js';
 import { makeCampaignKey } from '../../lib/tracking.js';
 import {
   remoteApi,
@@ -17,15 +21,24 @@ function publicClickBase() {
   return (process.env.ARBTRACK_PUBLIC_URL || localBase()).replace(/\/$/, '');
 }
 
-function upsertSourceLocal(name) {
+function upsertSourceLocal(name, postbackUrl) {
   const existing = db.prepare(`SELECT * FROM traffic_sources WHERE name = ?`).get(name);
-  if (existing) return existing;
+  if (existing) {
+    if (postbackUrl && !existing.postback_url) {
+      db.prepare(`UPDATE traffic_sources SET postback_url = ? WHERE id = ?`).run(
+        postbackUrl,
+        existing.id,
+      );
+      return db.prepare(`SELECT * FROM traffic_sources WHERE id = ?`).get(existing.id);
+    }
+    return existing;
+  }
   const info = db
     .prepare(
-      `INSERT INTO traffic_sources (name, cost_param, currency, token1, token2, token3, notes)
-       VALUES (?, 'cost', 'RUB', 'utm_campaign', 'utm_content', 'source', ?)`,
+      `INSERT INTO traffic_sources (name, postback_url, cost_param, currency, token1, token2, token3, notes)
+       VALUES (?, ?, 'cost', 'RUB', 'utm_campaign', 'utm_content', 'source', ?)`,
     )
-    .run(name, 'Создано pipeline tracker-агентом (local)');
+    .run(name, postbackUrl || '', 'Создано pipeline tracker-агентом (local)');
   return db.prepare(`SELECT * FROM traffic_sources WHERE id = ?`).get(info.lastInsertRowid);
 }
 
@@ -82,12 +95,13 @@ async function upsertSourceRemote(token, name) {
   if (existing) return existing;
   return remoteApi(token, 'POST', '/api/sources', {
     name,
+    postback_url: buildLeadgidPostbackUrl(remoteBase()),
     cost_param: 'cost',
     currency: 'RUB',
     token1: 'utm_campaign',
     token2: 'utm_content',
     token3: 'source',
-    notes: 'Создано локальным оркестратором',
+    notes: 'Создано локальным оркестратором · постбэк LeadGid вставить вручную',
   });
 }
 
@@ -142,18 +156,26 @@ export async function runTracker({ offer, context, dryRun }) {
   const useRemote =
     remoteConfigured() && String(process.env.PIPELINE_TRACKER_MODE || 'remote') !== 'local';
   const base = publicClickBase();
-  const postbackTemplate = `${base}/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}`;
+  const postbackTemplate = buildLeadgidPostbackUrl(base);
+  const postbackHelp = leadgidPostbackInstructions(postbackTemplate);
 
   if (dryRun) {
+    const tracker = {
+      dry_run: true,
+      mode: useRemote ? 'remote' : 'local',
+      base,
+      postback_url: postbackTemplate,
+      postback_help: postbackHelp,
+      planned: { sourceName, campaignName, cpc, postbackTemplate, base },
+    };
     return {
-      summary: `Dry-run: трекер ${useRemote ? 'REMOTE ' + remoteBase() : 'local'} — сущности не создавались.`,
-      tracker: {
-        dry_run: true,
-        mode: useRemote ? 'remote' : 'local',
-        planned: { sourceName, campaignName, cpc, postbackTemplate, base },
-      },
-      cursor_prompt: 'Проверь план трекера и создай source/offer/campaign.',
-      context_patch: {},
+      summary: `Dry-run: трекер ${useRemote ? 'REMOTE ' + remoteBase() : 'local'} — сущности не создавались. Постбэк LeadGid — вручную.`,
+      tracker,
+      cursor_prompt: [
+        'Проверь план трекера и создай source/offer/campaign.',
+        `LeadGid postback (вручную): ${postbackTemplate}`,
+      ].join('\n'),
+      context_patch: { tracker },
     };
   }
 
@@ -173,7 +195,7 @@ export async function runTracker({ offer, context, dryRun }) {
       notes: `pipeline:${offer.network_offer_id || offer.offer_id || ''}\n${(playbook.angles || []).map((a) => a.id).join(',')}`,
     });
   } else {
-    source = upsertSourceLocal(sourceName);
+    source = upsertSourceLocal(sourceName, postbackTemplate);
     offerRow = upsertOfferLocal(offer);
     campaign = createCampaignLocal({
       name: campaignName,
@@ -203,16 +225,18 @@ export async function runTracker({ offer, context, dryRun }) {
     },
     click_url: clickUrl,
     postback_url: postbackTemplate,
+    postback_help: postbackHelp,
   };
 
   return {
-    summary: `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · ${base}`,
+    summary: `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · постбэк LeadGid — вручную`,
     tracker,
     cursor_prompt: [
       `Трекер: ${base} (mode=${tracker.mode})`,
       `Click: ${clickUrl}`,
-      `Postback: ${postbackTemplate}`,
-      'Проверь в UI трекера кампанию/оффер/постбек.',
+      `LeadGid Postback (ВРУЧНУЮ в кабинете): ${postbackTemplate}`,
+      postbackHelp.where,
+      postbackHelp.note,
     ].join('\n'),
     context_patch: { tracker },
   };

@@ -7,6 +7,11 @@ import { remoteBase, remoteConfigured } from '../lib/arbtrackRemote.js';
 import { maybeSpawnCursorAgents } from '../pipeline/spawnCursor.js';
 import { imageGenConfig } from '../lib/imageGen.js';
 import { enrichOfferInput } from '../lib/offerEnrich.js';
+import {
+  buildLeadgidPostbackUrl,
+  leadgidPostbackInstructions,
+  publicTrackerBase,
+} from '../lib/leadgidPostback.js';
 import { DIRECT_DOC_SOURCES } from '../pipeline/knowledge/direct-handbook.js';
 
 const router = Router();
@@ -41,6 +46,7 @@ router.get('/roles', (_req, res) => {
         default_spawn: DEFAULT_CURSOR_SPAWN_AGENTS,
       },
       tracker: trackerModeInfo(),
+      leadgid_postback: leadgidPostbackInstructions(buildLeadgidPostbackUrl(publicTrackerBase())),
       direct: {
         configured: Boolean(process.env.YANDEX_DIRECT_TOKEN && process.env.YANDEX_DIRECT_LOGIN),
         login: process.env.YANDEX_DIRECT_LOGIN || null,

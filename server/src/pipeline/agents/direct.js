@@ -410,6 +410,7 @@ export async function runDirect({ offer, context, apply = false }) {
     plan,
     offer,
     playbook: context.playbook,
+    tracker: context.tracker,
   });
 
   return {

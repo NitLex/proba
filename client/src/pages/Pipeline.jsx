@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { copyText } from '../components/ui';
 
 const emptyOffer = {
   url: '',
@@ -37,6 +38,15 @@ export default function Pipeline() {
   const [active, setActive] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copiedKey, setCopiedKey] = useState('');
+
+  async function copyField(key, text) {
+    if (!text) return;
+    const ok = await copyText(text);
+    setCopiedKey(ok ? key : '');
+    if (ok) setTimeout(() => setCopiedKey((k) => (k === key ? '' : k)), 1600);
+    else setMsg('Не удалось скопировать');
+  }
 
   const loadList = () => api.get('/api/pipeline/runs').then(setRuns);
 
@@ -196,6 +206,30 @@ export default function Pipeline() {
               </p>
             </div>
           </div>
+
+          {integrations.leadgid_postback?.url ? (
+            <div className="banner" style={{ margin: '0 1rem 1rem' }}>
+              <strong>LeadGid постбэк — только вручную</strong>
+              <p className="hint" style={{ margin: '0.35rem 0 0.55rem' }}>
+                {integrations.leadgid_postback.reason}. {integrations.leadgid_postback.where}.
+              </p>
+              <div className="copy-row">
+                <code title={integrations.leadgid_postback.url}>
+                  {integrations.leadgid_postback.url}
+                </code>
+                <button
+                  className="btn ghost sm"
+                  type="button"
+                  onClick={() => copyField('pb-global', integrations.leadgid_postback.url)}
+                >
+                  {copiedKey === 'pb-global' ? 'Скопировано' : 'Copy'}
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: '0.45rem' }}>
+                В ссылке оффера должен быть <code>aff_sub={'{clickid}'}</code>
+              </p>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -500,18 +534,61 @@ export default function Pipeline() {
               ))}
             </div>
 
-            {active.context?.tracker?.click_url ? (
-              <p>
-                Click URL:{' '}
-                <code className="mono">{active.context.tracker.click_url}</code>
-              </p>
-            ) : null}
-            {active.context?.direct?.campaign_id ? (
-              <p>
-                Direct campaign ID:{' '}
-                <code className="mono">{active.context.direct.campaign_id}</code> (OFF, без модерации)
-              </p>
-            ) : null}
+            {(active.context?.tracker?.postback_url ||
+              active.context?.tracker?.click_url ||
+              active.context?.direct?.campaign_id) && (
+              <div className="subpanel" style={{ marginTop: '0.75rem' }}>
+                <strong>Ссылки запуска</strong>
+                {active.context?.tracker?.postback_url ? (
+                  <div style={{ marginTop: '0.55rem' }}>
+                    <div className="hint">
+                      LeadGid постбэк (вручную в кабинете)
+                      {active.context.tracker.postback_help?.where
+                        ? ` · ${active.context.tracker.postback_help.where}`
+                        : ''}
+                    </div>
+                    <div className="copy-row">
+                      <code title={active.context.tracker.postback_url}>
+                        {active.context.tracker.postback_url}
+                      </code>
+                      <button
+                        className="btn ghost sm"
+                        type="button"
+                        onClick={() =>
+                          copyField('pb-run', active.context.tracker.postback_url)
+                        }
+                      >
+                        {copiedKey === 'pb-run' ? 'Скопировано' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {active.context?.tracker?.click_url ? (
+                  <div style={{ marginTop: '0.55rem' }}>
+                    <div className="hint">Click URL (в Директ уже подставлен)</div>
+                    <div className="copy-row">
+                      <code title={active.context.tracker.click_url}>
+                        {active.context.tracker.click_url}
+                      </code>
+                      <button
+                        className="btn ghost sm"
+                        type="button"
+                        onClick={() => copyField('click-run', active.context.tracker.click_url)}
+                      >
+                        {copiedKey === 'click-run' ? 'Скопировано' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {active.context?.direct?.campaign_id ? (
+                  <p style={{ marginTop: '0.55rem' }}>
+                    Direct campaign ID:{' '}
+                    <code className="mono">{active.context.direct.campaign_id}</code> (OFF, без
+                    модерации)
+                  </p>
+                ) : null}
+              </div>
+            )}
           </div>
         </section>
       ) : null}

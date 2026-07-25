@@ -122,6 +122,16 @@ YANDEX_CLOUD_FOLDER_ID=...
 
 Без своего домена уже сейчас ставится смысловой **путь**: `trekerarbitrag.ru/karta/poezdki`.
 
+## LeadGid постбэк (вручную)
+
+Автоматом через API не ставится. Шаблон всегда в оркестраторе + после run:
+
+```
+https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}
+```
+
+LeadGid → оффер → Postback. В ссылке оффера нужен `aff_sub={clickid}`.
+
 ## UI
 
 **Оркестратор** → `/pipeline`
@@ -129,7 +139,8 @@ YANDEX_CLOUD_FOLDER_ID=...
 1. Вставь URL оффера  
 2. (опционально) доп. поля / домен в объявлении / dry-run / Cursor spawn  
 3. Запуск → в конце **«Кампания готова»**  
-4. Сам открой Директ → проверь → модерация → старт
+4. Скопируй постбэк в LeadGid (блок на странице)  
+5. Сам открой Директ → проверь → модерация → старт
 
 ## API
 
