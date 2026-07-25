@@ -11,7 +11,8 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "start": "npm start --prefix server",
-    "test": "npm test --prefix server"
+    "test": "npm test --prefix server",
+    "semantics:cleanup": "node scripts/cleanup-wordstat.mjs docs/wordstat-raw-live.json --write"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
