@@ -115,13 +115,16 @@ YANDEX_CLOUD_API_KEY=...   # для Wordstat; для картинок не об�
 YANDEX_CLOUD_FOLDER_ID=...
 ```
 
-### Трекер (монолит / пока вместе)
+### Трекер (trekerarbitrag.ru)
 
 ```bash
-APP_MODE=full   # или tracker после выноса оркестратора
+APP_MODE=tracker
+ORCHESTRATOR_PUBLIC_URL=https://orkestr.online
 PIPELINE_TRACKER_MODE=local
 ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
 ```
+
+`/api/pipeline` на трекере выключен — оркестратор только на orkestr.online.
 
 ## Домен в объявлении (вместо trekerarbitrag.ru)
 
