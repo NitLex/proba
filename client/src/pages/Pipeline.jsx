@@ -8,9 +8,10 @@ const emptyOffer = {
   name: '',
   payout: '',
   epc: '',
-  geo: 'RU',
-  vertical: 'Fintech',
-  network: 'LeadGid',
+  // Empty: geo is parsed from offer name/API (do not force RU)
+  geo: '',
+  vertical: '',
+  network: '',
   source: 'Yandex Direct РСЯ',
   daily_budget: '5000',
   promo_code: '',
@@ -25,6 +26,16 @@ const STATUS_CLASS = {
   done: 'badge active',
   failed: 'badge rejected',
 };
+
+/** Cursor / API errors are often objects — React cannot render them as children. */
+function asText(value, fallback = '') {
+  if (value == null || value === false) return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    return value.message || value.error || value.code || JSON.stringify(value);
+  }
+  return String(value);
+}
 
 export default function Pipeline() {
   const [roles, setRoles] = useState([]);
@@ -990,18 +1001,21 @@ export default function Pipeline() {
             {active.context?.cursor_launches?.length ? (
               <div className="banner">
                 Cursor launches:{' '}
-                {active.context.cursor_launches.map((l) => (
-                  <span key={`${l.agent}-${l.agent_id || l.error || l.reason}`} style={{ marginRight: 8 }}>
-                    {l.agent}:{' '}
-                    {l.url ? (
-                      <a href={l.url} target="_blank" rel="noreferrer">
-                        {l.agent_id || 'open'}
-                      </a>
-                    ) : (
-                      l.error || l.reason || (l.ok ? 'ok' : 'fail')
-                    )}
-                  </span>
-                ))}
+                {active.context.cursor_launches.map((l, idx) => {
+                  const errText = asText(l.error) || asText(l.reason) || (l.ok ? 'ok' : 'fail');
+                  return (
+                    <span key={`${l.agent}-${l.agent_id || idx}`} style={{ marginRight: 8 }}>
+                      {l.agent}:{' '}
+                      {l.url ? (
+                        <a href={l.url} target="_blank" rel="noreferrer">
+                          {l.agent_id || 'open'}
+                        </a>
+                      ) : (
+                        errText
+                      )}
+                    </span>
+                  );
+                })}
               </div>
             ) : null}
 

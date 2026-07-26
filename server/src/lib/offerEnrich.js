@@ -210,15 +210,24 @@ export async function enrichOfferInput(raw = {}) {
     }
   }
 
-  // Geo from name / user input — NEVER force RU when EU tokens present
-  const geos = extractGeosFromText(
-    [offer.name, offer.geo, offer.notes, offer.description].filter(Boolean).join(' '),
+  // Geo from name first. Soft form default "RU" must not override name tokens (ES/DK/…).
+  const nameGeos = extractGeosFromText(
+    [offer.name, offer.notes, offer.description, offer.network_description]
+      .filter(Boolean)
+      .join(' '),
   );
-  if (geos.length) {
-    offer.geos = geos;
-    offer.geo = geos.join(',');
-  } else if (!offer.geo) {
+  const explicitGeo = String(offer.geo || '').trim();
+  const explicitIsSoftRu = /^RU$/i.test(explicitGeo) && nameGeos.length && !nameGeos.includes('RU');
+  if (nameGeos.length) {
+    offer.geos = nameGeos;
+    offer.geo = nameGeos.join(',');
+  } else if (explicitGeo && !explicitIsSoftRu) {
+    const fromField = extractGeosFromText(explicitGeo);
+    offer.geos = fromField.length ? fromField : [explicitGeo.toUpperCase()];
+    offer.geo = offer.geos.join(',');
+  } else {
     offer.geo = null; // unknown — analyst must not invent RU
+    delete offer.geos;
   }
 
   offer.source = offer.source || 'Yandex Direct РСЯ';

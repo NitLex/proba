@@ -19,6 +19,25 @@ export const GEO_REGION_IDS = {
   US: [84],
   GB: [111],
   UK: [111],
+  // Parsed from offer names even when Yandex region id is unknown ([])
+  DK: [],
+  SE: [],
+  NO: [],
+  FI: [],
+  IT: [],
+  FR: [],
+  PT: [],
+  HU: [],
+  BG: [],
+  SK: [],
+  LT: [],
+  LV: [],
+  EE: [],
+  NL: [],
+  BE: [],
+  AT: [],
+  IE: [],
+  GR: [],
 };
 
 const ISO2 = Object.keys(GEO_REGION_IDS);
