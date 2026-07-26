@@ -1,0 +1,30 @@
+{
+  "run_id": 1,
+  "ad_format": "product",
+  "engine": "agent",
+  "provider": "cursor-agent-GenerateImage",
+  "size": "1024x1024",
+  "images": [
+    {
+      "angle_id": "travel",
+      "file": "travel-agent-0.png",
+      "jpeg": "travel-agent-0.jpg",
+      "format": "product",
+      "image_has_text": false
+    },
+    {
+      "angle_id": "services",
+      "file": "services-agent-0.png",
+      "jpeg": "services-agent-0.jpg",
+      "format": "product",
+      "image_has_text": false
+    },
+    {
+      "angle_id": "sbp",
+      "file": "sbp-agent-0.png",
+      "jpeg": "sbp-agent-0.jpg",
+      "format": "product",
+      "image_has_text": false
+    }
+  ]
+}
