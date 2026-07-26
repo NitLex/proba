@@ -461,10 +461,19 @@ async function applyDraft(plan) {
 export async function runDirect({ offer, context, apply = false }) {
   const plan = buildPlan({ offer, context });
   let applyResult = null;
+  let trackerLink = null;
   const apiReady = Boolean(process.env.YANDEX_DIRECT_TOKEN && process.env.YANDEX_DIRECT_LOGIN);
 
   if (apply && apiReady) {
     applyResult = await applyDraft(plan);
+    // Bind Direct ↔ tracker even on partial apply (campaign created, ads failed)
+    if (applyResult?.campaign_id && context.tracker?.campaign?.id) {
+      const { linkDirectToTrackerCampaign } = await import('../../lib/directTrackerLink.js');
+      trackerLink = linkDirectToTrackerCampaign({
+        trackerCampaignId: context.tracker.campaign.id,
+        directCampaignId: applyResult.campaign_id,
+      });
+    }
   }
 
   const applied = Boolean(applyResult?.ok);
@@ -507,6 +516,7 @@ export async function runDirect({ offer, context, apply = false }) {
         campaign_id: applyResult?.campaign_id || null,
         apply_result: applyResult,
         apply_summary: applySummary,
+        tracker_link: trackerLink,
         ready_message: null,
         user_action: applyResult?.campaign_id
           ? `Кампания ${applyResult.campaign_id} создана, но объявления/ключи не залились — проверь лог apply`
@@ -527,6 +537,7 @@ export async function runDirect({ offer, context, apply = false }) {
           applied: false,
           campaign_id: applyResult?.campaign_id || null,
           apply_summary: applySummary,
+          tracker_link: trackerLink,
           ad_format: plan.ad_format,
         },
       },
@@ -575,6 +586,7 @@ export async function runDirect({ offer, context, apply = false }) {
       moderation_submitted: false,
       campaign_id: applyResult?.campaign_id || null,
       apply_result: applyResult,
+      tracker_link: trackerLink,
       ready_message: applied ? 'Кампания готова' : null,
       user_action: applied
         ? 'Открой Директ → проверь объявления/креативы → отправь на модерацию и запусти сам'
@@ -599,6 +611,7 @@ export async function runDirect({ offer, context, apply = false }) {
         applied,
         campaign_id: applyResult?.campaign_id || null,
         apply_summary: applySummary,
+        tracker_link: trackerLink,
         ready_message: applied ? 'Кампания готова' : null,
         ad_format: plan.ad_format,
       },

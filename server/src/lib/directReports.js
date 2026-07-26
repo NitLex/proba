@@ -141,4 +141,55 @@ export async function fetchPlacementReport(campaignIds, { dateFrom, dateTo } = {
   return { ok: true, rows, dateFrom: from, dateTo: to, attempts: result.attempts };
 }
 
+/** Ad-level performance for pause decisions (weak ads / groups). */
+export async function fetchAdPerformanceReport(campaignIds, { dateFrom, dateTo } = {}) {
+  const ids = (campaignIds || []).map(String).filter(Boolean);
+  if (!ids.length) return { ok: false, error: 'no_campaign_ids', rows: [] };
+
+  const from = dateFrom || moscowDate(-7);
+  const to = dateTo || moscowDate(0);
+  const name = `arbtrack_ads_${ids.join('_').slice(0, 40)}_${Date.now()}`;
+
+  const result = await fetchDirectReport({
+    SelectionCriteria: {
+      DateFrom: from,
+      DateTo: to,
+      Filter: [{ Field: 'CampaignId', Operator: 'IN', Values: ids }],
+    },
+    FieldNames: [
+      'CampaignId',
+      'CampaignName',
+      'AdGroupId',
+      'AdId',
+      'Impressions',
+      'Clicks',
+      'Cost',
+      'Conversions',
+      'AvgCpc',
+    ],
+    ReportName: name.slice(0, 255),
+    ReportType: 'CUSTOM_REPORT',
+    DateRangeType: 'CUSTOM_DATE',
+    Format: 'TSV',
+    IncludeVAT: 'YES',
+    IncludeDiscount: 'NO',
+  });
+
+  if (!result.ok) return { ...result, rows: [], dateFrom: from, dateTo: to };
+
+  const rows = (result.rows || []).map((r) => ({
+    campaign_id: String(r.CampaignId || ''),
+    campaign_name: r.CampaignName || '',
+    ad_group_id: String(r.AdGroupId || ''),
+    ad_id: String(r.AdId || ''),
+    impressions: num(r.Impressions),
+    clicks: num(r.Clicks),
+    cost: num(r.Cost),
+    conversions: num(r.Conversions),
+    avg_cpc: num(r.AvgCpc),
+  }));
+
+  return { ok: true, rows, dateFrom: from, dateTo: to, attempts: result.attempts };
+}
+
 export { moscowDate, num as reportNum };

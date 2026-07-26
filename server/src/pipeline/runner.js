@@ -213,6 +213,15 @@ export async function runTrafficOptimization(options = {}) {
       ? `Трафик: кампании ${ids.slice(0, 3).join(', ')}${ids.length > 3 ? '…' : ''}`
       : 'Трафик: модерированные кампании');
 
+  // Heal Direct↔tracker links from past launch runs
+  try {
+    const { listRuns } = await import('./store.js');
+    const { backfillLinksFromPipelineRuns } = await import('../lib/directTrackerLink.js');
+    backfillLinksFromPipelineRuns(listRuns(80));
+  } catch {
+    /* non-fatal */
+  }
+
   const runId = startPipeline(
     {
       name: 'Traffic optimization',

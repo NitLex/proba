@@ -48,12 +48,12 @@ export default function Pipeline() {
   const [trafficReports, setTrafficReports] = useState([]);
 
   const OUTCOME_LABEL = {
-    applied: 'Площадки запрещены в Директе',
+    applied: 'Правки применены в Директе',
     partial: 'Частично применено',
     apply_failed: 'Ошибка применения в Директе',
-    nothing_new: 'Новых площадок не добавлено',
+    nothing_new: 'Новых правок нет',
     recommendations_only: 'Только рекомендации',
-    no_action: 'Нечего резать',
+    no_action: 'Нечего менять',
   };
 
   function loadTrafficReports() {
@@ -114,9 +114,11 @@ export default function Pipeline() {
       const mini = run.context?.mini_report;
       const cut = mini?.candidates_to_ban ?? ta?.actions?.exclude_placements?.length ?? 0;
       const added = mini?.sites_added ?? 0;
+      const paused = mini?.ads_paused ?? 0;
+      const ceilings = mini?.bid_ceilings_updated ?? 0;
       setMsg(
-        added > 0
-          ? `Аналитик трафика: запретил +${added} площадок (кандидатов ${cut}). Run #${run.id}`
+        added > 0 || paused > 0 || ceilings > 0
+          ? `Аналитик: +${added} площадок · пауза объявл. ${paused} · BidCeiling ${ceilings}. Run #${run.id}`
           : `Аналитик трафика: ${OUTCOME_LABEL[mini?.outcome] || 'готово'} · кандидатов ${cut}. Run #${run.id}`,
       );
       await loadList();
@@ -399,7 +401,7 @@ export default function Pipeline() {
               checked={applyTraffic}
               onChange={(e) => setApplyTraffic(e.target.checked)}
             />
-            Применить правки в Директе (запретить мусорные площадки)
+            Применить правки в Директе (площадки, пауза слабых объявлений, дети −100%, BidCeiling, стоп по сливу)
           </label>
           <div style={{ marginTop: '0.75rem' }}>
             <button
@@ -473,7 +475,15 @@ export default function Pipeline() {
                         В Директ: +{r.sites_added ?? 0}
                         {r.sites_total_after != null ? ` (всего ${r.sites_total_after})` : ''}
                       </span>
+                      <span>Пауза объявл.: {r.ads_paused ?? r.candidates_pause_ads ?? 0}</span>
+                      <span>BidCeiling: {r.bid_ceilings_updated ?? 0}</span>
+                      <span>Стоп кампаний: {r.campaigns_suspended ?? 0}</span>
                     </div>
+                    {r.alerts?.length ? (
+                      <p className="hint" style={{ margin: '0.35rem 0 0', color: 'var(--danger, #b33)' }}>
+                        {r.alerts.slice(0, 2).join(' · ')}
+                      </p>
+                    ) : null}
                     {r.top_banned?.length ? (
                       <ul className="traffic-report-list">
                         {r.top_banned.slice(0, 6).map((p) => (
@@ -492,6 +502,15 @@ export default function Pipeline() {
                         Список площадок пуст или только рекомендации без кандидатов.
                       </p>
                     )}
+                    {r.top_paused_ads?.length ? (
+                      <p className="hint" style={{ margin: '0.35rem 0 0' }}>
+                        Слабые объявления:{' '}
+                        {r.top_paused_ads
+                          .slice(0, 3)
+                          .map((a) => `${a.ad_id} (${a.clicks} кл.)`)
+                          .join(', ')}
+                      </p>
+                    ) : null}
                     {r.advice?.length ? (
                       <p className="hint" style={{ margin: '0.4rem 0 0' }}>
                         {r.advice.slice(0, 2).join(' · ')}
