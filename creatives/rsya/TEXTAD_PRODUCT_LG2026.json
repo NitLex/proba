@@ -1,0 +1,14 @@
+{
+  "engine": "agent",
+  "ad_format": "product",
+  "offer": {
+    "name": "Тестовая карта",
+    "vertical_key": "fintech_cards",
+    "promo": {
+      "code": "LG2026",
+      "note": "−500 ₽ (если актуально)"
+    }
+  },
+  "source_run": "creatives/pipeline/1/TEXTAD_PRODUCT.json",
+  "pack": "creatives/rsya/ppm-rsya-product-textad-run1.zip"
+}

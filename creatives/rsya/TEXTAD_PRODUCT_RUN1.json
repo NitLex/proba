@@ -1,0 +1,168 @@
+{
+  "run_id": 1,
+  "engine": "agent",
+  "ad_format": "product",
+  "offer": {
+    "name": "Тестовая карта",
+    "vertical_key": "fintech_cards",
+    "brief": "путешествия и зарубежные сервисы",
+    "promo": {
+      "code": "LG2026",
+      "note": "−500 ₽ (если актуально)"
+    }
+  },
+  "briefs": [
+    {
+      "angle_id": "travel",
+      "angle_title": "Поездки / travel-оплаты",
+      "ad_format": "product",
+      "titles": [
+        "Зарубежная карта в поездки",
+        "Зарубежная карта в дорогу",
+        "Зарубежная карта онлайн"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. СБП. Промокод LG2026.",
+        "Выпуск зарубежной карты за минуты. Промокод LG2026. Поездки и оплаты."
+      ],
+      "image": "creatives/pipeline/1/travel-agent-0.png",
+      "image_direct": "creatives/rsya/direct-textad/ppm-travel-1080.jpg",
+      "sitelinks": [
+        {
+          "title": "Зарубежная карта",
+          "description": "Выпуск онлайн за минуты"
+        },
+        {
+          "title": "Промокод LG2026",
+          "description": "−500 ₽ (если актуально)"
+        },
+        {
+          "title": "Пополнение по СБП",
+          "description": "Рублями с любого банка"
+        },
+        {
+          "title": "Оплата в сервисах",
+          "description": "Поездки и подписки"
+        }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    },
+    {
+      "angle_id": "services",
+      "angle_title": "Подписки и онлайн-сервисы",
+      "ad_format": "product",
+      "titles": [
+        "Зарубежная карта без отказа",
+        "Зарубежная карта для подписок",
+        "Зарубежная карта — сервисы"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. СБП. Промокод LG2026.",
+        "Выпуск зарубежной карты. Подписки и оплаты. Промокод LG2026."
+      ],
+      "image": "creatives/pipeline/1/services-agent-0.png",
+      "image_direct": "creatives/rsya/direct-textad/ppm-services-1080.jpg",
+      "sitelinks": [
+        {
+          "title": "Зарубежная карта",
+          "description": "Выпуск онлайн за минуты"
+        },
+        {
+          "title": "Промокод LG2026",
+          "description": "−500 ₽ (если актуально)"
+        },
+        {
+          "title": "Пополнение по СБП",
+          "description": "Рублями с любого банка"
+        },
+        {
+          "title": "Оплата в сервисах",
+          "description": "Поездки и подписки"
+        }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    },
+    {
+      "angle_id": "sbp",
+      "angle_title": "Быстрый выпуск + СБП",
+      "ad_format": "product",
+      "titles": [
+        "Зарубежная карта + СБП",
+        "Зарубежная карта с СБП"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Пополнение с любого банка по СБП.",
+        "Выпуск зарубежной карты. Рубли по СБП. Промокод LG2026."
+      ],
+      "image": "creatives/pipeline/1/sbp-agent-0.png",
+      "image_direct": "creatives/rsya/direct-textad/ppm-sbp-1080.jpg",
+      "sitelinks": [
+        {
+          "title": "Зарубежная карта",
+          "description": "Выпуск онлайн за минуты"
+        },
+        {
+          "title": "Промокод LG2026",
+          "description": "−500 ₽ (если актуально)"
+        },
+        {
+          "title": "Пополнение по СБП",
+          "description": "Рублями с любого банка"
+        },
+        {
+          "title": "Оплата в сервисах",
+          "description": "Поездки и подписки"
+        }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "angle_id": "travel",
+      "path": "creatives/pipeline/1/travel-agent-0.png",
+      "format": "product",
+      "size": "1024x1024"
+    },
+    {
+      "angle_id": "services",
+      "path": "creatives/pipeline/1/services-agent-0.png",
+      "format": "product",
+      "size": "1024x1024"
+    },
+    {
+      "angle_id": "sbp",
+      "path": "creatives/pipeline/1/sbp-agent-0.png",
+      "format": "product",
+      "size": "1024x1024"
+    }
+  ],
+  "ingest": {
+    "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+    "run_id": 1,
+    "status": "token_rejected_403",
+    "note": "POST with prompt token returned 403 Неверный ingest token. Retry via upload_ingest.py with a fresh token from the run."
+  },
+  "qa": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      "Ingest token from prompt rejected by tracker"
+    ]
+  }
+}
