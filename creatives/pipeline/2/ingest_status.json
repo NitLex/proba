@@ -1,0 +1,22 @@
+{
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "run_id": 2,
+  "ok": false,
+  "results": [
+    {
+      "file": "generic-agent-0",
+      "status": 404,
+      "body": "{\"error\":\"Run not found\"}"
+    },
+    {
+      "file": "generic-agent-1",
+      "status": 404,
+      "body": "{\"error\":\"Run not found\"}"
+    },
+    {
+      "file": "generic-agent-2",
+      "status": 404,
+      "body": "{\"error\":\"Run not found\"}"
+    }
+  ]
+}
