@@ -1,0 +1,22 @@
+{
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "run_id": 1,
+  "ok": true,
+  "results": [
+    {
+      "angle_id": "travel",
+      "status": 200,
+      "body": "{\"ok\":true,\"run_id\":1,\"files\":[{\"path\":\"creatives/pipeline/1/travel-agent-0.jpg\",\"name\":\"travel-agent-0.jpg\",\"size\":144944,\"angle_id\":\"travel\"}],\"images_ok\":1,\"qa\":{\"ok\":true,\"errors\":[],\"warnings\":[{\"angle_id\":\"services\",\"text\":\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"},{\"angle_id\":\"sbp\",\"text\":\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"}],\"per_brief\":[{\"angle_id\":\"travel\",\"ok\":true,\"errors\":[],\"warnings\":[]},{\"angle_id\":\"services\",\"ok\":true,\"errors\":[],\"warnings\":[\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"]},{\"angle_id\":\"sbp\",\"ok\":true,\"errors\":[],\"warnings\":[\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"]}],\"images_ok\":1,\"briefs\":3},\"next\":\"POST /api/pipeline/runs/:id/apply-direct — применить объявления с новыми картинками\"}"
+    },
+    {
+      "angle_id": "services",
+      "status": 200,
+      "body": "{\"ok\":true,\"run_id\":1,\"files\":[{\"path\":\"creatives/pipeline/1/services-agent-0.jpg\",\"name\":\"services-agent-0.jpg\",\"size\":124846,\"angle_id\":\"services\"}],\"images_ok\":2,\"qa\":{\"ok\":true,\"errors\":[],\"warnings\":[{\"angle_id\":\"sbp\",\"text\":\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"}],\"per_brief\":[{\"angle_id\":\"travel\",\"ok\":true,\"errors\":[],\"warnings\":[]},{\"angle_id\":\"services\",\"ok\":true,\"errors\":[],\"warnings\":[]},{\"angle_id\":\"sbp\",\"ok\":true,\"errors\":[],\"warnings\":[\"нет сгенерированной картинки для угла — объявление может уйти без AdImageHash\"]}],\"images_ok\":2,\"briefs\":3},\"next\":\"POST /api/pipeline/runs/:id/apply-direct — применить объявления с новыми картинками\"}"
+    },
+    {
+      "angle_id": "sbp",
+      "status": 200,
+      "body": "{\"ok\":true,\"run_id\":1,\"files\":[{\"path\":\"creatives/pipeline/1/sbp-agent-0.jpg\",\"name\":\"sbp-agent-0.jpg\",\"size\":136112,\"angle_id\":\"sbp\"}],\"images_ok\":3,\"qa\":{\"ok\":true,\"errors\":[],\"warnings\":[],\"per_brief\":[{\"angle_id\":\"travel\",\"ok\":true,\"errors\":[],\"warnings\":[]},{\"angle_id\":\"services\",\"ok\":true,\"errors\":[],\"warnings\":[]},{\"angle_id\":\"sbp\",\"ok\":true,\"errors\":[],\"warnings\":[]}],\"images_ok\":3,\"briefs\":3},\"next\":\"POST /api/pipeline/runs/:id/apply-direct — применить объявления с новыми картинками\"}"
+    }
+  ]
+}
