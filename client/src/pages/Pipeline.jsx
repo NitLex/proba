@@ -36,7 +36,9 @@ export default function Pipeline() {
   const [showExtra, setShowExtra] = useState(false);
   const [dryRun, setDryRun] = useState(false);
   const [applyDirect, setApplyDirect] = useState(true);
-  const [spawnCursor, setSpawnCursor] = useState(false);
+  const [spawnCursor, setSpawnCursor] = useState(true);
+  const [referenceFiles, setReferenceFiles] = useState([]);
+  const [referenceBatchId, setReferenceBatchId] = useState('');
   const [active, setActive] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -141,11 +143,38 @@ export default function Pipeline() {
     }
   }
 
+  async function readFileAsBase64(file) {
+    const buf = await file.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(buf);
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
+  async function uploadReferencesIfNeeded() {
+    if (!referenceFiles.length) return referenceBatchId || undefined;
+    const files = [];
+    for (const file of referenceFiles) {
+      files.push({
+        name: file.name,
+        mime: file.type || 'image/jpeg',
+        data_base64: await readFileAsBase64(file),
+      });
+    }
+    const batch = await api.post('/api/pipeline/reference-images', { files });
+    setReferenceBatchId(batch.batch_id);
+    return batch.batch_id;
+  }
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setMsg('');
     try {
+      const batchId = await uploadReferencesIfNeeded();
       const body = {
         ...form,
         payout: form.payout === '' ? undefined : Number(form.payout),
@@ -154,6 +183,7 @@ export default function Pipeline() {
         dry_run: dryRun,
         apply_direct: applyDirect,
         spawn_cursor_agents: spawnCursor,
+        reference_batch_id: batchId,
       };
       const run = await api.post('/api/pipeline/runs', body);
       setActive(run);
@@ -163,14 +193,23 @@ export default function Pipeline() {
       const launched = launches.filter((l) => l.ok).length;
       const directStep = run.steps?.find((s) => s.agent === 'direct');
       const qaStep = run.steps?.find((s) => s.agent === 'qa');
+      const creativeStep = run.steps?.find((s) => s.agent === 'creative');
       const directFail =
         directStep?.status === 'failed' ||
         /не удалось создать черновик/i.test(directStep?.output?.summary || run.error || '');
       const qaFail = qaStep?.status === 'failed' || /QA smoke fail/i.test(run.error || '');
       const vertical = run.context?.analysis?.vertical_key || run.context?.playbook?.vertical_key;
       const campId = run.context?.direct?.campaign_id;
+      const awaitingCreatives = run.context?.creatives?.awaiting_agent_images;
+      const refs = run.context?.creatives?.reference_images?.length || 0;
       if (qaFail) {
         setMsg(`QA не пройден: ${run.error || qaStep?.error || qa?.summary || 'проверь click/bots'}`);
+      } else if (awaitingCreatives) {
+        setMsg(
+          `Брифы готовы${refs ? ` · референсы ${refs}` : ''}. Креатив-агент Cursor рисует картинки (GenerateImage)${
+            launched ? ` · запущено ${launched}` : ''
+          }. После загрузки — «Применить в Директ».`,
+        );
       } else if (run.status === 'done' && ready) {
         setMsg(
           `${ready}${qa?.ok ? ' · ссылки/клики проверены' : ''}${
@@ -183,7 +222,9 @@ export default function Pipeline() {
         );
       } else if (run.status === 'done') {
         setMsg(
-          `Пайплайн завершён${qa?.ok ? ' · QA ok' : ''}${spawnCursor ? ` · Cursor агентов: ${launched}/${launches.length || 0}` : ''}`,
+          `Пайплайн завершён${qa?.ok ? ' · QA ok' : ''}${
+            creativeStep?.output?.summary ? ` · ${creativeStep.output.summary}` : ''
+          }${spawnCursor || launched ? ` · Cursor: ${launched}/${launches.length || 0}` : ''}`,
         );
       } else {
         setMsg(`Статус: ${run.status}${run.error ? ` — ${run.error}` : ''}`);
@@ -191,6 +232,22 @@ export default function Pipeline() {
       await loadList();
     } catch (err) {
       setMsg(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyDirectCreatives() {
+    if (!active?.id) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      const res = await api.post(`/api/pipeline/runs/${active.id}/apply-direct`, {});
+      setActive(res.run || res);
+      setMsg(res.direct?.summary || res.run?.context?.direct?.ready_message || 'Директ обновлён');
+      await loadList();
+    } catch (e) {
+      setMsg(e.message);
     } finally {
       setBusy(false);
     }
@@ -262,9 +319,8 @@ export default function Pipeline() {
               </div>
               <strong>Креативы</strong>
               <p className="hint">
-                {integrations.images?.configured
-                  ? integrations.images.note
-                  : 'Нужен YandexART (YANDEX_CLOUD_*) или OpenAI + proxy'}
+                {integrations.images?.note ||
+                  'Креатив-агент Cursor (GenerateImage) + референсы'}
               </p>
             </div>
             <div className="subpanel">
@@ -614,14 +670,39 @@ export default function Pipeline() {
                 value={form.ad_format}
                 onChange={(e) => setForm({ ...form, ad_format: e.target.value })}
               >
-                <option value="auto">Авто — по креативу (с текстом → графика, без → товарное)</option>
+                <option value="auto">Авто — товарное (текст в полях Директа)</option>
                 <option value="product">Товарное — чистая картинка, текст в настройках</option>
                 <option value="graphic">Графическое — надписи оффера на баннере</option>
               </select>
             </label>
             <p className="hint full" style={{ marginTop: '-0.35rem' }}>
-              Графическое = ImageAd (текст на картинке). Товарное = TextAd (заголовок/текст в полях Директа).
+              Картинки рисует креатив-агент Cursor (не YandexART). Можно приложить референсы.
             </p>
+
+            <label className="lbl full">
+              Референсы для креатива (jpg/png/webp, до 8 шт.)
+              <input
+                className="field"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => {
+                  const list = Array.from(e.target.files || []);
+                  setReferenceFiles(list);
+                  setReferenceBatchId('');
+                }}
+              />
+            </label>
+            {referenceFiles.length ? (
+              <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                Выбрано: {referenceFiles.map((f) => f.name).join(', ')}
+                {referenceBatchId ? ` · batch ${referenceBatchId}` : ''}
+              </p>
+            ) : (
+              <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                Опционально: стиль/продукт/прошлые баннеры — агент опирается на них при генерации.
+              </p>
+            )}
 
             <div className="full">
               <button
@@ -739,7 +820,7 @@ export default function Pipeline() {
                 checked={spawnCursor}
                 onChange={(e) => setSpawnCursor(e.target.checked)}
               />
-              Автозапуск Cursor-субагентов (не создаёт кампанию в Директе — только cloud-агенты)
+              Запустить креатив-агента Cursor (GenerateImage по брифу и референсам)
             </label>
             <div className="full">
               <button className="btn" disabled={busy} type="submit">
@@ -799,7 +880,10 @@ export default function Pipeline() {
             </h2>
             <div className="toolbar">
               <button type="button" className="btn ghost sm" disabled={busy} onClick={spawnCursorAgain}>
-                Spawn Cursor
+                Spawn креатив-агента
+              </button>
+              <button type="button" className="btn sm" disabled={busy} onClick={applyDirectCreatives}>
+                Применить креативы в Директ
               </button>
               <span className={STATUS_CLASS[active.status] || 'badge'}>{active.status}</span>
             </div>

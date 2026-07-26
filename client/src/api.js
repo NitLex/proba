@@ -47,6 +47,8 @@ export const api = {
   post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
   put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
   del: (path) => request(path, { method: 'DELETE' }),
+  /** JSON body may include large base64 — same as post, kept for clarity */
+  postJson: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
 };
 
 export function money(n, currency = 'RUB') {

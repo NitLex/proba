@@ -67,9 +67,9 @@ export function creativeAgentSystemPrompt(verticalKey = '') {
     `В текстах обязательно: ${brief.must_in_copy.join('; ')}`,
     `Нельзя: ${brief.avoid.join('; ')}`,
     '',
-    'Движок картинок: YandexART (не GPT). Пиши промпты коротко (до ~500 символов), по-русски, с сюжетом и запретами.',
-    'Title ≤56, Text ≤81. Промокод — только если есть в оффере.',
-  ].join('\n');
+  'Движок картинок: Cursor креатив-агент (GenerateImage). Пиши промпты подробно; референсы — если есть.',
+  'Title ≤56, Text ≤81. Промокод — только если есть в оффере.',
+].join('\n');
 }
 
 /** Short YandexART scene seeds by vertical + angle (safe wording — avoid filter trips). */

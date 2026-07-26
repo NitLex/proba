@@ -20,6 +20,13 @@ import {
   creativeAgentSystemPrompt,
   creativeBriefForVertical,
 } from '../knowledge/creative-handbook.js';
+import {
+  materializeReferencesForRun,
+  normalizeOfferReferences,
+  referencesAsGeneratedImages,
+  createIngestToken,
+  mergeGeneratedImages,
+} from '../../lib/creativeAssets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
@@ -339,6 +346,88 @@ function verticalCursorHint(verticalKey) {
   return 'В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.';
 }
 
+function agentCursorPrompt({
+  systemRole,
+  adFormat,
+  formatLabelText,
+  verticalKey,
+  verticalHint,
+  imgCfg,
+  offer,
+  promo,
+  creatives,
+  references,
+  okImages,
+  qa,
+  runId,
+  ingestToken,
+  publicBase,
+}) {
+  const ingestUrl = `${String(publicBase || 'https://trekerarbitrag.ru').replace(/\/$/, '')}/api/pipeline/ingest-creatives`;
+  return [
+    systemRole,
+    '',
+    '## Твоя задача (обязательно)',
+    'Сгенерируй РСЯ-креативы ЛУЧШЕ, чем YandexART/GPT-шаблоны.',
+    'Используй инструмент GenerateImage (или аналог генерации картинок в Cursor).',
+    'Если есть референсы — передай их как reference_image_paths / visual references.',
+    'Сделай 1 квадратный креатив 1:1 на каждый угол (минимум 2).',
+    adFormat === 'graphic'
+      ? 'Формат graphic: текст оффера МОЖЕТ быть на баннере (чёткий кириллический).'
+      : 'Формат product: БЕЗ текста на картинке — заголовки только в полях TextAd.',
+    '',
+    '## Куда сохранить',
+    `1) Локально: creatives/pipeline/${runId}/<angle_id>-agent-0.png`,
+    `2) Обязательно загрузи на трекер (creatives/pipeline gitignored):`,
+    `POST ${ingestUrl}`,
+    'Body JSON:',
+    '```json',
+    JSON.stringify(
+      {
+        run_id: Number(runId) || runId,
+        token: ingestToken || '<INGEST_TOKEN>',
+        images: [
+          {
+            angle_id: creatives[0]?.angle_id || 'generic',
+            mime: 'image/png',
+            data_base64: '<base64 without data: prefix>',
+            format: adFormat === 'graphic' ? 'graphic' : 'product',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+    '```',
+    '',
+    `Формат объявлений: ${adFormat} (${formatLabelText}).`,
+    `Движок: ${imgCfg.provider} — ${imgCfg.note}. НЕ используй YandexART и GPT Image API.`,
+    verticalHint,
+    references?.length
+      ? `Референсы (${references.length}): ${JSON.stringify(references.map((r) => r.path))}`
+      : 'Референсов нет — опирайся на бриф и вертикаль.',
+    `QA: ${JSON.stringify(qa)}`,
+    `Оффер: ${JSON.stringify({
+      name: offer.name,
+      vertical_key: verticalKey,
+      brief: offer.product_brief || offer.notes,
+      promo,
+    })}`,
+    `Брифы: ${JSON.stringify(
+      creatives.map((c) => ({
+        id: c.angle_id,
+        title: c.angle_title,
+        format: c.ad_format,
+        titles: c.titles,
+        texts: c.texts,
+        overlay: c.overlay_lines,
+        prompt: c.image_prompt,
+      })),
+    )}`,
+    `Уже есть файлы: ${JSON.stringify(okImages)}`,
+  ].join('\n');
+}
+
 export async function runCreative({ offer, context }) {
   const playbook = context.playbook || {};
   const angles = playbook.angles || [{ id: 'generic', title: 'Основной' }];
@@ -353,6 +442,22 @@ export async function runCreative({ offer, context }) {
   const imageHasText = genFormat === 'graphic';
   const adFormat = resolveAdFormat({ requested: requestedFormat, imageHasText });
   const systemRole = creativeAgentSystemPrompt(verticalKey);
+  const agentMode = imgCfg.provider === 'agent' || imgCfg.provider === 'reference';
+
+  let references = normalizeOfferReferences(offer);
+  const batchId = offer.reference_batch_id || context.reference_batch_id || '';
+  if (batchId) {
+    try {
+      const materialized = materializeReferencesForRun(runId, batchId);
+      references = [...references, ...materialized];
+    } catch (err) {
+      references = [
+        ...references,
+        { path: null, error: err.message || String(err), role: 'reference' },
+      ];
+    }
+  }
+  references = references.filter((r) => r?.path);
 
   const overlaysByAngle = {};
   const creatives = angles.map((angle) => {
@@ -365,6 +470,7 @@ export async function runCreative({ offer, context }) {
       texts: copy.texts,
     });
     overlaysByAngle[angle.id] = overlayLines;
+    const promptProvider = agentMode ? 'openai' : imgCfg.provider || 'agent';
 
     return {
       angle_id: angle.id,
@@ -376,7 +482,7 @@ export async function runCreative({ offer, context }) {
       titles: copy.titles,
       texts: copy.texts,
       overlay_lines: imageHasText ? overlayLines : [],
-      image_prompt: buildCreativePromptForProvider(imgCfg.provider || 'yandex_art', {
+      image_prompt: buildCreativePromptForProvider(promptProvider, {
         angle,
         offer,
         format: genFormat,
@@ -411,41 +517,75 @@ export async function runCreative({ offer, context }) {
           ? 'Креатив с надписями оффера → TextAd + AdImageHash (текст на баннере)'
           : 'Чистая картинка → товарное TextAd (заголовок/текст в настройках объявления)',
       vertical_brief: verticalBrief.visual,
+      reference_images: references,
     };
   });
 
-  const generated = await generateAngleImages({
-    angles,
-    offer,
-    runId,
-    limit: Number(process.env.IMAGE_GEN_LIMIT || 2),
-    format: genFormat,
-    overlaysByAngle,
-    verticalKey,
-  });
+  let generated = [];
+  if (!agentMode && imgCfg.configured) {
+    generated = await generateAngleImages({
+      angles,
+      offer,
+      runId,
+      limit: Number(process.env.IMAGE_GEN_LIMIT || 2),
+      format: genFormat,
+      overlaysByAngle,
+      verticalKey,
+    });
+  } else if (agentMode) {
+    generated = angles.slice(0, Number(process.env.IMAGE_GEN_LIMIT || 2)).map((angle) => ({
+      ok: false,
+      pending_agent: true,
+      provider: imgCfg.provider,
+      angle_id: angle.id,
+      format: genFormat,
+      image_has_text: imageHasText,
+      prompt: creatives.find((c) => c.angle_id === angle.id)?.image_prompt,
+      reason: 'Ожидает креатив-агента Cursor',
+    }));
+  }
+
+  const fromRefs = referencesAsGeneratedImages(references, angles);
+  generated = mergeGeneratedImages(generated, fromRefs);
 
   const okImages = generated.filter((g) => g.ok);
+  const awaitingAgent = agentMode && fromRefs.length === 0;
   const qa = validateCreatives(creatives, {
     verticalKey,
-    requireImages: true,
+    requireImages: !agentMode,
     generatedImages: generated,
   });
+  if (agentMode && okImages.length === 0) {
+    qa.warnings = [
+      ...(qa.warnings || []),
+      {
+        angle_id: null,
+        text: 'Картинки нарисует креатив-агент Cursor (или загрузите референсы)',
+      },
+    ];
+  }
   const checklist = creativeModerationChecklist({ verticalKey });
+  const ingest = agentMode ? createIngestToken() : null;
+  const publicBase = process.env.ARBTRACK_PUBLIC_URL || 'https://trekerarbitrag.ru';
 
   const summaryParts = [
     `Роль: ${verticalBrief.role}`,
     `Формат: ${formatLabel(adFormat)} (TextAd + картинка)`,
     `брифы: ${creatives.length}`,
-    imgCfg.configured
-      ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
-      : 'генерация выкл',
+    references.length ? `референсы: ${references.length}` : null,
+    imgCfg.provider === 'agent'
+      ? `agent: ${okImages.length} img${awaitingAgent ? ' · ждём GenerateImage' : ''}`
+      : imgCfg.configured
+        ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
+        : 'генерация выкл',
     qa.ok ? 'QA креативов ok' : `QA: ${qa.errors.length} ошибок`,
-  ];
+  ].filter(Boolean);
 
   const hardVerticalFail = qa.errors.some((e) =>
-    /зарубежная карта|займы:|запрещённая формулировка/.test(e.text),
+    /зарубежная карта|займы:|маркетплейс:|запрещённая формулировка/.test(e.text),
   );
-  const noImages = Boolean(imgCfg.configured) && okImages.length === 0;
+  const noImages =
+    !agentMode && Boolean(imgCfg.configured) && okImages.length === 0 && imgCfg.provider !== 'none';
 
   return {
     summary: summaryParts.join(' · '),
@@ -455,51 +595,69 @@ export async function runCreative({ offer, context }) {
       image_has_text: imageHasText,
       briefs: creatives,
       existing_assets: assets,
+      reference_images: references,
+      reference_batch_id: batchId || null,
       generated_images: generated,
       image_provider: imgCfg,
+      awaiting_agent_images: awaitingAgent,
       qa,
       checklist,
       creative_role: systemRole,
       generator_hint:
-        'Картинки: YandexART (IMAGE_PROVIDER=yandex_art). Агент пишет брифы/тексты/промпты, не GPT Image.',
+        'По умолчанию креативы рисует Cursor-агент (GenerateImage) по брифу и референсам.',
       direct_textad_min_size: '450x450 (лучше 1080x1080)',
       rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего через аналитика трафика',
+      ingest: ingest
+        ? {
+            url: `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
+            run_id: runId,
+          }
+        : null,
     },
-    // Fail hard on bad vertical copy always; on missing images when provider configured
     failed: hardVerticalFail || noImages,
-    cursor_prompt: [
+    cursor_prompt: agentCursorPrompt({
       systemRole,
-      '',
-      `Формат объявлений: ${adFormat} (${formatLabel(adFormat)}).`,
-      adFormat === 'graphic'
-        ? 'На баннере надписи оффера. В Директе TEXT_CAMPAIGN: TextAd + AdImageHash (не ImageAd).'
-        : 'Картинка без текста. Заголовки/тексты только в полях TextAd.',
-      `Движок картинок: ${imgCfg.provider} (${imgCfg.note}). Не полагайся на GPT Image.`,
-      verticalCursorHint(verticalKey),
-      `QA: ${JSON.stringify(qa)}`,
-      `Оффер: ${JSON.stringify({
-        name: offer.name,
-        vertical_key: verticalKey,
-        brief: offer.product_brief || offer.notes,
-        promo,
-      })}`,
-      `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines, prompt: c.image_prompt })))}`,
-      `Файлы: ${JSON.stringify(okImages)}`,
-    ].join('\n'),
+      adFormat,
+      formatLabelText: formatLabel(adFormat),
+      verticalKey,
+      verticalHint: verticalCursorHint(verticalKey),
+      imgCfg,
+      offer,
+      promo,
+      creatives,
+      references,
+      okImages,
+      qa,
+      runId,
+      ingestToken: ingest?.token,
+      publicBase,
+    }),
     context_patch: {
+      reference_images: references,
+      reference_batch_id: batchId || null,
+      creative_ingest: ingest
+        ? {
+            hash: ingest.hash,
+            url: `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
+            run_id: runId,
+          }
+        : null,
       creatives: {
         ad_format: adFormat,
         requested_ad_format: requestedFormat,
         image_has_text: imageHasText,
         briefs: creatives,
         existing_assets: assets,
+        reference_images: references,
         generated_images: generated,
         image_provider: imgCfg,
+        awaiting_agent_images: awaitingAgent,
         qa,
         checklist,
         creative_role: systemRole,
         rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего',
       },
+      spawn_creative_agent: agentMode,
     },
   };
 }

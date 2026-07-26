@@ -59,8 +59,11 @@ export async function runQa({ offer, context, dryRun }) {
     directApi: process.env.YANDEX_DIRECT_TOKEN ? directApi : null,
   });
 
-  // Soft creative warnings don't fail QA; hard image/vertical errors do
+  // Soft creative warnings don't fail QA; hard image/vertical errors do.
+  // Agent mode awaiting GenerateImage: missing images is not a hard fail yet.
+  const awaitingAgent = Boolean(creatives.awaiting_agent_images);
   const creativeHardFail =
+    !awaitingAgent &&
     !creativeQa.ok &&
     (creativeQa.errors || []).some((e) =>
       /нет ни одной картинки|зарубежная карта|займы:|маркетплейс:/.test(e.text || ''),

@@ -20,7 +20,7 @@ export const AGENT_ROLES = {
     id: 'creative',
     name: 'Креатив-агент',
     description:
-      'Арт-директор РСЯ: роль по вертикали, тексты TextAd, промпты и QA. Картинки рисует YandexART (не GPT).',
+      'Арт-директор РСЯ: тексты, промпты, QA. Картинки рисует сам через GenerateImage (референсы опциональны). Не YandexART.',
   },
   tracker: {
     id: 'tracker',

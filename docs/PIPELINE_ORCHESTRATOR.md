@@ -67,39 +67,29 @@
 С российского IP OpenAI отвечает `Country, region, or territory not supported`.
 Решение — **OPENAI_RELAY_URL** на не-RU хосте (ключ OpenAI не светится через чужие free-proxy).
 
-## Креативы: YandexART + креатив-агент
+## Креативы: Cursor-агент + референсы
 
 Креатив-агент — арт-директор: роль по вертикали, тексты TextAd, промпты, QA.
-Картинки рисует **YandexART** (не GPT Image).
+Картинки рисует **сам агент** через GenerateImage (не YandexART / не GPT Image).
+
+```bash
+IMAGE_PROVIDER=agent
+# CURSOR_API_KEY=...   # чтобы оркестратор запускал креатив-агента
+# CURSOR_REPO_URL=https://github.com/NitLex/proba
+```
+
+В UI оркестратора можно приложить **референсы** (jpg/png/webp) — агент использует их как visual references.
+После генерации агент грузит файлы на `POST /api/pipeline/ingest-creatives` (one-time token).
+Затем в UI: «Применить креативы в Директ».
+
+### Legacy: YandexART / GPT Image
 
 ```bash
 IMAGE_PROVIDER=yandex_art
-YANDEX_CLOUD_API_KEY=...
-YANDEX_CLOUD_FOLDER_ID=...
-# IMAGE_GEN_LIMIT=2
-# IMAGE_GEN_RETRIES=1
-```
-
-`IMAGE_PROVIDER=auto` выберет YandexART, если cloud-ключи есть.
-
-### Опционально: GPT Image (relay)
-
-```bash
-# 1) на не-RU машине / Cloudflare Worker:
-OPENAI_API_KEY=sk-...
-OPENAI_RELAY_SECRET=long-random
-node scripts/openai-image-relay-server.mjs
-# или: scripts/openai-image-relay-worker.js → wrangler deploy
-
-# 2) на RU VPS:
+# или
 IMAGE_PROVIDER=openai
-OPENAI_RELAY_URL=http://127.0.0.1:8787   # или https://xxx.workers.dev
-OPENAI_RELAY_SECRET=long-random
+OPENAI_RELAY_URL=...
 ```
-
-Альтернатива: личный `OPENAI_HTTP_PROXY` (EU/US) + `undici` на VPS.
-
-Тихий откат openai→YandexART **выключен**. Включить: `OPENAI_ALLOW_YANDEX_FALLBACK=1`.
 
 ## Секреты на VPS
 
@@ -109,10 +99,12 @@ ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
 YANDEX_DIRECT_TOKEN=...
 YANDEX_DIRECT_LOGIN=...
 LEADGID_TOKEN=...
-IMAGE_PROVIDER=yandex_art
-YANDEX_CLOUD_API_KEY=...
+IMAGE_PROVIDER=agent
+CURSOR_API_KEY=...
+CURSOR_REPO_URL=https://github.com/NitLex/proba
+CURSOR_STARTING_REF=cursor/orchestrator-tab-47f8
+YANDEX_CLOUD_API_KEY=...   # для Wordstat; для картинок не обязателен
 YANDEX_CLOUD_FOLDER_ID=...
-# OPENAI_* только если сознательно нужен GPT Image
 ```
 
 ## Домен в объявлении (вместо trekerarbitrag.ru)

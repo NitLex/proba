@@ -3,23 +3,23 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 
-test('imageGenConfig auto prefers YandexART when cloud keys set', async () => {
+test('imageGenConfig auto/agent prefers Cursor creative agent', async () => {
   const prev = {
     IMAGE_PROVIDER: process.env.IMAGE_PROVIDER,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     YANDEX_CLOUD_API_KEY: process.env.YANDEX_CLOUD_API_KEY,
     YANDEX_CLOUD_FOLDER_ID: process.env.YANDEX_CLOUD_FOLDER_ID,
   };
-  process.env.IMAGE_PROVIDER = 'auto';
+  process.env.IMAGE_PROVIDER = 'agent';
   delete process.env.OPENAI_API_KEY;
   process.env.YANDEX_CLOUD_API_KEY = 'test-key';
   process.env.YANDEX_CLOUD_FOLDER_ID = 'folder1';
-  const { imageGenConfig, resolveImageProvider } = await import('../src/lib/imageGen.js');
-  assert.equal(resolveImageProvider(), 'yandex_art');
+  const { imageGenConfig, resolveImageProvider } = await import(`../src/lib/imageGen.js?t=${Date.now()}`);
+  assert.equal(resolveImageProvider(), 'agent');
   const cfg = imageGenConfig();
   assert.equal(cfg.configured, true);
-  assert.equal(cfg.provider, 'yandex_art');
-  assert.match(cfg.note, /YandexART/);
+  assert.equal(cfg.provider, 'agent');
+  assert.match(cfg.note, /Cursor|агент|GenerateImage/i);
   for (const [k, v] of Object.entries(prev)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;

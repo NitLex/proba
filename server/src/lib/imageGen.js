@@ -2,14 +2,13 @@
  * Image generation for РСЯ creatives.
  *
  * Providers:
- *   - yandex_art  → YandexART (работает с RU VPS; YANDEX_CLOUD_API_KEY + FOLDER_ID)
- *   - openai      → GPT Image API (нужен OPENAI_RELAY_URL / OPENAI_HTTP_PROXY / не-RU IP)
+ *   - agent       → Cursor креатив-агент (GenerateImage + референсы). Default.
+ *   - reference   → только загруженные референсы (без API)
+ *   - yandex_art  → YandexART (legacy)
+ *   - openai      → GPT Image API
  *   - replicate   → FLUX
- *   - auto        → yandex_art если есть cloud-ключи, иначе openai
+ *   - auto        → agent (если нет явного API) / yandex_art если ключи и IMAGE_PROVIDER=auto legacy
  *   - none
- *
- * Fallback: при IMAGE_PROVIDER=openai geo-ошибка → YandexART только если
- * OPENAI_ALLOW_YANDEX_FALLBACK=1. Иначе ошибка явно (не подменяем на «иероглифы»).
  */
 import fs from 'fs';
 import path from 'path';
@@ -38,12 +37,10 @@ function yandexCloudKeys() {
 }
 
 export function resolveImageProvider() {
-  const explicit = String(process.env.IMAGE_PROVIDER || 'auto').toLowerCase().trim();
+  const explicit = String(process.env.IMAGE_PROVIDER || 'agent').toLowerCase().trim();
   if (explicit && explicit !== 'auto') return explicit;
-  // auto: prefer YandexART on RU (no geo block), else OpenAI
-  if (yandexCloudKeys().configured) return 'yandex_art';
-  if (process.env.OPENAI_API_KEY) return 'openai';
-  return 'none';
+  // auto: prefer our Cursor creative agent (not YandexART / GPT)
+  return 'agent';
 }
 
 export function imageGenConfig() {
@@ -52,6 +49,8 @@ export function imageGenConfig() {
   const relay = String(process.env.OPENAI_RELAY_URL || '').replace(/\/$/, '');
   const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
   const configured =
+    provider === 'agent' ||
+    provider === 'reference' ||
     (provider === 'yandex_art' && yc.configured) ||
     (provider === 'openai' && Boolean(process.env.OPENAI_API_KEY || relay)) ||
     (provider === 'replicate' && Boolean(process.env.REPLICATE_API_TOKEN));
@@ -59,10 +58,15 @@ export function imageGenConfig() {
   let model = null;
   if (provider === 'openai') model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
   if (provider === 'yandex_art') model = process.env.YANDEX_ART_MODEL || 'yandex-art/latest';
+  if (provider === 'agent') model = 'cursor-agent';
 
-  let note = 'Не настроено — задай YANDEX_CLOUD_* (YandexART) или OPENAI_API_KEY';
+  let note = 'Не настроено';
   if (configured) {
-    if (provider === 'yandex_art') note = `YandexART · ${model}`;
+    if (provider === 'agent') {
+      note = 'Креатив-агент Cursor (GenerateImage + референсы) — без YandexART/GPT';
+    } else if (provider === 'reference') {
+      note = 'Только загруженные референсы';
+    } else if (provider === 'yandex_art') note = `YandexART · ${model}`;
     else if (provider === 'openai') {
       if (relay) note = `GPT Image API · ${model} · через OPENAI_RELAY_URL`;
       else if (proxy) note = `GPT Image API · ${model} · через proxy`;
@@ -474,7 +478,25 @@ export async function generateCreativeImage({
       format,
       image_has_text: format === 'graphic',
       prompt,
-      reason: 'Нет YandexART (YANDEX_CLOUD_*) / OPENAI_API_KEY',
+      reason: 'Нет провайдера картинок',
+    };
+  }
+
+  // Agent / reference: no remote API — Cursor creative agent or uploaded refs produce files.
+  if (cfg.provider === 'agent' || cfg.provider === 'reference') {
+    return {
+      ok: false,
+      pending_agent: cfg.provider === 'agent',
+      skipped: true,
+      provider: cfg.provider,
+      angle_id: angle?.id || null,
+      format,
+      image_has_text: format === 'graphic',
+      prompt,
+      reason:
+        cfg.provider === 'agent'
+          ? 'Картинку рисует креатив-агент Cursor (GenerateImage) по брифу и референсам'
+          : 'Ожидаются загруженные референсы',
     };
   }
 

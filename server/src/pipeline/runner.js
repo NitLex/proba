@@ -172,11 +172,23 @@ export async function executeRun(runId, options = {}) {
     }
 
     // Auto-launch Cursor cloud agents for follow-up work (creative / wordstat / direct)
-    if (options.spawnCursorAgents && !failed.length) {
+    // Agent image mode: always spawn creative even if other steps soft-failed later —
+    // but only when run finished without hard failures OR spawn_creative_agent requested.
+    const wantCreativeSpawn =
+      Boolean(options.spawnCursorAgents) ||
+      Boolean(context.spawn_creative_agent) ||
+      String(process.env.IMAGE_PROVIDER || 'agent').toLowerCase() === 'agent';
+
+    if (wantCreativeSpawn && !failed.length) {
       try {
+        const agents =
+          options.cursorAgents ||
+          (context.spawn_creative_agent && !options.spawnCursorAgents
+            ? ['creative']
+            : undefined);
         await maybeSpawnCursorAgents(runId, {
           spawnCursorAgents: true,
-          cursorAgents: options.cursorAgents,
+          cursorAgents: agents,
           repoUrl: options.repoUrl,
           startingRef: options.startingRef,
           autoCreatePR: options.autoCreatePR,

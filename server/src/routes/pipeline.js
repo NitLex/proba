@@ -16,6 +16,13 @@ import { maybeSpawnCursorAgents } from '../pipeline/spawnCursor.js';
 import { imageGenConfig } from '../lib/imageGen.js';
 import { enrichOfferInput } from '../lib/offerEnrich.js';
 import {
+  saveReferenceBatch,
+  attachCreativesToRun,
+  mergeGeneratedImages,
+} from '../lib/creativeAssets.js';
+import { validateCreatives } from '../lib/creativeQa.js';
+import { runDirect } from '../pipeline/agents/direct.js';
+import {
   buildLeadgidPostbackUrl,
   leadgidPostbackInstructions,
   publicTrackerBase,
@@ -103,6 +110,7 @@ router.get('/runs/:id', (req, res) => {
  * {
  *   url, name?, payout?, geo?, vertical?, network?, source?, epc?, promo_code?,
  *   daily_budget?, notes?, funnel?, currency?, network_offer_id?,
+ *   reference_batch_id?, ad_format?,
  *   dry_run?: bool, apply_direct?: bool (default true if Direct token),
  *   async?: bool, title?: string,
  *   spawn_cursor_agents?: bool, cursor_agents?: string[]
@@ -129,6 +137,10 @@ router.post('/runs', async (req, res, next) => {
 
     const { offer, enrich } = await enrichOfferInput(rawOffer);
     if (!offer.currency) offer.currency = 'RUB';
+    // Keep reference batch on offer for creative step
+    if (rawOffer.reference_batch_id) {
+      offer.reference_batch_id = rawOffer.reference_batch_id;
+    }
     const runId = startPipeline(offer, {
       title: title || `Оффер: ${offer.name || offer.url}`,
     });
@@ -140,6 +152,7 @@ router.post('/runs', async (req, res, next) => {
         enrich,
         run_id: runId,
         owner_user_id: req.user?.id || null,
+        reference_batch_id: offer.reference_batch_id || null,
       },
     });
 
@@ -167,6 +180,77 @@ router.post('/runs', async (req, res, next) => {
   }
 });
 
+/** Upload creative reference images (base64 JSON). */
+router.post('/reference-images', (req, res, next) => {
+  try {
+    const files = req.body?.files || [];
+    const batch = saveReferenceBatch(files, { note: req.body?.note || '' });
+    res.status(201).json(batch);
+  } catch (err) {
+    res.status(400).json({ error: err.message || String(err) });
+  }
+});
+
+/** Authenticated attach of creatives to a run (operator / UI). */
+router.post('/runs/:id/attach-creatives', (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const run = getRun(id);
+    if (!run) return res.status(404).json({ error: 'Not found' });
+    const attached = attachCreativesToRun(id, req.body?.images || []);
+    const prev = run.context?.creatives || {};
+    const merged = mergeGeneratedImages(prev.generated_images || [], attached.generated_images);
+    const verticalKey =
+      run.context?.playbook?.vertical_key || run.context?.analysis?.vertical_key || '';
+    const qa = validateCreatives(prev.briefs || [], {
+      verticalKey,
+      requireImages: true,
+      generatedImages: merged,
+    });
+    updateRun(id, {
+      context: {
+        ...(run.context || {}),
+        creatives: {
+          ...prev,
+          generated_images: merged,
+          awaiting_agent_images: false,
+          qa,
+          last_attach_at: new Date().toISOString(),
+        },
+      },
+    });
+    res.json({ ok: true, files: attached.files, images_ok: merged.filter((g) => g.ok).length, qa });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Re-apply Direct draft using creatives already on the run. */
+router.post('/runs/:id/apply-direct', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const run = getRun(id);
+    if (!run) return res.status(404).json({ error: 'Not found' });
+    const result = await runDirect({
+      offer: run.offer_input || {},
+      context: { ...(run.context || {}), run_id: id },
+      apply: true,
+    });
+    const context = {
+      ...(run.context || {}),
+      ...(result.context_patch || {}),
+      direct: result.direct || result.context_patch?.direct || run.context?.direct,
+    };
+    updateRun(id, {
+      context,
+      status: result.failed ? 'failed' : run.status === 'failed' && !result.failed ? 'done' : run.status,
+      error: result.failed ? result.summary : '',
+    });
+    res.json({ run: getRun(id), direct: result });
+  } catch (err) {
+    next(err);
+  }
+});
 /** Re-spawn Cursor agents for an existing finished run */
 router.post('/runs/:id/spawn-cursor', async (req, res, next) => {
   try {

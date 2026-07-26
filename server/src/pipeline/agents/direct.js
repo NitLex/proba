@@ -465,6 +465,31 @@ export async function runDirect({ offer, context, apply = false }) {
   let applyResult = null;
   let trackerLink = null;
   const apiReady = Boolean(process.env.YANDEX_DIRECT_TOKEN && process.env.YANDEX_DIRECT_LOGIN);
+  const awaitingAgent = Boolean(context.creatives?.awaiting_agent_images);
+  const hasImages = (context.creatives?.generated_images || []).some((g) => g.ok && g.path);
+
+  // Agent mode without images yet: don't create incomplete Direct ads
+  if (apply && apiReady && awaitingAgent && !hasImages) {
+    return {
+      summary:
+        'Директ: ждём креативы от агента (GenerateImage). После ingest — «Применить креативы в Директ».',
+      ready_message: null,
+      failed: false,
+      direct: {
+        plan,
+        applied: false,
+        awaiting_agent_images: true,
+        apply: null,
+      },
+      context_patch: {
+        direct: {
+          plan,
+          applied: false,
+          awaiting_agent_images: true,
+        },
+      },
+    };
+  }
 
   if (apply && apiReady) {
     applyResult = await applyDraft(plan);
