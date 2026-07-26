@@ -1,0 +1,22 @@
+{
+  "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+  "run_id": 1,
+  "ok": false,
+  "results": [
+    {
+      "angle_id": "travel",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "services",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "sbp",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ]
+}
