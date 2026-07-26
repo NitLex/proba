@@ -8,3 +8,6 @@ client/dist/
 .DS_Store
 *.log
 .env
+
+# Pipeline binary uploads (ingest via orchestrator API)
+creatives/pipeline/

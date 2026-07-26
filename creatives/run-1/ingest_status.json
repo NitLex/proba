@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+    "angle": "travel",
+    "status": 403,
+    "body": "{\"error\":\"Неверный ingest token\"}"
+  },
+  {
+    "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+    "angle": "services",
+    "status": 403,
+    "body": "{\"error\":\"Неверный ingest token\"}"
+  },
+  {
+    "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+    "angle": "travel",
+    "status": 404,
+    "body": "{\"error\":\"Pipeline на этом хосте выключен (APP_MODE=tracker). Используй оркестратор.\",\"orchestrator\":\"https://orkestr.online\"}"
+  },
+  {
+    "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+    "angle": "services",
+    "status": 404,
+    "body": "{\"error\":\"Pipeline на этом хосте выключен (APP_MODE=tracker). Используй оркестратор.\",\"orchestrator\":\"https://orkestr.online\"}"
+  }
+]
