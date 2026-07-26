@@ -3,36 +3,42 @@
     "angle_id": "travel",
     "status": 403,
     "body": "{\"error\":\"Неверный ingest token\"}",
-    "file": "travel-agent-0.jpg"
+    "file": "travel-agent-0.jpg",
+    "host": "trekerarbitrag.ru"
   },
   {
     "angle_id": "services",
     "status": 403,
     "body": "{\"error\":\"Неверный ingest token\"}",
-    "file": "services-agent-0.jpg"
+    "file": "services-agent-0.jpg",
+    "host": "trekerarbitrag.ru"
   },
   {
     "angle_id": "sbp",
     "status": 403,
     "body": "{\"error\":\"Неверный ingest token\"}",
-    "file": "sbp-agent-0.jpg"
+    "file": "sbp-agent-0.jpg",
+    "host": "trekerarbitrag.ru"
   },
   {
     "angle_id": "travel",
     "status": 403,
-    "host": "orkestr.online",
-    "body": "{\"error\":\"Неверный ingest token\"}"
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "travel-agent-0.jpg",
+    "host": "orkestr.online"
   },
   {
     "angle_id": "services",
     "status": 403,
-    "host": "orkestr.online",
-    "body": "{\"error\":\"Неверный ingest token\"}"
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "services-agent-0.jpg",
+    "host": "orkestr.online"
   },
   {
     "angle_id": "sbp",
     "status": 403,
-    "host": "orkestr.online",
-    "body": "{\"error\":\"Неверный ingest token\"}"
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "sbp-agent-0.jpg",
+    "host": "orkestr.online"
   }
 ]
