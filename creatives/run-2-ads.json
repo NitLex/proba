@@ -1,0 +1,77 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "image_provider": "agent",
+  "engine": "cursor-agent GenerateImage",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "promo": { "code": "" }
+  },
+  "angles": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "ad_format": "product",
+      "image_has_text": false,
+      "direct_ad_type": "TextAd",
+      "titles": [
+        "Выпуск зарубежной карты",
+        "Зарубежная карта онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Заявка онлайн.",
+        "Зарубежная карта. Оформление заявки онлайн.",
+        "Выпуск зарубежной карты без очередей."
+      ],
+      "sitelinks": [
+        { "title": "Оформить онлайн", "description": "Заявка на сайте" },
+        { "title": "Условия", "description": "Актуальные на лендинге" },
+        { "title": "Как это работает", "description": "Коротко о шагах" },
+        { "title": "Поддержка", "description": "Помощь по заявке" }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ],
+      "images": [
+        {
+          "file": "rsya/2/generic-agent-0.png",
+          "pipeline_file": "pipeline/2/generic-agent-0.png",
+          "variant": 0,
+          "format": "product",
+          "size": "1024x1024",
+          "hook": "Матовая blank-карта, cool/warm rim light"
+        },
+        {
+          "file": "rsya/2/generic-agent-1.png",
+          "pipeline_file": "pipeline/2/generic-agent-1.png",
+          "variant": 1,
+          "format": "product",
+          "size": "1024x1024",
+          "hook": "Frosted ice-white blank-карта на cool gradient"
+        },
+        {
+          "file": "rsya/2/generic-agent-2.png",
+          "pipeline_file": "pipeline/2/generic-agent-2.png",
+          "variant": 2,
+          "format": "product",
+          "size": "1024x1024",
+          "hook": "Satin black metal blank-карта, amber rim"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "title_max": 56,
+    "text_max": 81
+  },
+  "notes": [
+    "Товарный формат: ZERO text на картинке; Title/Text только в Direct.",
+    "В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты».",
+    "Промокод отсутствует в оффере — не используем."
+  ]
+}
