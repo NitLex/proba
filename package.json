@@ -13,7 +13,8 @@
     "start": "npm start --prefix server",
     "test": "npm test --prefix server",
     "backup": "bash scripts/backup-db.sh",
-    "update:vps": "bash update-vps.sh"
+    "update:vps": "bash update-vps.sh",
+    "semantics:cleanup": "node scripts/cleanup-wordstat.mjs docs/wordstat-raw-live.json --write"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

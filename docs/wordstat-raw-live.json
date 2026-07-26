@@ -1,0 +1,826 @@
+{
+  "offer": "Finandos ES RO PL CZ CPL",
+  "geo": "RU",
+  "mode": "live",
+  "vertical_key": "fintech_cards",
+  "angles": [
+    {
+      "id": "travel",
+      "title": "Поездки / travel-оплаты",
+      "hooks": [
+        "цифровая карта для поездок",
+        "карта онлайн",
+        "оформление за минуты"
+      ],
+      "creative_notes": "Без Booking/Uber в тексте. Акцент на удобство и СБП."
+    },
+    {
+      "id": "services",
+      "title": "Подписки и онлайн-сервисы",
+      "hooks": [
+        "карта для подписок",
+        "оплата сервисов онлайн",
+        "выпуск карты онлайн",
+        "подписки",
+        "карты онлайн",
+        "карта онлайн в реальном",
+        "карту осадок онлайн",
+        "карта осадков онлайн"
+      ],
+      "creative_notes": "Без Spotify/ChatGPT/Steam как «официальных». Общая формулировка «сервисы»."
+    },
+    {
+      "id": "sbp",
+      "title": "Быстрый выпуск + СБП",
+      "hooks": [
+        "пополнение по СБП",
+        "карта за минуты",
+        "промокод на выпуск"
+      ],
+      "creative_notes": "Сильный офферный крючок — промокод и скорость."
+    }
+  ],
+  "semantics": {
+    "mode": "live",
+    "configured": true,
+    "live_errors": [],
+    "live_meta": {
+      "maxSeeds": 8,
+      "regions": [
+        "225"
+      ],
+      "blocks": 7
+    },
+    "keywords": [
+      {
+        "phrase": "подписки",
+        "shows": 5077503,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "services",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карты онлайн",
+        "shows": 2983628,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта онлайн в реальном",
+        "shows": 394347,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карту осадок онлайн",
+        "shows": 391012,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта осадков онлайн",
+        "shows": 391004,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карты онлайн бесплатно",
+        "shows": 332980,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карты онлайн время",
+        "shows": 332443,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта в реальном времени онлайн",
+        "shows": 325605,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "сервисный портал",
+        "shows": 254250,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "services",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта на сегодня онлайн",
+        "shows": 226737,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта сайта",
+        "shows": 215548,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "онлайн карта без карты",
+        "shows": 213424,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта сво онлайн",
+        "shows": 208997,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "онлайн карта бензина",
+        "shows": 207111,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта украины онлайн",
+        "shows": 197279,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта сво на сегодня онлайн",
+        "shows": 194852,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта интернета",
+        "shows": 193309,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта украины сегодня онлайн",
+        "shows": 190580,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта сво на украине онлайн",
+        "shows": 184606,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта сво на украине сегодня онлайн",
+        "shows": 183953,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "натальная карта онлайн",
+        "shows": 176523,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "электронная карта",
+        "shows": 152677,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "спутниковая карта",
+        "shows": 150683,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта осадка онлайн в реальном",
+        "shows": 149341,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта осадков онлайн в реальном",
+        "shows": 149341,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "займы онлайн на карту",
+        "shows": 148703,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "матрица онлайн",
+        "shows": 147060,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "где бензин карта онлайн",
+        "shows": 142403,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта погоды онлайн",
+        "shows": 139234,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "яндекс карты онлайн",
+        "shows": 135607,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "оплатить интернет",
+        "shows": 130176,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта осадков онлайн времени",
+        "shows": 118847,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта осадков онлайн в реальном времени",
+        "shows": 118759,
+        "kind": "result",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта пей",
+        "shows": 92221,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "навигатор онлайн",
+        "shows": 85411,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "заказать дебетовую карту",
+        "shows": 72368,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта пвз",
+        "shows": 55551,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карты без интернета",
+        "shows": 54600,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "все платежи",
+        "shows": 49735,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "оплатим ру",
+        "shows": 37576,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "схема онлайн",
+        "shows": 36438,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "сим карта для интернета",
+        "shows": 27675,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "моя электронная карта",
+        "shows": 27159,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "пусть говорят все выпуски",
+        "shows": 24685,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "заплати другому",
+        "shows": 21096,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "построить маршрут на карте",
+        "shows": 19901,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "мапс карты",
+        "shows": 17918,
+        "kind": "association",
+        "seed": "карта онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "пусть говорят 2026 все выпуски",
+        "shows": 16197,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "инвентарная карточка",
+        "shows": 12411,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "service online",
+        "shows": 12264,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "что можно сделать из бумаги легко",
+        "shows": 11568,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "мои платежи",
+        "shows": 10611,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "учетная карточка",
+        "shows": 9999,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карточка клиента",
+        "shows": 8929,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "выпустить виртуальную карту",
+        "shows": 8436,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта для подписок",
+        "shows": 7519,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карточка образцов подписей",
+        "shows": 5822,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "поквартирная карточка",
+        "shows": 4397,
+        "kind": "association",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта для оплаты подписок",
+        "shows": 3542,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "плати ру официальный сайт",
+        "shows": 3022,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "медкарта онлайн",
+        "shows": 2328,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "service online su",
+        "shows": 2058,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "я тебя не скоро позабуду",
+        "shows": 1724,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "сервис онлайн оплаты",
+        "shows": 1621,
+        "kind": "result",
+        "seed": "оплата сервисов онлайн",
+        "group": "services",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "google maps онлайн",
+        "shows": 1277,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "выпуск карты онлайн",
+        "shows": 1260,
+        "kind": "result",
+        "seed": "выпуск карты онлайн",
+        "group": "sbp",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "виртуальная карта для подписок",
+        "shows": 1125,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "зарубежная карта для подписок",
+        "shows": 1076,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "online payment ru",
+        "shows": 1060,
+        "kind": "association",
+        "seed": "оплата сервисов онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "зарубежная карта для оплаты подписок",
+        "shows": 868,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "www gryadka online card активировать карту",
+        "shows": 796,
+        "kind": "association",
+        "seed": "выпуск карты онлайн",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта для подписок бесплатно",
+        "shows": 738,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "виртуальная карта для оплаты подписок",
+        "shows": 738,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "иностранная карта для подписок",
+        "shows": 539,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "знать мир на пять",
+        "shows": 523,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "этот мир придуман не нами минус",
+        "shows": 496,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "иностранная карта для оплаты подписок",
+        "shows": 419,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "карта для пробных подписок",
+        "shows": 415,
+        "kind": "result",
+        "seed": "карта для подписок",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "счет на оплату на сервис онлайн",
+        "shows": 411,
+        "kind": "result",
+        "seed": "оплата сервисов онлайн",
+        "group": "services",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      },
+      {
+        "phrase": "а может просто негром стать текст",
+        "shows": 399,
+        "kind": "association",
+        "seed": "оформление за минуты",
+        "group": "travel",
+        "context_bid_hint": 1,
+        "source": "wordstat_live"
+      }
+    ],
+    "negatives": [
+      "для детей",
+      "дети",
+      "школьник",
+      "игра",
+      "игры",
+      "скачать",
+      "торрент",
+      "вакансия",
+      "работа",
+      "бесплатно",
+      "халява",
+      "взлом",
+      "кряк",
+      "займ",
+      "микрозайм",
+      "кредит наличными",
+      "казино",
+      "ставки",
+      "1xbet",
+      "крипта",
+      "bitcoin",
+      "p2p",
+      "обнал"
+    ],
+    "seeds": [
+      "Finandos ES RO PL CZ CPL",
+      "цифровая карта для поездок",
+      "карта онлайн",
+      "оформление за минуты",
+      "карта для подписок",
+      "оплата сервисов онлайн",
+      "выпуск карты онлайн",
+      "подписки",
+      "карты онлайн",
+      "карта онлайн в реальном",
+      "карту осадок онлайн",
+      "карта осадков онлайн",
+      "пополнение по СБП",
+      "карта за минуты",
+      "промокод на выпуск",
+      "виртуальная карта для путешествий",
+      "зарубежная карта для поездок",
+      "оплата за границей картой",
+      "карта для поездок",
+      "оплата зарубежных сервисов",
+      "зарубежная карта для подписок",
+      "карта для зарубежных сервисов"
+    ]
+  }
+}
