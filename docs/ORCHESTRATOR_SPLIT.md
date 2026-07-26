@@ -5,7 +5,7 @@
 | Хост | IP (SpaceWeb) | `APP_MODE` | Роль |
 |------|---------------|------------|------|
 | https://orkestr.online | `168.222.141.219` | `orchestrator` | Pipeline UI/API, Direct/LeadGid/Cursor, креативы |
-| https://trekerarbitrag.ru | `168.222.203.142` | `tracker` (или `full`) | Клики, постбэки, преленды, статистика |
+| https://trekerarbitrag.ru | `168.222.203.142` | `tracker` | Клики, постбэки, преленды, статистика |
 
 ## Схема
 
@@ -55,7 +55,7 @@ PIPELINE_TRACKER_MODE=local
 PORT=3001
 ```
 
-`APP_MODE=tracker` отключает `/api/pipeline` на трекере. Пока оркестратор не поднят, можно оставить `full`.
+`APP_MODE=tracker` отключает `/api/pipeline` на трекере (прод: включено). Pipeline только на orkestr.online.
 
 ## Деплой оркестратора
 
