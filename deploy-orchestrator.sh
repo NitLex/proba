@@ -98,7 +98,9 @@ fi
 echo "==> Starting with PM2"
 pm2 delete orkestr >/dev/null 2>&1 || true
 pm2 delete arbtrack >/dev/null 2>&1 || true
-pm2 start ecosystem.orchestrator.cjs
+# PM2 7 may treat *.cjs ecosystem as a script — start entry explicitly
+pm2 start src/index.js --name orkestr --cwd "$APP_DIR/server" || \
+  pm2 start "$APP_DIR/ecosystem.orchestrator.cjs" --only orkestr
 pm2 save
 pm2 startup systemd -u root --hp /root >/dev/null || true
 

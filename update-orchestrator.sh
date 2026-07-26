@@ -16,7 +16,8 @@ npm run install:all
 npm run build
 
 echo "==> Restarting"
-pm2 restart orkestr || pm2 start ecosystem.orchestrator.cjs
+pm2 restart orkestr --update-env \
+  || pm2 start src/index.js --name orkestr --cwd "$(pwd)/server"
 pm2 save
 
 echo "==> Done"
