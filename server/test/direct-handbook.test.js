@@ -27,7 +27,7 @@ test('handbook covers modifiers, placements, creatives, finance docs', () => {
   assert.match(DIRECT_FINANCE_DOCS.payment_systems.url, /finance-payment/);
 });
 
-test('fintech checklist marks docs required', () => {
+test('fintech checklist requires overseas-card wording', () => {
   const list = buildDirectOperatorChecklist({
     plan: { href: 'https://trekerarbitrag.ru/click/x', ad_format: 'product' },
     offer: { name: 'Плати по миру', vertical: 'Fintech' },
@@ -37,8 +37,11 @@ test('fintech checklist marks docs required', () => {
         'https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}',
     },
   });
+  const foreign = list.find((i) => i.id === 'foreign_card_wording');
+  assert.equal(foreign.required, true);
+  assert.match(foreign.text, /зарубежн/i);
   const docs = list.find((i) => i.id === 'docs_if_needed');
-  assert.equal(docs.required, true);
+  assert.equal(docs.required, false);
   assert.ok(list.find((i) => i.id === 'placements_day2'));
   assert.ok(list.find((i) => i.id === 'bid_modifiers'));
   const pb = list.find((i) => i.id === 'leadgid_postback');
