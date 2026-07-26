@@ -3,6 +3,13 @@
   "ad_format": "product",
   "engine": "agent",
   "offer": "Тестовая карта",
+  "ingest": {
+    "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+    "attempted": true,
+    "http_status": 403,
+    "error": "Неверный ingest token",
+    "retry": "TOKEN=<valid> RUN_ID=1 ./ingest.sh"
+  },
   "images": [
     {
       "angle_id": "travel",
