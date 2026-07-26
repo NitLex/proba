@@ -103,6 +103,8 @@ export async function fetchPlacementReport(campaignIds, { dateFrom, dateTo } = {
 
   const result = await fetchDirectReport({
     SelectionCriteria: {
+      DateFrom: from,
+      DateTo: to,
       Filter: [{ Field: 'CampaignId', Operator: 'IN', Values: ids }],
     },
     FieldNames: [
@@ -118,8 +120,6 @@ export async function fetchPlacementReport(campaignIds, { dateFrom, dateTo } = {
     ReportName: name.slice(0, 255),
     ReportType: 'CUSTOM_REPORT',
     DateRangeType: 'CUSTOM_DATE',
-    DateFrom: from,
-    DateTo: to,
     Format: 'TSV',
     IncludeVAT: 'YES',
     IncludeDiscount: 'NO',
