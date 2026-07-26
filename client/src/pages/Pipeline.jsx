@@ -45,6 +45,23 @@ export default function Pipeline() {
   const [selectedTraffic, setSelectedTraffic] = useState([]);
   const [applyTraffic, setApplyTraffic] = useState(false);
   const [trafficBusy, setTrafficBusy] = useState(false);
+  const [trafficReports, setTrafficReports] = useState([]);
+
+  const OUTCOME_LABEL = {
+    applied: 'Площадки запрещены в Директе',
+    partial: 'Частично применено',
+    apply_failed: 'Ошибка применения в Директе',
+    nothing_new: 'Новых площадок не добавлено',
+    recommendations_only: 'Только рекомендации',
+    no_action: 'Нечего резать',
+  };
+
+  function loadTrafficReports() {
+    return api
+      .get('/api/pipeline/traffic/reports')
+      .then((res) => setTrafficReports(res.reports || []))
+      .catch(() => setTrafficReports([]));
+  }
 
   async function copyField(key, text) {
     if (!text) return;
@@ -61,8 +78,9 @@ export default function Pipeline() {
       api.get('/api/pipeline/roles'),
       api.get('/api/pipeline/runs'),
       api.get('/api/pipeline/traffic/campaigns').catch(() => ({ campaigns: [] })),
+      api.get('/api/pipeline/traffic/reports').catch(() => ({ reports: [] })),
     ])
-      .then(([meta, list, traffic]) => {
+      .then(([meta, list, traffic, reports]) => {
         setRoles(meta.roles || []);
         setPipeline(meta.pipeline || []);
         setOptPipeline(meta.optimization_pipeline || []);
@@ -72,6 +90,7 @@ export default function Pipeline() {
         const camps = traffic.campaigns || [];
         setTrafficCamps(camps);
         setSelectedTraffic(camps.filter((c) => c.moderated).map((c) => c.id));
+        setTrafficReports(reports.reports || []);
       })
       .catch((e) => setMsg(e.message));
   }, []);
@@ -92,14 +111,16 @@ export default function Pipeline() {
       });
       setActive(run);
       const ta = run.context?.traffic_analysis;
-      const cut = ta?.actions?.exclude_placements?.length || 0;
-      const applied = ta?.apply && !ta.apply.dry_run;
+      const mini = run.context?.mini_report;
+      const cut = mini?.candidates_to_ban ?? ta?.actions?.exclude_placements?.length ?? 0;
+      const added = mini?.sites_added ?? 0;
       setMsg(
-        applied
-          ? `Аналитик трафика: запретил площадки (${cut} кандидатов). Смотри run #${run.id}`
-          : `Аналитик трафика: рекомендации готовы (${cut} площадок к запрету). Run #${run.id}`,
+        added > 0
+          ? `Аналитик трафика: запретил +${added} площадок (кандидатов ${cut}). Run #${run.id}`
+          : `Аналитик трафика: ${OUTCOME_LABEL[mini?.outcome] || 'готово'} · кандидатов ${cut}. Run #${run.id}`,
       );
       await loadList();
+      await loadTrafficReports();
       const traffic = await api.get('/api/pipeline/traffic/campaigns').catch(() => null);
       if (traffic?.campaigns) setTrafficCamps(traffic.campaigns);
     } catch (e) {
@@ -389,6 +410,97 @@ export default function Pipeline() {
             >
               {trafficBusy ? 'Анализ…' : 'Запустить аналитика трафика'}
             </button>
+          </div>
+
+          <div className="traffic-reports">
+            <div className="traffic-reports-head">
+              <strong>Мини-отчёт: что сделано</strong>
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={() => loadTrafficReports()}
+              >
+                Обновить
+              </button>
+            </div>
+            {!trafficReports.length ? (
+              <p className="hint" style={{ margin: 0 }}>
+                Пока нет запусков аналитика — после первого прогона здесь появится отчёт.
+              </p>
+            ) : (
+              trafficReports.slice(0, 5).map((item) => {
+                const r = item.report || {};
+                const outcome = OUTCOME_LABEL[r.outcome] || r.outcome || item.status;
+                const tone =
+                  r.outcome === 'applied' || r.outcome === 'partial'
+                    ? 'ok'
+                    : r.outcome === 'apply_failed'
+                      ? 'bad'
+                      : '';
+                return (
+                  <article key={item.run_id} className={`traffic-report ${tone}`}>
+                    <header className="traffic-report-head">
+                      <div>
+                        <span className={STATUS_CLASS[item.status] || 'badge'}>{item.status}</span>{' '}
+                        <strong>Run #{item.run_id}</strong>
+                        <span className="hint"> · {item.updated_at}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => openRun(item.run_id)}
+                      >
+                        Открыть
+                      </button>
+                    </header>
+                    <p className="traffic-report-outcome">{outcome}</p>
+                    <div className="traffic-report-metrics">
+                      <span>
+                        Кампании:{' '}
+                        <code>
+                          {(r.campaign_ids || []).join(', ') || '—'}
+                        </code>
+                      </span>
+                      <span>
+                        Период:{' '}
+                        {r.period
+                          ? `${r.period.from}…${r.period.to}`
+                          : '—'}
+                      </span>
+                      <span>Площадок в отчёте: {r.placements_scanned ?? '—'}</span>
+                      <span>К запрету: {r.candidates_to_ban ?? 0}</span>
+                      <span>
+                        В Директ: +{r.sites_added ?? 0}
+                        {r.sites_total_after != null ? ` (всего ${r.sites_total_after})` : ''}
+                      </span>
+                    </div>
+                    {r.top_banned?.length ? (
+                      <ul className="traffic-report-list">
+                        {r.top_banned.slice(0, 6).map((p) => (
+                          <li key={`${item.run_id}-${p.placement}`}>
+                            <code>{p.placement}</code>
+                            <span className="hint">
+                              {' '}
+                              — {p.clicks} кл. / {p.cost} ₽
+                              {p.reasons?.length ? ` · ${p.reasons[0]}` : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="hint" style={{ margin: '0.35rem 0 0' }}>
+                        Список площадок пуст или только рекомендации без кандидатов.
+                      </p>
+                    )}
+                    {r.advice?.length ? (
+                      <p className="hint" style={{ margin: '0.4rem 0 0' }}>
+                        {r.advice.slice(0, 2).join(' · ')}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })
+            )}
           </div>
         </div>
       </section>

@@ -21,7 +21,10 @@ import {
   publicTrackerBase,
 } from '../lib/leadgidPostback.js';
 import { DIRECT_DOC_SOURCES } from '../pipeline/knowledge/direct-handbook.js';
-import { listModeratedDirectCampaigns } from '../pipeline/agents/trafficAnalyst.js';
+import {
+  listModeratedDirectCampaigns,
+  buildTrafficMiniReport,
+} from '../pipeline/agents/trafficAnalyst.js';
 
 const router = Router();
 // Double-guard: demo account must never use orchestrator (UI also hides the tab)
@@ -199,6 +202,38 @@ router.get('/traffic/campaigns', async (_req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+/** Mini-reports: what traffic analyst did on recent runs. */
+router.get('/traffic/reports', (_req, res) => {
+  const reports = listRuns(60)
+    .filter(
+      (r) =>
+        r.context?.kind === 'traffic_optimization' ||
+        r.context?.traffic_analysis ||
+        r.context?.mini_report ||
+        /^Трафик:/i.test(r.title || ''),
+    )
+    .slice(0, 12)
+    .map((r) => {
+      const mini =
+        r.context?.mini_report ||
+        (r.context?.traffic_analysis
+          ? buildTrafficMiniReport(r.context.traffic_analysis, {
+              summary: r.title,
+            })
+          : null);
+      return {
+        run_id: r.id,
+        title: r.title,
+        status: r.status,
+        updated_at: r.updated_at || r.created_at,
+        created_at: r.created_at,
+        error: r.error || '',
+        report: mini,
+      };
+    });
+  res.json({ reports });
 });
 
 /**

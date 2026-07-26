@@ -120,6 +120,7 @@ export async function executeRun(runId, options = {}) {
               ...(result.direct ? { direct: result.direct } : {}),
               ...(result.qa ? { qa: result.qa } : {}),
               ...(result.traffic_analysis ? { traffic_analysis: result.traffic_analysis } : {}),
+              ...(result.mini_report ? { mini_report: result.mini_report } : {}),
               ...(result.ready_message ? { ready_message: result.ready_message } : {}),
               cursor_prompt: result.cursor_prompt,
               agent_role: AGENT_ROLES[step.agent] || { id: step.agent },

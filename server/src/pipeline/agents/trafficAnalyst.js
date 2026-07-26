@@ -547,6 +547,10 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
     },
   };
 
+  const mini_report = buildTrafficMiniReport(traffic_analysis, {
+    summary: summaryParts.join(' · '),
+  });
+
   const cursor_prompt = [
     'Роль: аналитик трафика РСЯ после модерации.',
     `Период: ${dateFrom} — ${dateTo}.`,
@@ -565,7 +569,65 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
   return {
     summary: summaryParts.join(' · '),
     traffic_analysis,
+    mini_report,
     cursor_prompt,
-    context_patch: { traffic_analysis },
+    context_patch: { traffic_analysis, mini_report },
+  };
+}
+
+/** Compact report for orchestrator UI («что сделали»). */
+export function buildTrafficMiniReport(traffic_analysis, meta = {}) {
+  const ta = traffic_analysis || {};
+  const applyList = Array.isArray(ta.apply) ? ta.apply : [];
+  const dryRun = Boolean(ta.apply?.dry_run);
+  const cuts = ta.actions?.exclude_placements || [];
+  const sitesAdded = applyList.reduce((s, a) => s + (a.ok ? Number(a.added || 0) : 0), 0);
+  const applyFailed = applyList.some((a) => a.ok === false);
+  const advice = (ta.campaigns || [])
+    .flatMap((c) =>
+      (c.advice || [])
+        .filter((a) => a.level === 'warn' || a.level === 'action' || a.level === 'ok')
+        .map((a) => a.text),
+    )
+    .slice(0, 6);
+
+  let outcome = 'recommendations_only';
+  if (!dryRun && applyList.length) {
+    if (applyFailed && sitesAdded === 0) outcome = 'apply_failed';
+    else if (applyFailed) outcome = 'partial';
+    else if (sitesAdded > 0) outcome = 'applied';
+    else outcome = 'nothing_new';
+  } else if (cuts.length === 0) {
+    outcome = 'no_action';
+  }
+
+  return {
+    summary: meta.summary || null,
+    outcome,
+    period: ta.period || null,
+    campaign_ids: (ta.campaigns || []).map((c) => c.direct?.id).filter(Boolean),
+    placements_scanned: ta.placement_report?.rows || 0,
+    report_ok: Boolean(ta.placement_report?.ok),
+    candidates_to_ban: cuts.length,
+    applied: !dryRun && applyList.length > 0,
+    dry_run: dryRun,
+    sites_added: sitesAdded,
+    sites_total_after: applyList[0]?.total ?? null,
+    apply_ok: applyList.length ? applyList.every((a) => a.ok) : null,
+    apply_errors: applyList
+      .filter((a) => a.ok === false)
+      .map((a) => ({
+        campaign_id: a.campaign_id,
+        error: a.error,
+      })),
+    top_banned: cuts.slice(0, 10).map((p) => ({
+      placement: p.placement,
+      clicks: p.clicks,
+      cost: p.cost,
+      conversions: p.conversions,
+      reasons: p.reasons || [],
+    })),
+    advice,
+    tracker: ta.tracker_summary || null,
   };
 }
