@@ -1,0 +1,42 @@
+{
+  "run_id": 2,
+  "format": "product",
+  "engine": "cursor-agent-GenerateImage",
+  "offer": "Pipeline Live Offer",
+  "promo": "LG2026",
+  "vertical": "fintech_cards",
+  "angles": [
+    {
+      "angle_id": "travel",
+      "title": "Поездки / travel-оплаты",
+      "file_png": "travel-agent-0.png",
+      "file_jpg": "travel-agent-0.jpg",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Navy blank card on passport + suitcase, airport sunrise lounge"
+    },
+    {
+      "angle_id": "services",
+      "title": "Подписки и онлайн-сервисы",
+      "file_png": "services-agent-0.png",
+      "file_jpg": "services-agent-0.jpg",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Matte black blank card + phone with abstract blurred app orbs"
+    },
+    {
+      "angle_id": "sbp",
+      "title": "Быстрый выпуск + СБП",
+      "file_png": "sbp-agent-0.png",
+      "file_jpg": "sbp-agent-0.jpg",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Mint blank card with mint light-wave motion on charcoal"
+    }
+  ],
+  "ingest": {
+    "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+    "run_id": 2,
+    "note": "Upload JPEG one-by-one via upload_ingest.py --token <fresh>"
+  }
+}
