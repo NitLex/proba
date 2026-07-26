@@ -1,0 +1,58 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "engine": "cursor-agent-GenerateImage",
+  "provider": "agent",
+  "images": [
+    {
+      "angle_id": "travel",
+      "png": "creatives/pipeline/2/travel-agent-0.png",
+      "jpg": "creatives/pipeline/2/travel-agent-0.jpg",
+      "png_bytes": 1379649,
+      "jpg_bytes": 168073,
+      "size": "1024x1024",
+      "format": "product",
+      "engine": "cursor-agent-GenerateImage",
+      "image_has_text": false
+    },
+    {
+      "angle_id": "services",
+      "png": "creatives/pipeline/2/services-agent-0.png",
+      "jpg": "creatives/pipeline/2/services-agent-0.jpg",
+      "png_bytes": 996200,
+      "jpg_bytes": 94012,
+      "size": "1024x1024",
+      "format": "product",
+      "engine": "cursor-agent-GenerateImage",
+      "image_has_text": false
+    },
+    {
+      "angle_id": "sbp",
+      "png": "creatives/pipeline/2/sbp-agent-0.png",
+      "jpg": "creatives/pipeline/2/sbp-agent-0.jpg",
+      "png_bytes": 1338442,
+      "jpg_bytes": 146921,
+      "size": "1024x1024",
+      "format": "product",
+      "engine": "cursor-agent-GenerateImage",
+      "image_has_text": false
+    }
+  ],
+  "ingest": {
+    "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+    "status": "blocked_invalid_token",
+    "prompt_token_prefix": "EAPXa_iS",
+    "note": "POST one JPEG per angle with fresh run ingest token; prompt token returned 403 Неверный ingest token"
+  },
+  "qa": {
+    "ok": true,
+    "checks": [
+      "square 1024x1024",
+      "no text on image",
+      "no payment brand logos",
+      "blank card face",
+      "titles contain зарубежная карта",
+      "texts contain выпуск зарубежной карты"
+    ]
+  }
+}
