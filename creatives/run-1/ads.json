@@ -1,0 +1,100 @@
+{
+  "run_id": 1,
+  "offer": "Тестовая карта",
+  "ad_format": "product",
+  "image_has_text": false,
+  "image_provider": "agent",
+  "engine": "cursor-GenerateImage",
+  "ingest": {
+    "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+    "http_status": 403,
+    "error": "Неверный ingest token",
+    "retry": "INGEST_TOKEN=<актуальный> ./creatives/run-1/ingest.sh",
+    "token_from_brief": "-dzhLI2WJYN5uFpxZ7CL_Ops"
+  },
+  "images": [
+    {
+      "angle_id": "travel",
+      "path": "creatives/run-1/travel-agent-0.png",
+      "pipeline_path": "creatives/pipeline/1/travel-agent-0.png",
+      "mime": "image/png",
+      "size": "1024x1024",
+      "format": "product",
+      "notes": "Blank navy card on passport + suitcase, airport sunrise; no logos/text"
+    },
+    {
+      "angle_id": "services",
+      "path": "creatives/run-1/services-agent-0.png",
+      "pipeline_path": "creatives/pipeline/1/services-agent-0.png",
+      "mime": "image/png",
+      "size": "1024x1024",
+      "format": "product",
+      "notes": "Blank black card + phone with abstract app-icon blur; no logos/text"
+    }
+  ],
+  "briefs": [
+    {
+      "angle_id": "travel",
+      "angle_title": "Поездки",
+      "ad_format": "product",
+      "titles": [
+        "Зарубежная карта для поездок",
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — поездки"
+      ],
+      "texts": [
+        "Зарубежная карта для поездок. Заявка онлайн.",
+        "Выпуск зарубежной карты. Для поездок. Без шаблонных обещаний.",
+        "Зарубежная карта онлайн. Оформление заявки на сайте."
+      ],
+      "sitelinks": [
+        { "title": "Оформить онлайн", "description": "Заявка на сайте" },
+        { "title": "Условия", "description": "Актуальные на лендинге" },
+        { "title": "Как это работает", "description": "Коротко о шагах" },
+        { "title": "Поддержка", "description": "Помощь по заявке" }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ]
+    },
+    {
+      "angle_id": "services",
+      "angle_title": "Подписки и сервисы",
+      "ad_format": "product",
+      "titles": [
+        "Зарубежная карта для подписок",
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — сервисы"
+      ],
+      "texts": [
+        "Зарубежная карта для подписок. Заявка онлайн.",
+        "Выпуск зарубежной карты. Для сервисов. Без шаблонных обещаний.",
+        "Зарубежная карта онлайн. Оформление заявки на сайте."
+      ],
+      "sitelinks": [
+        { "title": "Оформить онлайн", "description": "Заявка на сайте" },
+        { "title": "Условия", "description": "Актуальные на лендинге" },
+        { "title": "Как это работает", "description": "Коротко о шагах" },
+        { "title": "Поддержка", "description": "Помощь по заявке" }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ]
+    }
+  ],
+  "qa": {
+    "image_required": true,
+    "product_no_text_on_image": true,
+    "square_1024": true,
+    "no_payment_brand_logos": true,
+    "title_text_has_zarubezhnaya_karta": true,
+    "title_max_56": true,
+    "text_max_81": true
+  }
+}
