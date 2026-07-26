@@ -10,3 +10,4 @@ client/dist/
 .env
 SECRETS.env
 creatives/pipeline/
+prelands/
