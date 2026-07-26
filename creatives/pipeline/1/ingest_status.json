@@ -1,0 +1,23 @@
+[
+  {
+    "angle_id": "travel",
+    "status": 403,
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "travel-agent-0.jpg",
+    "bytes": 155145
+  },
+  {
+    "angle_id": "services",
+    "status": 403,
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "services-agent-0.jpg",
+    "bytes": 108540
+  },
+  {
+    "angle_id": "sbp",
+    "status": 403,
+    "body": "{\"error\":\"Неверный ingest token\"}",
+    "file": "sbp-agent-0.jpg",
+    "bytes": 127506
+  }
+]

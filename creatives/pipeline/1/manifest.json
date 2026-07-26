@@ -1,0 +1,19 @@
+{
+  "run_id": 1,
+  "format": "product",
+  "engine": "cursor-agent-GenerateImage",
+  "angles": ["travel", "services", "sbp"],
+  "files": [
+    "travel-agent-0.png",
+    "services-agent-0.png",
+    "sbp-agent-0.png",
+    "travel-agent-0.jpg",
+    "services-agent-0.jpg",
+    "sbp-agent-0.jpg"
+  ],
+  "notes": [
+    "1024x1024 product creatives, ZERO text on image",
+    "Title/Text only in Direct TextAd fields (TEXTAD_PRODUCT.json)",
+    "Ingest: one JPEG per request to avoid nginx 413"
+  ]
+}
