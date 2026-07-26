@@ -70,7 +70,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--run-id", type=int, default=2)
-    parser.add_argument("--token", default=DEFAULT_TOKEN)
+    parser.add_argument(
+        "--token",
+        required=True,
+        help="Pipeline creative_ingest token from orchestrator step",
+    )
     parser.add_argument("--dir", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument(
         "--prefer-jpeg",

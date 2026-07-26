@@ -4,7 +4,7 @@
   "token_hint": "kBh-DJMy-…",
   "ok": false,
   "error": "Run not found",
-  "note": "Endpoint reachable; token accepted past auth gate but run_id=2 missing on orchestrator. Local creatives ready — re-run upload_ingest.py --prefer-jpeg when run is active.",
+  "note": "Endpoint reachable on orkestr.online; run_id=2 missing. Local creatives ready — re-run: python3 upload_ingest.py --prefer-jpeg --token <TOKEN>",
   "attempts": [
     {
       "file": "generic-agent-0.jpg",
