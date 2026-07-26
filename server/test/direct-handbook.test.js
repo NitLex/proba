@@ -31,7 +31,10 @@ test('fintech checklist requires overseas-card wording', () => {
   const list = buildDirectOperatorChecklist({
     plan: { href: 'https://trekerarbitrag.ru/click/x', ad_format: 'product' },
     offer: { name: 'Плати по миру', vertical: 'Fintech' },
-    playbook: { angles: [{ id: 'travel', title: 'Поездки' }] },
+    playbook: {
+      vertical_key: 'fintech_cards',
+      angles: [{ id: 'travel', title: 'Поездки' }],
+    },
     tracker: {
       postback_url:
         'https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={status}&txid={transaction_id}',
@@ -48,6 +51,23 @@ test('fintech checklist requires overseas-card wording', () => {
   assert.ok(pb?.required);
   assert.match(pb.text, /postback\?clickid=/);
   assert.ok(pb.copy);
+});
+
+test('loan checklist does not require overseas-card wording', () => {
+  const list = buildDirectOperatorChecklist({
+    plan: { href: 'https://trekerarbitrag.ru/click/x', ad_format: 'product' },
+    offer: {
+      name: 'Деньги Сразу - Выдача',
+      notes: 'Для оформления займа нужен только паспорт',
+    },
+    playbook: {
+      vertical_key: 'fintech_loans',
+      angles: [{ id: 'speed', title: 'Быстрое решение' }],
+    },
+  });
+  const foreign = list.find((i) => i.id === 'foreign_card_wording');
+  assert.equal(foreign.required, false);
+  assert.match(foreign.text, /займ|мфо/i);
 });
 
 test('direct knowledge brief and system prompt mention help root', () => {

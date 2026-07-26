@@ -6,14 +6,26 @@
 
 import { expandSeeds, wordstatConfig } from '../../lib/wordstat.js';
 
-function seedsFromAngles(angles = []) {
+function seedsFromAngles(angles = [], verticalKey = '') {
   const seeds = [];
   for (const a of angles) {
     for (const h of a.hooks || []) seeds.push(h);
+  }
+  if (verticalKey === 'fintech_loans') {
+    seeds.push(
+      'займ онлайн',
+      'займ на карту',
+      'микрозайм срочно',
+      'деньги до зарплаты',
+      'займ по паспорту',
+    );
+    return [...new Set(seeds.filter(Boolean))];
+  }
+  for (const a of angles) {
     if (a.id === 'travel') {
       seeds.push(
         'виртуальная карта для путешествий',
-        'карта для оплаты за границей',
+        'зарубежная карта для поездок',
         'оплата за границей картой',
         'карта для поездок',
       );
@@ -21,19 +33,18 @@ function seedsFromAngles(angles = []) {
     if (a.id === 'services') {
       seeds.push(
         'оплата зарубежных сервисов',
-        'карта для подписок',
-        'виртуальная карта в долларах',
+        'зарубежная карта для подписок',
         'карта для зарубежных сервисов',
       );
     }
     if (a.id === 'premium') {
-      seeds.push('премиальная виртуальная карта', 'карта с выгодным курсом');
+      seeds.push('премиальная виртуальная карта', 'зарубежная карта премиум');
     }
   }
   return [...new Set(seeds.filter(Boolean))];
 }
 
-const DEFAULT_NEGATIVES = [
+const BASE_NEGATIVES = [
   'бесплатно',
   'халява',
   'взлом',
@@ -42,9 +53,6 @@ const DEFAULT_NEGATIVES = [
   'торрент',
   'работа',
   'вакансия',
-  'займ',
-  'микрозайм',
-  'кредит наличными',
   'казино',
   'ставки',
   '1xbet',
@@ -56,14 +64,27 @@ const DEFAULT_NEGATIVES = [
   'школьник',
 ];
 
+/** Loan negatives only for non-loan verticals (otherwise we kill our own keywords). */
+function negativesForVertical(verticalKey) {
+  if (verticalKey === 'fintech_loans') {
+    return [...BASE_NEGATIVES, 'зарубежная карта', 'виртуальная карта', 'сбп карта'];
+  }
+  return [...BASE_NEGATIVES, 'займ', 'микрозайм', 'кредит наличными'];
+}
+
 function assignGroup(phrase, angles) {
   const p = phrase.toLowerCase();
   const has = (id) => angles.some((a) => a.id === id);
+  if (has('speed') && /быстр|минут|срочно|онлайн/.test(p)) return 'speed';
+  if (has('passport') && /паспорт|документ/.test(p)) return 'passport';
+  if (has('amount') && /сумм|до \d|на карту|наличн/.test(p)) return 'amount';
   if (has('sbp') && /сбп|выпуск карт|открыть карт|пополнен/.test(p)) return 'sbp';
   if (has('services') && /сервис|подписк|доллар|spotify|steam|chatgpt|онлайн.?оплат/.test(p)) {
     return 'services';
   }
-  if (has('travel') && /путешеств|границ|поезд|тур|отел|booking|за рубеж/.test(p)) return 'travel';
+  if (has('travel') && /путешеств|границ|поезд|тур|отел|booking|за рубеж|зарубежн/.test(p)) {
+    return 'travel';
+  }
   if (has('premium') && /премиум|курс/.test(p)) return 'premium';
   return angles[0]?.id || 'generic';
 }
@@ -82,8 +103,10 @@ function ensureGroupsHaveKeywords(byGroup, angles, keywords) {
 export async function runWordstat({ offer, context }) {
   const playbook = context.playbook || {};
   const angles = playbook.angles || [];
-  const seeds = seedsFromAngles(angles);
+  const verticalKey = playbook.vertical_key || context.analysis?.vertical_key || '';
+  const seeds = seedsFromAngles(angles, verticalKey);
   if (offer.name) seeds.unshift(String(offer.name).slice(0, 80));
+  const negatives = negativesForVertical(verticalKey);
 
   const cfg = wordstatConfig();
   let mode = 'heuristic';
@@ -139,25 +162,26 @@ export async function runWordstat({ offer, context }) {
         : null,
       keywords,
       groups: byGroup,
-      negatives: DEFAULT_NEGATIVES,
+      negatives,
       autotargeting: 'suspended_on_start',
       seeds,
+      vertical_key: verticalKey,
     },
     cursor_prompt: [
       'Ты агент семантики (Wordstat) для Яндекс.Директ РСЯ.',
-      `Оффер: ${offer.name || ''} / гео ${playbook.geo || offer.geo || ''}`,
+      `Оффер: ${offer.name || ''} / гео ${playbook.geo || offer.geo || ''} / vertical ${verticalKey}`,
       `Режим сбора: ${mode}`,
       `Углы: ${JSON.stringify(angles)}`,
       `Топ ключей: ${JSON.stringify(keywords.slice(0, 40))}`,
-      `Минус-слова: ${JSON.stringify(DEFAULT_NEGATIVES)}`,
-      'Дополни кластеры, убери мусор, подготовь финальные списки для групп Travel/Services. Сохрани в docs или creatives при необходимости.',
+      `Минус-слова: ${JSON.stringify(negatives)}`,
+      'Дополни кластеры по углам оффера, убери мусор. Не минусуй ядро вертикали.',
     ].join('\n'),
     context_patch: {
       semantics: {
         mode,
         keywords,
         groups: byGroup,
-        negatives: DEFAULT_NEGATIVES,
+        negatives,
       },
     },
   };

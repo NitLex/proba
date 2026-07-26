@@ -278,6 +278,7 @@ function looksFinancial(offer = {}, playbook = {}) {
     offer.vertical,
     offer.notes,
     offer.network,
+    playbook.vertical_key,
     ...(playbook.angles || []).map((a) => `${a.id} ${a.title}`),
   ]
     .filter(Boolean)
@@ -286,9 +287,21 @@ function looksFinancial(offer = {}, playbook = {}) {
   return /фин|карт|плат[её]ж|bank|card|credit|займ|мфо|сбп|подписк|travel|дебет/i.test(blob);
 }
 
+function looksForeignCard(offer = {}, playbook = {}) {
+  if (playbook.vertical_key === 'fintech_cards') return true;
+  if (playbook.vertical_key === 'fintech_loans') return false;
+  const blob = [offer.name, offer.notes, offer.description, offer.network_description]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return /зарубежн.*карт|плати по миру|prepaid|виртуальн.*карт|выпуск карты/i.test(blob);
+}
+
 /** Checklist returned in Direct agent output for the human operator. */
 export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } = {}) {
   const fin = looksFinancial(offer, playbook);
+  const foreignCard = looksForeignCard(offer, playbook);
+  const loan = playbook.vertical_key === 'fintech_loans' || /займ|мфо/i.test(`${offer.name} ${offer.notes}`);
   const postback = tracker?.postback_url || '';
   const items = [
     {
@@ -329,17 +342,21 @@ export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } 
     },
     {
       id: 'foreign_card_wording',
-      text: fin
+      text: foreignCard
         ? 'В тексте объявлений явно: «зарубежная карта» / «выпуск зарубежной карты» (иначе запросят банковскую лицензию)'
-        : 'Для карточных офферов проверяй формулировку продукта в Title/Text',
-      required: fin,
+        : loan
+          ? 'Займы/МФО: не используй шаблоны про зарубежную карту — только факты оффера'
+          : 'Для карточных офферов проверяй формулировку продукта в Title/Text',
+      required: foreignCard,
       docs: DIRECT_FINANCE_DOCS.payment_systems.url,
     },
     {
       id: 'docs_if_needed',
-      text: fin
-        ? 'Если без «зарубежной карты» — лицензия ЦБ; с явной формулировкой документы часто не нужны'
-        : 'Если модерация запросит документы по тематике — загрузи по разделу special-categories',
+      text: loan
+        ? 'Займы: готовь документы по тематике «Займы» в Директе, если запросят'
+        : foreignCard
+          ? 'Если без «зарубежной карты» — лицензия ЦБ; с явной формулировкой документы часто не нужны'
+          : 'Если модерация запросит документы по тематике — загрузи по разделу special-categories',
       required: false,
       docs: DIRECT_FINANCE_DOCS.payment_systems.url,
     },

@@ -47,14 +47,46 @@ function mergeAngles(...lists) {
 
 function anglesFromOfferText(offer) {
   const name = String(offer.name || offer.offer_name || '').toLowerCase();
-  const notes = `${offer.notes || ''} ${offer.description || ''}`.toLowerCase();
+  const notes = `${offer.notes || ''} ${offer.description || ''} ${offer.network_description || ''}`.toLowerCase();
   const blob = `${name} ${notes}`;
   const angles = [];
-  if (/путешеств|travel|поезд|туризм|отел/.test(blob)) {
+
+  // Loans / MFO — product-first
+  if (/займ|микрозайм|мфо|наличн|payday|loan|кредитн(ая|ой) истори/.test(blob)) {
+    angles.push({
+      id: 'speed',
+      title: 'Быстрое решение',
+      hooks: ['займ онлайн за минуты', 'деньги на карту срочно', 'одобрение онлайн'],
+      origin: 'offer_text',
+    });
+    if (/паспорт/.test(blob)) {
+      angles.push({
+        id: 'passport',
+        title: 'Только паспорт',
+        hooks: ['займ по паспорту', 'минимум документов'],
+        origin: 'offer_text',
+      });
+    }
+    const amount = blob.match(/(\d[\d\s]{2,6})\s*(₽|руб|рубл)/i) || blob.match(/до\s+(\d[\d\s]{2,6})/i);
+    if (amount || /сумм|на карту|наличн/.test(blob)) {
+      angles.push({
+        id: 'amount',
+        title: 'Сумма на карту',
+        hooks: [
+          amount ? `займ до ${String(amount[1]).replace(/\s/g, '')}` : 'деньги на карту',
+          'займ на карту онлайн',
+        ],
+        origin: 'offer_text',
+      });
+    }
+    return angles;
+  }
+
+  if (/путешеств|travel|поезд|туризм|отел|зарубежн.*карт/.test(blob)) {
     angles.push({
       id: 'travel',
       title: 'Поездки',
-      hooks: ['цифровая карта для поездок', 'карта онлайн'],
+      hooks: ['зарубежная карта для поездок', 'выпуск зарубежной карты'],
       origin: 'offer_text',
     });
   }
@@ -62,19 +94,19 @@ function anglesFromOfferText(offer) {
     angles.push({
       id: 'services',
       title: 'Подписки и сервисы',
-      hooks: ['карта для подписок', 'оплата сервисов онлайн'],
+      hooks: ['зарубежная карта для подписок', 'оплата сервисов онлайн'],
       origin: 'offer_text',
     });
   }
-  if (/сбп|промокод|выпуск|минут/.test(blob)) {
+  if (/сбп|промокод|выпуск|минут/.test(blob) && /карт/.test(blob)) {
     angles.push({
       id: 'sbp',
       title: 'СБП / быстрый выпуск',
-      hooks: ['пополнение по СБП', 'выпуск карты онлайн'],
+      hooks: ['пополнение по СБП', 'выпуск зарубежной карты онлайн'],
       origin: 'offer_text',
     });
   }
-  if (/премиум|premium|курс/.test(blob)) {
+  if (/премиум|premium|курс/.test(blob) && /карт/.test(blob)) {
     angles.push({
       id: 'premium',
       title: 'Премиум',

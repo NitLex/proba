@@ -4,6 +4,7 @@ import { copyText } from '../components/ui';
 
 const emptyOffer = {
   url: '',
+  info_url: '',
   name: '',
   payout: '',
   epc: '',
@@ -143,11 +144,15 @@ export default function Pipeline() {
         directStep?.status === 'failed' ||
         /не удалось создать черновик/i.test(directStep?.output?.summary || run.error || '');
       const qaFail = qaStep?.status === 'failed' || /QA smoke fail/i.test(run.error || '');
+      const vertical = run.context?.analysis?.vertical_key || run.context?.playbook?.vertical_key;
+      const campId = run.context?.direct?.campaign_id;
       if (qaFail) {
         setMsg(`QA не пройден: ${run.error || qaStep?.error || qa?.summary || 'проверь click/bots'}`);
       } else if (run.status === 'done' && ready) {
         setMsg(
-          `${ready}${qa?.ok ? ' · ссылки/клики проверены' : ''}. Запусти кампанию в Директе сам — на модерацию не отправляли.`,
+          `${ready}${qa?.ok ? ' · ссылки/клики проверены' : ''}${
+            vertical ? ` · вертикаль ${vertical}` : ''
+          }${campId ? ` · Директ #${campId} (черновик OFF)` : ''}. Запуск/модерация — вручную.`,
         );
       } else if (directFail) {
         setMsg(
@@ -395,15 +400,28 @@ export default function Pipeline() {
           </div>
           <form className="form-grid" style={{ padding: '1rem' }} onSubmit={submit}>
             <label className="lbl full">
-              Ссылка на оффер *
+              Трекинг-ссылка (aff_c) *
               <input
                 className="field"
                 required
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
-                placeholder="https://go.leadgid.ru/aff_c?offer_id=7397&..."
+                placeholder="https://go.leadgid.ru/aff_c?offer_id=4759&..."
               />
             </label>
+            <label className="lbl full">
+              Страница с описанием оффера (для исследования)
+              <input
+                className="field"
+                value={form.info_url}
+                onChange={(e) => setForm({ ...form, info_url: e.target.value })}
+                placeholder="лендинг / кабинет LeadGid / FAQ — отсюда берутся тексты"
+              />
+            </label>
+            <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+              В трекер уходит aff_c. Тексты и углы строятся из LeadGid API + этой страницы (не из
+              шаблона «зарубежная карта»).
+            </p>
 
             <label className="lbl full">
               Тип объявления / креатива
@@ -603,6 +621,23 @@ export default function Pipeline() {
             </div>
           </div>
           <div style={{ padding: '1rem' }}>
+            {active.context?.enrich ? (
+              <div className="banner">
+                Исследование оффера: {(active.context.enrich.sources || []).join(', ') || '—'}
+                {active.context.enrich.leadgid?.name
+                  ? ` · LeadGid: ${active.context.enrich.leadgid.name}`
+                  : ''}
+                {active.context.enrich.leadgid?.payout
+                  ? ` · payout ${active.context.enrich.leadgid.payout}`
+                  : ''}
+                {active.context.enrich.page?.title
+                  ? ` · page: ${active.context.enrich.page.title.slice(0, 80)}`
+                  : ''}
+                {active.context.playbook?.vertical_key
+                  ? ` · vertical ${active.context.playbook.vertical_key}`
+                  : ''}
+              </div>
+            ) : null}
             {active.context?.direct?.ready_message ? (
               <div className="banner ok">{active.context.direct.ready_message}</div>
             ) : null}

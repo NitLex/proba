@@ -44,13 +44,109 @@ function listExistingAssets() {
   return found;
 }
 
+function sliceTitle(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().slice(0, 56);
+}
+function sliceText(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().slice(0, 81);
+}
+
+function offerFacts(offer) {
+  const brief = offer.product_brief || {};
+  const blob = [
+    offer.name,
+    offer.notes,
+    offer.description,
+    offer.network_description,
+    brief.summary,
+    brief.advantages,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const amountMatch =
+    blob.match(/от\s*(\d[\d\s]{0,6})\s*до\s*(\d[\d\s]{0,6})/i) ||
+    blob.match(/до\s*(\d[\d\s]{0,6})\s*(₽|руб)?/i);
+  let amountLine = '';
+  if (amountMatch) {
+    if (amountMatch[2] && /\d/.test(amountMatch[2])) {
+      amountLine = `от ${amountMatch[1].replace(/\s/g, '')} до ${amountMatch[2].replace(/\s/g, '')} ₽`;
+    } else {
+      amountLine = `до ${amountMatch[1].replace(/\s/g, '')} ₽`;
+    }
+  }
+  return {
+    brand: String(offer.name || brief.name || 'Оффер')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 40),
+    passport: /паспорт/i.test(blob),
+    amountLine,
+    online24: /круглосуточ|24\s*\/\s*7|онлайн/i.test(blob),
+    badKi: /плохо[йе]\s*кредит|любой\s*ки|кредитн(ая|ой)\s*истори/i.test(blob),
+    cardPayout: /на карту|наличными/i.test(blob),
+    summary: String(brief.summary || offer.description || offer.notes || '').slice(0, 200),
+  };
+}
+
+/** Loan / MFO copy from researched offer facts — never foreign-card templates. */
+function loanAdCopy(angle, offer) {
+  const f = offerFacts(offer);
+  const amount = f.amountLine || 'на карту';
+  const map = {
+    speed: {
+      titles: [
+        sliceTitle('Займ онлайн за минуты'),
+        sliceTitle(`${f.brand}: быстро`),
+        sliceTitle('Деньги на карту срочно'),
+      ],
+      texts: [
+        sliceText(
+          f.passport
+            ? `Онлайн-займ ${amount}. Нужен паспорт. Решение быстро.`
+            : `Онлайн-займ ${amount}. Оформление за минуты.`,
+        ),
+        sliceText(`Срочный займ на карту. ${f.online24 ? 'Круглосуточно. ' : ''}${amount}.`),
+      ],
+    },
+    passport: {
+      titles: [sliceTitle('Займ по паспорту онлайн'), sliceTitle('Минимум документов')],
+      texts: [
+        sliceText(`Для займа нужен паспорт. ${amount}. Оформление онлайн.`),
+        sliceText(`${f.brand}: займ онлайн, минимум документов. ${amount}.`),
+      ],
+    },
+    amount: {
+      titles: [
+        sliceTitle(f.amountLine ? `Займ ${f.amountLine}` : 'Займ на карту онлайн'),
+        sliceTitle('Деньги на карту онлайн'),
+      ],
+      texts: [
+        sliceText(`Получите ${amount} на карту или наличными в регионе.`),
+        sliceText(`${f.brand}: ${amount}. Оформление онлайн.`),
+      ],
+    },
+    generic: {
+      titles: [sliceTitle(`Займ онлайн — ${f.brand}`), sliceTitle('Онлайн-займ на карту')],
+      texts: [
+        sliceText(f.summary || `Онлайн-займ ${amount}. Оформление за минуты.`),
+        sliceText(`${f.brand}. ${amount}. Без лишних обещаний одобрения.`),
+      ],
+    },
+  };
+  return map[angle.id] || map.generic;
+}
+
 /**
- * Safer copy for Direct moderation — no brand names / Apple Pay / Google Pay.
- * For foreign/prepaid card offers: ALWAYS say «зарубежная карта» / «выпуск зарубежной карты»
- * (Direct support 2026-07: without this they demand a banking license).
+ * Copy from offer research + vertical.
+ * Cards (PPM): must say «зарубежная карта».
+ * Loans: only loan claims from offer brief — never card templates.
  */
-function adCopy(angle, offer, promo) {
-  const code = promo?.code || offer.promo_code || 'LG2026';
+function adCopy(angle, offer, promo, verticalKey) {
+  const code = promo?.code || offer.promo_code || '';
+  if (verticalKey === 'fintech_loans') return loanAdCopy(angle, offer);
+
+  // Foreign / prepaid cards
+  const promoBit = code ? `Промокод ${code}` : 'Оформление онлайн';
   const map = {
     travel: {
       titles: [
@@ -59,8 +155,8 @@ function adCopy(angle, offer, promo) {
         'Зарубежная карта онлайн',
       ],
       texts: [
-        `Выпуск зарубежной карты онлайн. СБП. Промокод ${code} — скидка.`,
-        `Выпуск зарубежной карты за минуты. Код ${code}. Поездки и оплаты.`,
+        `Выпуск зарубежной карты онлайн. СБП. ${promoBit}.`,
+        `Выпуск зарубежной карты за минуты. ${promoBit}. Поездки и оплаты.`,
       ],
     },
     services: {
@@ -70,29 +166,26 @@ function adCopy(angle, offer, promo) {
         'Зарубежная карта — сервисы',
       ],
       texts: [
-        `Выпуск зарубежной карты онлайн. СБП. Промокод ${code} на выпуск.`,
-        `Выпуск зарубежной карты. Подписки и оплаты. Промокод ${code}.`,
+        `Выпуск зарубежной карты онлайн. СБП. ${promoBit}.`,
+        `Выпуск зарубежной карты. Подписки и оплаты. ${promoBit}.`,
       ],
     },
     premium: {
       titles: ['Зарубежная карта премиум', 'Выпуск зарубежной карты'],
-      texts: [`Выпуск зарубежной карты. Промокод ${code} — скидка. Онлайн.`],
+      texts: [`Выпуск зарубежной карты. ${promoBit}. Онлайн.`],
     },
     sbp: {
       titles: ['Зарубежная карта + СБП', 'Зарубежная карта с СБП'],
       texts: [
-        `Выпуск зарубежной карты. Пополнение с любого банка по СБП. ${code}.`,
-        `Выпуск зарубежной карты. Рубли по СБП. Промокод ${code}.`,
+        `Выпуск зарубежной карты. Пополнение с любого банка по СБП.`,
+        `Выпуск зарубежной карты. Рубли по СБП. ${promoBit}.`,
       ],
     },
     generic: {
-      titles: [
-        'Выпуск зарубежной карты',
-        'Зарубежная карта онлайн',
-      ],
+      titles: ['Выпуск зарубежной карты', 'Зарубежная карта онлайн'],
       texts: [
-        `Выпуск зарубежной карты онлайн. Промокод ${code}. Пополнение по СБП.`,
-        `Зарубежная карта: быстрый старт. Код ${code}. Сервисы и поездки.`,
+        `Выпуск зарубежной карты онлайн. ${promoBit}. Пополнение по СБП.`,
+        `Зарубежная карта: быстрый старт. ${promoBit}.`,
       ],
     },
   };
@@ -116,7 +209,8 @@ function decideGenerationFormat(offer) {
 export async function runCreative({ offer, context }) {
   const playbook = context.playbook || {};
   const angles = playbook.angles || [{ id: 'generic', title: 'Основной' }];
-  const promo = (playbook.promo_codes || [])[0] || { code: offer.promo_code || 'LG2026' };
+  const promo = (playbook.promo_codes || [])[0] || { code: offer.promo_code || '' };
+  const verticalKey = playbook.vertical_key || context.analysis?.vertical_key || '';
   const assets = listExistingAssets();
   const imgCfg = imageGenConfig();
   const runId = context.run_id || `offer-${Date.now()}`;
@@ -127,7 +221,7 @@ export async function runCreative({ offer, context }) {
 
   const overlaysByAngle = {};
   const creatives = angles.map((angle) => {
-    const copy = adCopy(angle, offer, promo);
+    const copy = adCopy(angle, offer, promo, verticalKey);
     const overlayLines = overlayLinesForOffer({
       offer,
       angle,
@@ -154,27 +248,39 @@ export async function runCreative({ offer, context }) {
         format: genFormat,
         overlayLines: imageHasText ? overlayLines : [],
       }),
-      sitelinks: [
-        { title: 'Зарубежная карта', description: 'Выпуск онлайн за минуты' },
-        {
-          title: `Промокод ${promo?.code || 'LG2026'}`,
-          description: promo?.note || 'Скидка на выпуск',
-        },
-        { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
-        { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
-      ],
-      callouts: [
-        'Выпуск зарубежной карты',
-        'Пополнение по СБП',
-        'Оформление онлайн',
-        `Промокод ${promo?.code || 'LG2026'}`,
-      ],
+      sitelinks:
+        verticalKey === 'fintech_loans'
+          ? [
+              { title: 'Оформить онлайн', description: 'Заявка за минуты' },
+              { title: 'На карту', description: 'Или наличными в регионе' },
+              { title: 'Условия', description: 'Изучите на сайте' },
+              { title: 'Поддержка', description: 'Помощь по заявке' },
+            ]
+          : [
+              { title: 'Зарубежная карта', description: 'Выпуск онлайн за минуты' },
+              {
+                title: promo?.code ? `Промокод ${promo.code}` : 'Оформить',
+                description: promo?.note || 'Скидка на выпуск',
+              },
+              { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
+              { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
+            ],
+      callouts:
+        verticalKey === 'fintech_loans'
+          ? ['Онлайн-займ', 'Оформление быстро', 'На карту', 'Условия на сайте']
+          : [
+              'Выпуск зарубежной карты',
+              'Пополнение по СБП',
+              'Оформление онлайн',
+              promo?.code ? `Промокод ${promo.code}` : 'Без очередей',
+            ],
       forbidden: [
         'обход санкций/ограничений',
         'гарантии одобрения',
         'P2P/вывод',
         'gambling/adult/crypto',
         'бренды Apple Pay / Google Pay / Booking',
+        ...(verticalKey === 'fintech_loans' ? ['зарубежная карта', 'СБП-выпуск карты'] : []),
       ],
       sizes: RSYA_SIZES,
       preferred_packs: assets.filter((a) =>
@@ -229,8 +335,15 @@ export async function runCreative({ offer, context }) {
       adFormat === 'graphic'
         ? 'На баннере надписи оффера. В Директе TEXT_CAMPAIGN: TextAd + AdImageHash (не ImageAd).'
         : 'Картинка без текста. Заголовки/тексты только в полях TextAd.',
-      'В Title/Text обязательно «зарубежная карта» или «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.',
-      `Оффер: ${JSON.stringify({ name: offer.name, promo })}`,
+      verticalKey === 'fintech_loans'
+        ? 'Вертикаль МФО/займы: тексты только из брифа оффера (сумма, паспорт, скорость). Не писать про зарубежную карту.'
+        : 'В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.',
+      `Оффер: ${JSON.stringify({
+        name: offer.name,
+        vertical_key: verticalKey,
+        brief: offer.product_brief || offer.notes,
+        promo,
+      })}`,
       `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines })))}`,
       `Файлы: ${JSON.stringify(okImages)}`,
     ].join('\n'),

@@ -4,9 +4,47 @@
  */
 
 export const GLOBAL_VERTICAL_PLAYBOOKS = {
+  fintech_loans: {
+    vertical: 'Fintech / МФО',
+    aliases: [/займ|микрозайм|мфо|наличн|payday|loan|кредитн(ая|ой) истори|деньги сразу/i],
+    sources: [
+      {
+        source: 'Yandex Direct РСЯ',
+        heat: 'hot',
+        funnel: 'direct',
+        where_to_pour: 'РСЯ, гео РФ, 25–55. Жёсткая чистка площадок. Документы по займам — по правилам Директа.',
+        creatives: 'Скорость, сумма, только паспорт, онлайн 24/7. Без гарантии 100% одобрения.',
+        bid_hint: 'CPC от EPC×0.4–0.6; тест осторожный',
+        risks: [
+          'Тематика «Займы» — документы/ограничения в Директе',
+          'Запрет гарантий одобрения и вводящих в заблуждение ставок',
+        ],
+        angles: [
+          {
+            id: 'speed',
+            title: 'Быстрое решение',
+            hooks: ['займ онлайн за минуты', 'деньги на карту срочно', 'одобрение онлайн'],
+            creative_notes: 'Акцент на скорость, без «100% одобрим».',
+          },
+          {
+            id: 'passport',
+            title: 'Только паспорт',
+            hooks: ['займ по паспорту', 'минимум документов', 'оформление онлайн'],
+            creative_notes: 'Факт из оффера: нужен паспорт.',
+          },
+          {
+            id: 'amount',
+            title: 'Сумма на карту',
+            hooks: ['займ до 30000', 'деньги на карту', 'наличные или карта'],
+            creative_notes: 'Указывать сумму только если есть в описании оффера.',
+          },
+        ],
+      },
+    ],
+  },
   fintech_cards: {
     vertical: 'Fintech',
-    aliases: [/карт|card|debit|плат[её]ж|fintech|банк|сбп|подписк|путешеств|сервис/i],
+    aliases: [/зарубежн.*карт|prepaid|плати по миру|виртуальн.*карт|дебетов|выпуск карты|сбп.*карт|подписк.*карт/i],
     sources: [
       {
         source: 'Yandex Direct РСЯ',
@@ -129,21 +167,48 @@ export const GLOBAL_VERTICAL_PLAYBOOKS = {
 };
 
 export function detectVerticalKey(offer = {}) {
-  const blob = [
-    offer.vertical,
+  // Product text first — ignore vague UI default "Fintech" which used to force cards
+  const productBlob = [
     offer.name,
     offer.offer_name,
     offer.notes,
     offer.description,
+    offer.network_description,
     offer.category,
+    offer.product_brief?.summary,
+    offer.product_brief?.advantages,
+    ...(Array.isArray(offer.product_brief?.goals)
+      ? offer.product_brief.goals.map((g) => g.name)
+      : []),
   ]
     .filter(Boolean)
     .join(' ');
-  for (const [key, pb] of Object.entries(GLOBAL_VERTICAL_PLAYBOOKS)) {
-    if (pb.aliases.some((re) => re.test(blob))) return key;
+
+  if (
+    /займ|микрозайм|мфо|payday|loan|наличн(ыми|ые)|кредитн(ая|ой) истори|деньги сразу|выдача.*займ/i.test(
+      productBlob,
+    )
+  ) {
+    return 'fintech_loans';
   }
-  if (/fintech|finance|карт/i.test(offer.vertical || '')) return 'fintech_cards';
-  return 'fintech_cards'; // default for PPM-like offers
+  if (
+    /зарубежн.*карт|prepaid|плати по миру|виртуальн(ая|ой) карт|дебетов|выпуск карты|карта.*сбп|сбп.*карт/i.test(
+      productBlob,
+    )
+  ) {
+    return 'fintech_cards';
+  }
+
+  for (const [key, pb] of Object.entries(GLOBAL_VERTICAL_PLAYBOOKS)) {
+    if (pb.aliases.some((re) => re.test(productBlob))) return key;
+  }
+
+  const verticalField = String(offer.vertical || '');
+  if (/займ|мфо|loan|credit/i.test(verticalField)) return 'fintech_loans';
+  if (/карт|card|debit|плат[её]ж/i.test(verticalField)) return 'fintech_cards';
+  if (/нутри|бад|похуд/i.test(verticalField)) return 'nutra';
+  // Last resort: cards playbook (PPM-era default)
+  return 'fintech_cards';
 }
 
 export function globalSourcesForOffer(offer = {}) {

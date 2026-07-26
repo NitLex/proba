@@ -212,7 +212,7 @@ function buildPlan({ offer, context }) {
         // TEXT_CAMPAIGN не принимает ImageAd; TextImageAd требует спец. размеры баннера.
         // Квадрат GPT 1024 → TextAd + AdImageHash (текст уже на картинке, поля Title/Text обязательны в API).
         return {
-          name: `PPM ${angle.title || angle.id} · графика`,
+          name: `${String(offer.name || 'Оффер').slice(0, 40)} · ${angle.title || angle.id} · графика`,
           ad_format: 'graphic',
           direct_ad_type: 'TextAd',
           keywords: kws,
@@ -238,7 +238,7 @@ function buildPlan({ offer, context }) {
 
       // Товарное: чистая картинка + текст в настройках TextAd
       return {
-        name: `PPM ${angle.title || angle.id} · товарное`,
+        name: `${String(offer.name || 'Оффер').slice(0, 40)} · ${angle.title || angle.id} · товарное`,
         ad_format: 'product',
         direct_ad_type: 'TextAd',
         keywords: kws,
