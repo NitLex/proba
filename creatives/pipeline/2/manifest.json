@@ -1,0 +1,23 @@
+{
+  "run_id": 2,
+  "format": "product",
+  "engine": "cursor-agent-GenerateImage",
+  "angles": [
+    "travel",
+    "services",
+    "sbp"
+  ],
+  "files": [
+    "travel-agent-0.png",
+    "services-agent-0.png",
+    "sbp-agent-0.png",
+    "travel-agent-0.jpg",
+    "services-agent-0.jpg",
+    "sbp-agent-0.jpg"
+  ],
+  "hooks": {
+    "travel": "Поездки / travel-оплаты — navy card on passport + suitcase, sunrise lounge",
+    "services": "Подписки — black card + phone abstract app blur",
+    "sbp": "СБП — card + mint light-waves instant top-up"
+  }
+}
