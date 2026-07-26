@@ -27,6 +27,7 @@ import {
   createIngestToken,
   mergeGeneratedImages,
 } from '../../lib/creativeAssets.js';
+import { orchestratorPublicUrl, trackerPublicUrl } from '../../lib/appMode.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
@@ -378,7 +379,7 @@ function agentCursorPrompt({
     '',
     '## Куда сохранить',
     `1) Локально: creatives/pipeline/${runId}/<angle_id>-agent-0.png`,
-    `2) Обязательно загрузи на трекер (creatives/pipeline gitignored):`,
+    `2) Обязательно загрузи на оркестратор (creatives/pipeline gitignored):`,
     `POST ${ingestUrl}`,
     'Body JSON:',
     '```json',
@@ -566,7 +567,8 @@ export async function runCreative({ offer, context }) {
   }
   const checklist = creativeModerationChecklist({ verticalKey });
   const ingest = agentMode ? createIngestToken() : null;
-  const publicBase = process.env.ARBTRACK_PUBLIC_URL || 'https://trekerarbitrag.ru';
+  // Ingest lives on the orchestrator host (orkestr.online when split).
+  const publicBase = orchestratorPublicUrl() || trackerPublicUrl();
 
   const summaryParts = [
     `Роль: ${verticalBrief.role}`,

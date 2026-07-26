@@ -5,8 +5,9 @@ import { api } from '../api';
 import { trackSiteVisit } from '../analytics';
 
 export default function Register() {
-  const { user, register } = useAuth();
+  const { user, register, homePath, app } = useAuth();
   const navigate = useNavigate();
+  const orchestrator = app?.mode === 'orchestrator';
   const [status, setStatus] = useState(null);
   const [form, setForm] = useState({
     username: '',
@@ -27,7 +28,7 @@ export default function Register() {
       .catch(() => setStatus({ enabled: true, invite_required: false }));
   }, []);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={homePath} replace />;
 
   function setField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -42,14 +43,14 @@ export default function Register() {
     }
     setBusy(true);
     try {
-      await register({
+      const session = await register({
         username: form.username.trim(),
         email: form.email.trim(),
         telegram: form.telegram.trim(),
         password: form.password,
         invite_code: form.invite_code.trim(),
       });
-      navigate('/');
+      navigate(session.homePath || homePath);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -63,7 +64,15 @@ export default function Register() {
         <div className="auth-card">
           <div className="brand" style={{ marginBottom: '1rem' }}>
             <div className="brand-mark">
-              Arb<span>Track</span>
+              {orchestrator ? (
+                <>
+                  Orkestr<span>.online</span>
+                </>
+              ) : (
+                <>
+                  Arb<span>Track</span>
+                </>
+              )}
             </div>
             <div className="brand-sub">Регистрация закрыта</div>
           </div>
@@ -81,7 +90,15 @@ export default function Register() {
       <form className="auth-card" onSubmit={onSubmit}>
         <div className="brand" style={{ marginBottom: '1rem' }}>
           <div className="brand-mark">
-            Arb<span>Track</span>
+            {orchestrator ? (
+              <>
+                Orkestr<span>.online</span>
+              </>
+            ) : (
+              <>
+                Arb<span>Track</span>
+              </>
+            )}
           </div>
           <div className="brand-sub">Регистрация</div>
         </div>

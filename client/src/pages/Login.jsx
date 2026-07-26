@@ -4,26 +4,27 @@ import { useAuth } from '../auth';
 import { trackSiteVisit } from '../analytics';
 
 export default function Login() {
-  const { user, login } = useAuth();
+  const { user, login, homePath, app } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const orchestrator = app?.mode === 'orchestrator';
 
   useEffect(() => {
     trackSiteVisit('/login');
   }, []);
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={homePath} replace />;
 
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      await login(username.trim(), password);
-      navigate('/');
+      const session = await login(username.trim(), password);
+      navigate(session.homePath || homePath);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,7 +37,15 @@ export default function Login() {
       <form className="auth-card" onSubmit={onSubmit}>
         <div className="brand" style={{ marginBottom: '1rem' }}>
           <div className="brand-mark">
-            Arb<span>Track</span>
+            {orchestrator ? (
+              <>
+                Orkestr<span>.online</span>
+              </>
+            ) : (
+              <>
+                Arb<span>Track</span>
+              </>
+            )}
           </div>
           <div className="brand-sub">Вход в трекер</div>
         </div>

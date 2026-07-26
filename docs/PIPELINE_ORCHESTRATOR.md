@@ -1,7 +1,9 @@
 # Оркестратор агентов (Offer → Draft)
 
-Вкладка **Оркестратор** на https://trekerarbitrag.ru (`/pipeline`).
-Существующий трекер (кампании, офферы, клики) не ломаем — оркестратор добавлен отдельно.
+Вкладка **Оркестратор** (`/pipeline`).
+Прод-сплит: UI пайплайна на **https://orkestr.online**, клики/статы на **https://trekerarbitrag.ru**.
+Подробности: [ORCHESTRATOR_SPLIT.md](./ORCHESTRATOR_SPLIT.md).
+Локально / на одном VPS можно держать оба режима (`APP_MODE=full`).
 
 Ключи API лежат на сервере (`SECRETS.env` / `.env`) — в UI их вводить не нужно.
 
@@ -93,9 +95,15 @@ OPENAI_RELAY_URL=...
 
 ## Секреты на VPS
 
+### Оркестратор (orkestr.online)
+
 ```bash
-PIPELINE_TRACKER_MODE=local
+APP_MODE=orchestrator
+ORCHESTRATOR_PUBLIC_URL=https://orkestr.online
+PIPELINE_TRACKER_MODE=remote
 ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
+ARBTRACK_USERNAME=...
+ARBTRACK_PASSWORD=...
 YANDEX_DIRECT_TOKEN=...
 YANDEX_DIRECT_LOGIN=...
 LEADGID_TOKEN=...
@@ -105,6 +113,14 @@ CURSOR_REPO_URL=https://github.com/NitLex/proba
 CURSOR_STARTING_REF=cursor/orchestrator-tab-47f8
 YANDEX_CLOUD_API_KEY=...   # для Wordstat; для картинок не обязателен
 YANDEX_CLOUD_FOLDER_ID=...
+```
+
+### Трекер (монолит / пока вместе)
+
+```bash
+APP_MODE=full   # или tracker после выноса оркестратора
+PIPELINE_TRACKER_MODE=local
+ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
 ```
 
 ## Домен в объявлении (вместо trekerarbitrag.ru)
@@ -141,7 +157,7 @@ LeadGid → оффер → Postback. В ссылке оффера нужен `af
 ## API
 
 ```bash
-curl -s -X POST https://trekerarbitrag.ru/api/pipeline/runs \
+curl -s -X POST https://orkestr.online/api/pipeline/runs \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{

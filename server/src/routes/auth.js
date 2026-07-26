@@ -11,6 +11,7 @@ import {
   isValidTelegram,
 } from '../lib/auth.js';
 import { requireAuth } from '../middleware/auth.js';
+import { appMeta } from '../lib/appMode.js';
 
 const router = Router();
 
@@ -86,7 +87,7 @@ router.post('/register', (req, res) => {
     .get(Number(info.lastInsertRowid));
 
   const token = signToken(user);
-  res.status(201).json({ token, user: publicUser(user) });
+  res.status(201).json({ token, user: publicUser(user), app: appMeta() });
 });
 
 router.post('/login', (req, res) => {
@@ -99,11 +100,11 @@ router.post('/login', (req, res) => {
   }
 
   const user = publicUser(row);
-  res.json({ token: signToken(user), user });
+  res.json({ token: signToken(user), user, app: appMeta() });
 });
 
 router.get('/me', requireAuth, (req, res) => {
-  res.json({ user: req.user });
+  res.json({ user: req.user, app: appMeta() });
 });
 
 router.put('/profile', requireAuth, (req, res) => {

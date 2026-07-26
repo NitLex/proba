@@ -32,11 +32,31 @@ function Protected({ children }) {
 
 /** Orchestrator: registered users only (hidden for demo). */
 function RegisteredOnly({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, app } = useAuth();
   if (loading) return null;
   const isDemo = Boolean(user?.is_demo || String(user?.username || '').toLowerCase() === 'demo');
-  if (!user || isDemo) return <Navigate to="/" replace />;
+  if (!user || isDemo) return <Navigate to={app?.mode === 'orchestrator' ? '/profile' : '/'} replace />;
+  if (app?.mode === 'tracker') return <Navigate to="/" replace />;
   return children;
+}
+
+/** Tracker CRUD/stats — hidden on orchestrator-only host. */
+function TrackerOnly({ children }) {
+  const { app, homePath, loading } = useAuth();
+  if (loading) return null;
+  if (app?.mode === 'orchestrator') return <Navigate to={homePath} replace />;
+  return children;
+}
+
+function ModeHome() {
+  const { app, homePath } = useAuth();
+  if (app?.mode === 'orchestrator') return <Navigate to={homePath} replace />;
+  return <Dashboard />;
+}
+
+function HomeRedirect() {
+  const { homePath } = useAuth();
+  return <Navigate to={homePath} replace />;
 }
 
 export default function App() {
@@ -53,13 +73,55 @@ export default function App() {
               </Protected>
             }
           >
-            <Route index element={<Dashboard />} />
-            <Route path="campaigns" element={<Campaigns />} />
-            <Route path="offers" element={<Offers />} />
-            <Route path="landings" element={<Landings />} />
-            <Route path="sources" element={<Sources />} />
-            <Route path="stats" element={<Stats />} />
-            <Route path="logs" element={<Logs />} />
+            <Route index element={<ModeHome />} />
+            <Route
+              path="campaigns"
+              element={
+                <TrackerOnly>
+                  <Campaigns />
+                </TrackerOnly>
+              }
+            />
+            <Route
+              path="offers"
+              element={
+                <TrackerOnly>
+                  <Offers />
+                </TrackerOnly>
+              }
+            />
+            <Route
+              path="landings"
+              element={
+                <TrackerOnly>
+                  <Landings />
+                </TrackerOnly>
+              }
+            />
+            <Route
+              path="sources"
+              element={
+                <TrackerOnly>
+                  <Sources />
+                </TrackerOnly>
+              }
+            />
+            <Route
+              path="stats"
+              element={
+                <TrackerOnly>
+                  <Stats />
+                </TrackerOnly>
+              }
+            />
+            <Route
+              path="logs"
+              element={
+                <TrackerOnly>
+                  <Logs />
+                </TrackerOnly>
+              }
+            />
             <Route
               path="pipeline"
               element={
@@ -69,7 +131,7 @@ export default function App() {
               }
             />
             <Route path="profile" element={<Profile />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<HomeRedirect />} />
           </Route>
         </Routes>
       </BrowserRouter>
