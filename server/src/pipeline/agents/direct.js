@@ -185,8 +185,21 @@ function buildPlan({ offer, context }) {
       bid_ceiling_rub: cpc,
       weekly_spend_limit_rub: weekly,
     },
-    geo: playbook.geo || offer.geo || 'RU',
-    region_ids: [225],
+    geo: playbook.geo || offer.geo || offer.facts?.geo || null,
+    region_ids:
+      (Array.isArray(playbook.region_ids) && playbook.region_ids.length
+        ? playbook.region_ids
+        : null) ||
+      (Array.isArray(offer.facts?.region_ids) && offer.facts.region_ids.length
+        ? offer.facts.region_ids
+        : null) ||
+      // Only default Russia when geo is explicitly RU / empty unknown kept as [] + warning in QA
+      (String(playbook.geo || offer.geo || '')
+        .toUpperCase()
+        .split(/[,\s]+/)
+        .includes('RU')
+        ? [225]
+        : []),
     tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
     href: defaultLink.href,
     display_domain: defaultLink.display_domain,

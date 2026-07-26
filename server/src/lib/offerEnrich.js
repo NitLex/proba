@@ -1,9 +1,16 @@
 /**
- * Enrich offer input from affiliate URL / LeadGid / info page before pipeline starts.
- * Tracking URL (aff_c) and research URL (info/landing) are separated when possible.
+ * Enrich offer input from affiliate URL / network API / landing page before pipeline.
+ * Tracking URL and research URL are separated when possible.
+ * Facts (geo, model, brand) win over RU/Fintech/card templates.
  */
 import { findOfferByLegacyId } from './leadgid.js';
 import { stripHtml } from './htmlText.js';
+import {
+  buildOfferFacts,
+  detectAffiliateNetwork,
+  extractGeosFromText,
+  isJunkPageText,
+} from './offerFacts.js';
 
 function extractLeadgidOfferId(url) {
   try {
@@ -26,7 +33,7 @@ async function fetchPageHints(url) {
       redirect: 'follow',
       signal: ctrl.signal,
       headers: {
-        'User-Agent': 'ArbTrack-Orchestrator/1.0 (+https://trekerarbitrag.ru)',
+        'User-Agent': 'Orkestr-OfferResearch/1.0 (+https://orkestr.online)',
         Accept: 'text/html,application/xhtml+xml',
       },
     });
@@ -64,9 +71,7 @@ async function fetchPageHints(url) {
 function mapLeadgidOffer(lg, lgId) {
   const goals = (lg.goals || []).filter((g) => g.active);
   const payoutGoal =
-    goals.find((g) => Number(g.payout?.amount || 0) > 0) ||
-    goals[0] ||
-    null;
+    goals.find((g) => Number(g.payout?.amount || 0) > 0) || goals[0] || null;
   const payout = payoutGoal ? Number(payoutGoal.payout?.amount || 0) : null;
   const epc = lg.metrics?.epc_u != null ? Number(lg.metrics.epc_u) : Number(lg.epc || 0) || null;
   const short = stripHtml(lg.short_description_ru || lg.short_description_en || lg.description || '');
@@ -75,8 +80,15 @@ function mapLeadgidOffer(lg, lgId) {
   const cats = Array.isArray(lg.categories)
     ? lg.categories.map((c) => c.name || c.title || c).filter(Boolean).join(', ')
     : lg.category || '';
+  const products = Array.isArray(lg.products)
+    ? lg.products.map((p) => ({
+        id: p.id,
+        name: p.name || p.slug || '',
+        slug: p.slug || null,
+      }))
+    : [];
 
-  const briefParts = [short, advantages ? `Плюсы: ${advantages}` : '']
+  const briefParts = [short, advantages ? `Плюсы: ${advantages}` : '', products.map((p) => p.name).join(', ')]
     .filter(Boolean)
     .join(' ')
     .slice(0, 900);
@@ -87,17 +99,19 @@ function mapLeadgidOffer(lg, lgId) {
     epc,
     payout,
     payout_goal: payoutGoal?.name || null,
-    currency: payoutGoal?.payout?.currency || lg.currency || 'RUB',
+    currency: payoutGoal?.payout?.currency || lg.currency || null,
     cr: lg.metrics?.cr_u != null ? Number(lg.metrics.cr_u) : null,
-    category: cats || null,
+    category: cats || products.map((p) => p.name).join(', ') || null,
     short_description: short,
     advantages,
     disadvantages,
     network_description: briefParts,
+    products,
     goals: goals.slice(0, 5).map((g) => ({
       name: g.name,
       payout: Number(g.payout?.amount || 0),
-      currency: g.payout?.currency || 'RUB',
+      currency: g.payout?.currency || lg.currency || null,
+      model: g.payout?.model || null,
     })),
   };
 }
@@ -109,10 +123,11 @@ export async function enrichOfferInput(raw = {}) {
   const offer = { ...raw };
   if (!offer.name && offer.offer_name) offer.name = offer.offer_name;
   if (!offer.url && offer.offer_url) offer.url = offer.offer_url;
-  // Affiliate research page (cabinet description / lander with product copy)
   const infoUrl = offer.info_url || offer.offer_info_url || offer.landing_url || '';
 
   const enrich = { sources: [] };
+  const detectedNet = detectAffiliateNetwork(offer.url || '', offer.network || '');
+  if (detectedNet) offer.network = offer.network || detectedNet;
 
   if (offer.url) {
     const lgId = extractLeadgidOfferId(offer.url);
@@ -132,13 +147,17 @@ export async function enrichOfferInput(raw = {}) {
           if (offer.payout == null && mapped.payout != null) offer.payout = mapped.payout;
           if (offer.epc == null && mapped.epc != null) offer.epc = mapped.epc;
           if (!offer.currency && mapped.currency) offer.currency = mapped.currency;
-          if (!offer.geo) offer.geo = 'RU';
-          if (!offer.vertical && mapped.category) offer.vertical = String(mapped.category).slice(0, 80);
-          if (!offer.notes && mapped.network_description) {
-            offer.notes = mapped.network_description.slice(0, 700);
+          if (!offer.vertical && mapped.category) {
+            offer.vertical = String(mapped.category).slice(0, 80);
           }
-          offer.network_description = mapped.network_description;
-          offer.description = mapped.short_description || offer.description || '';
+          if (mapped.network_description && !isJunkPageText(mapped.network_description)) {
+            if (!offer.notes) offer.notes = mapped.network_description.slice(0, 700);
+            offer.network_description = mapped.network_description;
+          }
+          if (mapped.short_description && !isJunkPageText(mapped.short_description)) {
+            offer.description = mapped.short_description;
+          }
+          offer.products = mapped.products;
           offer.product_brief = {
             name: mapped.name,
             summary: mapped.short_description,
@@ -148,6 +167,7 @@ export async function enrichOfferInput(raw = {}) {
             epc: mapped.epc,
             goals: mapped.goals,
             category: mapped.category,
+            products: mapped.products,
           };
         } else if (lgRes?.error) {
           enrich.leadgid_error = lgRes.error;
@@ -158,7 +178,6 @@ export async function enrichOfferInput(raw = {}) {
     }
   }
 
-  // Research pages: prefer explicit info_url, then tracking URL (follows redirects to lander)
   const researchTargets = [...new Set([infoUrl, offer.url].filter(Boolean))];
   for (const target of researchTargets) {
     const page = await fetchPageHints(target);
@@ -167,8 +186,10 @@ export async function enrichOfferInput(raw = {}) {
     enrich.sources.push(tag);
     enrich[tag === 'info_page' ? 'info_page' : 'page'] = page;
     if (page.final_url && !offer.landing_url) offer.landing_url = page.final_url;
-    if (!offer.name && page.title) offer.name = page.title.slice(0, 80);
-    if (page.description) {
+    if (!offer.name && page.title && !isJunkPageText(page.title)) {
+      offer.name = page.title.slice(0, 80);
+    }
+    if (page.description && !isJunkPageText(page.description)) {
       if (!offer.notes) offer.notes = page.description.slice(0, 700);
       else if (!offer.notes.includes(page.description.slice(0, 40))) {
         offer.notes = `${offer.notes} ${page.description}`.slice(0, 900);
@@ -176,6 +197,10 @@ export async function enrichOfferInput(raw = {}) {
       if (!offer.description) offer.description = page.description.slice(0, 500);
     }
   }
+
+  // Drop junk notes (LeadGid copyright footer etc.)
+  if (offer.notes && isJunkPageText(offer.notes)) delete offer.notes;
+  if (offer.description && isJunkPageText(offer.description)) delete offer.description;
 
   if (!offer.name && offer.url) {
     try {
@@ -185,14 +210,30 @@ export async function enrichOfferInput(raw = {}) {
     }
   }
 
-  offer.geo = offer.geo || 'RU';
+  // Geo from name / user input — NEVER force RU when EU tokens present
+  const geos = extractGeosFromText(
+    [offer.name, offer.geo, offer.notes, offer.description].filter(Boolean).join(' '),
+  );
+  if (geos.length) {
+    offer.geos = geos;
+    offer.geo = geos.join(',');
+  } else if (!offer.geo) {
+    offer.geo = null; // unknown — analyst must not invent RU
+  }
+
   offer.source = offer.source || 'Yandex Direct РСЯ';
-  offer.network = offer.network || (offer.network_offer_id ? 'LeadGid' : '');
-  // Keep UI "Fintech" as soft hint only — vertical_key is detected from product text later
-  offer.vertical = offer.vertical || 'Fintech';
+  offer.network = offer.network || (offer.network_offer_id ? 'LeadGid' : detectAffiliateNetwork(offer.url || ''));
+  // Do NOT default vertical to Fintech — that forced cards playbook
+  if (offer.vertical && /^fintech$/i.test(String(offer.vertical).trim())) {
+    delete offer.vertical;
+  }
   if (offer.daily_budget == null && process.env.DAILY_BUDGET_RUB) {
     offer.daily_budget = Number(process.env.DAILY_BUDGET_RUB);
   }
+
+  const facts = buildOfferFacts(offer, enrich);
+  offer.facts = facts;
+  enrich.facts = facts;
 
   return { offer, enrich };
 }

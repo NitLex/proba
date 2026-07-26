@@ -136,6 +136,7 @@ router.post('/runs', async (req, res, next) => {
     }
 
     const { offer, enrich } = await enrichOfferInput(rawOffer);
+    // Default RUB only when network/currency unknown — never override EUR/USD from affiliate API
     if (!offer.currency) offer.currency = 'RUB';
     // Keep reference batch on offer for creative step
     if (rawOffer.reference_batch_id) {

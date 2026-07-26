@@ -1,0 +1,235 @@
+/**
+ * Offer-first fact extraction: geo, payout model, brand, network, product cues.
+ * Used before vertical playbooks so we stop inventing RU/card templates.
+ */
+
+/** ISO2 → Yandex region ids (Wordstat / Direct). Incomplete by design; unknown → []. */
+export const GEO_REGION_IDS = {
+  RU: [225],
+  BY: [149],
+  KZ: [159],
+  UA: [187],
+  UZ: [171],
+  ES: [202],
+  PL: [985],
+  CZ: [205],
+  RO: [1004],
+  DE: [96],
+  TR: [983],
+  US: [84],
+  GB: [111],
+  UK: [111],
+};
+
+const ISO2 = Object.keys(GEO_REGION_IDS);
+
+const AFFILIATE_HOSTS = [
+  { re: /leadgid\.(ru|eu|com)|go\.leadgid/i, network: 'LeadGid' },
+  { re: /admitad\./i, network: 'Admitad' },
+  { re: /cityads\./i, network: 'CityAds' },
+  { re: /gdeslon\./i, network: 'GdeSlon' },
+  { re: /actionpay\.|sellaction\./i, network: 'ActionPay' },
+  { re: /bang\s*bang|bbcdn|bangbang/i, network: 'Bang Bang' },
+  { re: /salesdoubler\./i, network: 'SalesDoubler' },
+  { re: /affise\.|hasoffers\.|offer\./i, network: 'Affiliate' },
+];
+
+const JUNK_PAGE_RE =
+  /©\s*\d{4}|ооо\s*«?\s*лидгид|leadgid\s*$|all rights reserved|privacy policy|cookie/i;
+
+/** Country tokens in names like "Finandos ES RO PL CZ CPL". */
+export function extractGeosFromText(text = '') {
+  const raw = String(text || '');
+  const found = new Set();
+  // Prefer standalone ISO2 tokens (word boundaries)
+  for (const code of ISO2) {
+    const re = new RegExp(`(?:^|[^A-Za-z])${code}(?:[^A-Za-z]|$)`, 'i');
+    if (re.test(raw)) found.add(code.toUpperCase());
+  }
+  // RU aliases
+  if (/\b(?:РФ|Россия|Russia)\b/i.test(raw)) found.add('RU');
+  return [...found];
+}
+
+export function extractPayoutModel(offer = {}) {
+  const blob = [
+    offer.name,
+    offer.offer_name,
+    offer.notes,
+    offer.description,
+    ...(Array.isArray(offer.product_brief?.goals)
+      ? offer.product_brief.goals.map((g) => g.name)
+      : []),
+    ...(Array.isArray(offer.goals) ? offer.goals.map((g) => g.name) : []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (/\bCPL\b|cost[\s_-]?per[\s_-]?lead|заявк/i.test(blob)) return 'CPL';
+  if (/\bCPI\b|cost[\s_-]?per[\s_-]?install|установк/i.test(blob)) return 'CPI';
+  if (/\bCPS\b|revshare|revenue\s*share/i.test(blob)) return 'CPS';
+  if (/\bCPA\b|cost[\s_-]?per[\s_-]?action|выдач|sale|покупк/i.test(blob)) return 'CPA';
+  const goalModel = offer.product_brief?.goals?.[0]?.model || offer.goals?.[0]?.payout?.model;
+  if (goalModel) return String(goalModel).toUpperCase();
+  return null;
+}
+
+export function extractBrand(name = '') {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  // Drop trailing geo/model tokens: "Finandos ES RO PL CZ CPL" → Finandos
+  const parts = s.split(/[\s|/–—-]+/).filter(Boolean);
+  const keep = [];
+  for (const p of parts) {
+    const up = p.toUpperCase();
+    if (ISO2.includes(up)) break;
+    if (/^(CPL|CPA|CPI|CPS|CPC|RSYa|РФ)$/i.test(p)) break;
+    keep.push(p);
+  }
+  return (keep.join(' ') || parts[0] || s).slice(0, 60);
+}
+
+export function detectAffiliateNetwork(url = '', explicit = '') {
+  if (explicit) return String(explicit);
+  try {
+    const host = new URL(url).hostname;
+    for (const row of AFFILIATE_HOSTS) {
+      if (row.re.test(host) || row.re.test(url)) return row.network;
+    }
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
+export function isJunkPageText(text = '') {
+  const t = String(text || '').trim();
+  if (!t) return true;
+  if (t.length < 12) return true;
+  return JUNK_PAGE_RE.test(t);
+}
+
+export function regionIdsForGeos(geos = []) {
+  const ids = [];
+  for (const g of geos) {
+    for (const id of GEO_REGION_IDS[String(g).toUpperCase()] || []) {
+      if (!ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Build structured facts from enriched offer (+ optional enrich payload).
+ */
+export function buildOfferFacts(offer = {}, enrich = {}) {
+  const name = offer.name || offer.offer_name || '';
+  const textBlob = [
+    name,
+    offer.notes,
+    offer.description,
+    offer.network_description,
+    offer.product_brief?.summary,
+    offer.product_brief?.advantages,
+    offer.product_brief?.category,
+    ...(Array.isArray(offer.products) ? offer.products.map((p) => p.name || p) : []),
+    enrich?.leadgid?.category,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  let geos = [];
+  if (Array.isArray(offer.geos) && offer.geos.length) {
+    geos = offer.geos.map((g) => String(g).toUpperCase());
+  } else if (offer.geo && String(offer.geo).includes(',')) {
+    geos = String(offer.geo)
+      .split(/[,\s]+/)
+      .map((g) => g.toUpperCase())
+      .filter((g) => ISO2.includes(g) || g === 'RU');
+  } else {
+    geos = extractGeosFromText(textBlob);
+    if (!geos.length && offer.geo && String(offer.geo).length === 2) {
+      geos = [String(offer.geo).toUpperCase()];
+    }
+  }
+
+  const payoutModel = extractPayoutModel(offer);
+  const brand = extractBrand(name);
+  const network = detectAffiliateNetwork(offer.url || '', offer.network || '');
+  const regionIds = regionIdsForGeos(geos);
+  const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
+  const nonRu = geos.some((g) => g !== 'RU');
+
+  const products = Array.isArray(offer.products)
+    ? offer.products
+    : Array.isArray(enrich?.leadgid?.products)
+      ? enrich.leadgid.products
+      : [];
+
+  const productNames = products.map((p) => p.name || p).filter(Boolean);
+
+  const evidence = [];
+  if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
+  if (payoutModel) evidence.push(`payout_model: ${payoutModel}`);
+  if (productNames.length) evidence.push(`products: ${productNames.join('; ')}`);
+  if (brand) evidence.push(`brand: ${brand}`);
+  if (offer.currency) evidence.push(`currency: ${offer.currency}`);
+  if (offer.payout != null) evidence.push(`payout: ${offer.payout} ${offer.currency || ''}`.trim());
+  if (offer.epc != null) evidence.push(`epc: ${offer.epc}`);
+
+  return {
+    brand,
+    geos,
+    geo: geos.join(',') || null,
+    region_ids: regionIds,
+    payout_model: payoutModel,
+    network: network || offer.network || null,
+    products: productNames,
+    currency: offer.currency || null,
+    payout: offer.payout ?? null,
+    epc: offer.epc ?? null,
+    ru_traffic_fit: ruOnly ? 'fit' : nonRu ? 'mismatch_rsya_ru' : 'unknown',
+    evidence,
+  };
+}
+
+/** Seeds for Wordstat / creatives from facts — never invent card/SBP queries. */
+export function seedsFromOfferFacts(offer = {}, facts = {}) {
+  const brand = facts.brand || extractBrand(offer.name || '');
+  const geos = facts.geos?.length ? facts.geos : extractGeosFromText(offer.name || '');
+  const products = facts.products || [];
+  const seeds = [];
+
+  if (brand) {
+    seeds.push(brand);
+    if (products.some((p) => /кредит|займ|loan|credit/i.test(p))) {
+      seeds.push(`${brand} кредит`);
+      seeds.push(`${brand} займ`);
+      seeds.push(`${brand} кредит онлайн`);
+    } else if (products.length) {
+      seeds.push(`${brand} ${String(products[0]).split('(')[0].trim()}`);
+    } else {
+      seeds.push(`${brand} онлайн`);
+      seeds.push(`${brand} официальный сайт`);
+    }
+  }
+
+  if (products.some((p) => /кредитн.*сервис/i.test(p))) {
+    seeds.push('кредитный сервис онлайн');
+    seeds.push('подобрать кредит онлайн');
+    seeds.push('заявка на кредит онлайн');
+  }
+
+  // Geo-local intent (language-light)
+  if (geos.includes('ES')) seeds.push('préstamo online', 'credito online España');
+  if (geos.includes('PL')) seeds.push('pożyczka online', 'kredyt online');
+  if (geos.includes('CZ')) seeds.push('půjčka online');
+  if (geos.includes('RO')) seeds.push('credit online');
+  if (geos.includes('RU') || !geos.length) {
+    if (/займ|кредит|loan|mfo|мфо/i.test(`${offer.name} ${products.join(' ')}`)) {
+      seeds.push('займ онлайн', 'кредит онлайн');
+    }
+  }
+
+  return [...new Set(seeds.filter(Boolean))].slice(0, 12);
+}

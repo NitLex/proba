@@ -217,12 +217,38 @@ function marketplaceAdCopy(angle, offer, promo) {
  * Loans: only loan claims from offer brief — never card templates.
  * Marketplace: витрина / аренда — never loans or cards.
  */
+function offerFactAdCopy(angle, offer) {
+  const brand = offer.facts?.brand || String(offer.name || 'Оффер').split(/\s+/).slice(0, 2).join(' ');
+  const geos = offer.facts?.geos || [];
+  const geoBit = geos.length ? geos.join(', ') : '';
+  const model = offer.facts?.payout_model || '';
+  const product = (offer.facts?.products || [])[0] || offer.product_brief?.category || '';
+  return {
+    titles: [
+      sliceTitle(brand),
+      sliceTitle(`${brand} онлайн`),
+      sliceTitle(angle?.title || `${brand} заявка`),
+    ].filter(Boolean),
+    texts: [
+      sliceText(
+        [brand, product, geoBit && `Гео: ${geoBit}`, model, 'Оформление заявки онлайн']
+          .filter(Boolean)
+          .join('. ') + '.',
+      ),
+      sliceText(`${brand}. ${angle?.hooks?.[0] || 'Онлайн-заявка'}. Без шаблонных обещаний.`),
+    ],
+  };
+}
+
 function adCopy(angle, offer, promo, verticalKey) {
   const code = promo?.code || offer.promo_code || '';
   if (verticalKey === 'fintech_loans') return loanAdCopy(angle, offer);
   if (verticalKey === 'marketplace_rental') return marketplaceAdCopy(angle, offer, promo);
+  if (verticalKey === 'unknown' || verticalKey !== 'fintech_cards') {
+    return offerFactAdCopy(angle, offer);
+  }
 
-  // Foreign / prepaid cards
+  // Foreign / prepaid cards — ONLY fintech_cards
   const promoBit = code ? `Промокод ${code}` : 'Оформление онлайн';
   const map = {
     travel: {
@@ -287,6 +313,14 @@ function sitelinksForVertical(verticalKey, promo) {
         description: promo?.note || 'На сайте оффера',
       },
       { title: 'Старт онлайн', description: 'Без склада' },
+    ];
+  }
+  if (verticalKey !== 'fintech_cards') {
+    return [
+      { title: 'Оформить онлайн', description: 'Заявка на сайте' },
+      { title: 'Условия', description: 'Актуальные на лендинге' },
+      { title: 'Как это работает', description: 'Коротко о шагах' },
+      { title: 'Поддержка', description: 'Помощь по заявке' },
     ];
   }
   return [

@@ -263,9 +263,10 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   const playbook = context.playbook || {};
   const sourceName = playbook.source || offer.source || 'Yandex Direct РСЯ';
   const cpc = Number(playbook.economics?.cpc_max || offer.cpc || 7);
+  const geoLabel = playbook.geo || offer.geo || offer.facts?.geo || 'GEO?';
   const campaignName =
     offer.campaign_name ||
-    `РСЯ → ${offer.name || 'Offer'} (${playbook.geo || offer.geo || 'RU'})`;
+    `${playbook.source || 'Traffic'} → ${offer.name || 'Offer'} (${geoLabel})`;
   // Local orchestrator can force local DB via PIPELINE_TRACKER_MODE=local (tests / offline)
   const useRemote =
     remoteConfigured() && String(process.env.PIPELINE_TRACKER_MODE || 'remote') !== 'local';

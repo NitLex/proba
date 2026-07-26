@@ -6,40 +6,48 @@
 
 import { expandSeeds, wordstatConfig } from '../../lib/wordstat.js';
 import { mergeNegatives, junkLexiconForVertical } from '../../lib/junkLexicon.js';
+import { seedsFromOfferFacts } from '../../lib/offerFacts.js';
 
-function seedsFromAngles(angles = [], verticalKey = '') {
-  const seeds = [];
+function seedsFromAngles(angles = [], verticalKey = '', offer = {}, playbook = {}) {
+  const facts = playbook.offer_facts || offer.facts || {};
+  const seeds = [...seedsFromOfferFacts(offer, facts)];
   for (const a of angles) {
     for (const h of a.hooks || []) seeds.push(h);
   }
   if (verticalKey === 'fintech_loans') {
     seeds.push(
       'займ онлайн',
-      'займ на карту',
+      'кредит онлайн',
+      'заявка на кредит',
       'микрозайм срочно',
-      'деньги до зарплаты',
       'займ по паспорту',
     );
     return [...new Set(seeds.filter(Boolean))];
   }
-  for (const a of angles) {
-    if (a.id === 'travel') {
-      seeds.push(
-        'виртуальная карта для путешествий',
-        'зарубежная карта для поездок',
-        'оплата за границей картой',
-        'карта для поездок',
-      );
-    }
-    if (a.id === 'services') {
-      seeds.push(
-        'оплата зарубежных сервисов',
-        'зарубежная карта для подписок',
-        'карта для зарубежных сервисов',
-      );
-    }
-    if (a.id === 'premium') {
-      seeds.push('премиальная виртуальная карта', 'зарубежная карта премиум');
+  if (verticalKey === 'unknown') {
+    return [...new Set(seeds.filter(Boolean))];
+  }
+  // Card seeds ONLY for cards vertical
+  if (verticalKey === 'fintech_cards') {
+    for (const a of angles) {
+      if (a.id === 'travel') {
+        seeds.push(
+          'виртуальная карта для путешествий',
+          'зарубежная карта для поездок',
+          'оплата за границей картой',
+          'карта для поездок',
+        );
+      }
+      if (a.id === 'services') {
+        seeds.push(
+          'оплата зарубежных сервисов',
+          'зарубежная карта для подписок',
+          'карта для зарубежных сервисов',
+        );
+      }
+      if (a.id === 'premium') {
+        seeds.push('премиальная виртуальная карта', 'зарубежная карта премиум');
+      }
     }
   }
   return [...new Set(seeds.filter(Boolean))];
@@ -82,10 +90,13 @@ export async function runWordstat({ offer, context }) {
   const playbook = context.playbook || {};
   const angles = playbook.angles || [];
   const verticalKey = playbook.vertical_key || context.analysis?.vertical_key || '';
-  const seeds = seedsFromAngles(angles, verticalKey);
+  const seeds = seedsFromAngles(angles, verticalKey, offer, playbook);
   if (offer.name) seeds.unshift(String(offer.name).slice(0, 80));
   const negatives = negativesForVertical(verticalKey);
   const lexicon = junkLexiconForVertical(verticalKey);
+  const regions = (playbook.region_ids || context.analysis?.region_ids || [])
+    .map(String)
+    .filter(Boolean);
 
   const cfg = wordstatConfig();
   let mode = 'heuristic';
@@ -93,7 +104,7 @@ export async function runWordstat({ offer, context }) {
   let keywords = [];
 
   if (cfg.configured) {
-    live = await expandSeeds(seeds);
+    live = await expandSeeds(seeds, regions.length ? { regions } : {});
     mode = live.mode;
     if (live.keywords?.length) {
       keywords = live.keywords.slice(0, 80).map((k) => ({
@@ -137,8 +148,12 @@ export async function runWordstat({ offer, context }) {
       configured: cfg.configured,
       live_errors: liveErrors,
       live_meta: live
-        ? { maxSeeds: live.config?.maxSeeds, regions: live.config?.regions, blocks: live.items?.length }
-        : null,
+        ? {
+            maxSeeds: live.config?.maxSeeds,
+            regions: live.config?.regions || regions,
+            blocks: live.items?.length,
+          }
+        : { regions },
       keywords,
       groups: byGroup,
       negatives,

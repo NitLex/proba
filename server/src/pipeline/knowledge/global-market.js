@@ -201,11 +201,31 @@ export const GLOBAL_VERTICAL_PLAYBOOKS = {
       },
     ],
   },
+  /** Offer facts only — no invented RU/card/SBP angles. */
+  unknown: {
+    vertical: 'Unknown / offer-first',
+    aliases: [],
+    sources: [
+      {
+        source: 'Offer-derived',
+        heat: 'unknown',
+        funnel: 'direct',
+        where_to_pour:
+          'Не лить в шаблон РФ/РСЯ, пока гео и продукт не подтверждены фактами оффера. Углы — только из названия/описания/продукта сети.',
+        creatives: 'Только бренд + офферные факты. Без «зарубежной карты» и СБП по умолчанию.',
+        bid_hint: 'Тест от economics оффера (EPC/payout), без card-дефолтов',
+        risks: [
+          'Вертикаль не распознана — запрещено подставлять PPM card playbook',
+          'Проверь гео: несовместимость с Яндекс.Директ РФ',
+        ],
+        angles: [],
+      },
+    ],
+  },
 };
 
-export function detectVerticalKey(offer = {}) {
-  // Product text first — ignore vague UI default "Fintech" which used to force cards
-  const productBlob = [
+function productBlobFromOffer(offer = {}) {
+  return [
     offer.name,
     offer.offer_name,
     offer.notes,
@@ -214,12 +234,19 @@ export function detectVerticalKey(offer = {}) {
     offer.category,
     offer.product_brief?.summary,
     offer.product_brief?.advantages,
+    offer.product_brief?.category,
+    ...(Array.isArray(offer.products) ? offer.products.map((p) => p.name || p) : []),
     ...(Array.isArray(offer.product_brief?.goals)
       ? offer.product_brief.goals.map((g) => g.name)
       : []),
   ]
     .filter(Boolean)
     .join(' ');
+}
+
+export function detectVerticalKey(offer = {}) {
+  // Product text first — ignore vague UI default "Fintech" which used to force cards
+  const productBlob = productBlobFromOffer(offer);
 
   // Marketplace / rental before loans (names like Money.* must not force МФО)
   if (
@@ -229,13 +256,17 @@ export function detectVerticalKey(offer = {}) {
   ) {
     return 'marketplace_rental';
   }
+
+  // LeadGid "Кредитные сервисы" / CPL credit leads / loans — NOT cards
   if (
-    /займ|микрозайм|мфо|payday|loan|наличн(ыми|ые)|кредитн(ая|ой) истори|деньги сразу|выдача.*займ/i.test(
+    /кредитн(ые|ых|ый)?\s*сервис|credit\s*service|займ|микрозайм|мфо|payday|loan|наличн(ыми|ые)|кредитн(ая|ой) истори|деньги сразу|выдача.*займ|\bCPL\b.*(?:кредит|loan|займ)|(?:кредит|loan|займ).*\bCPL\b/i.test(
       productBlob,
     )
   ) {
     return 'fintech_loans';
   }
+
+  // Cards only with explicit card cues (never CPL-only finance brand)
   if (
     /зарубежн.*карт|prepaid|плати по миру|виртуальн(ая|ой) карт|дебетов|выпуск карты|карта.*сбп|сбп.*карт/i.test(
       productBlob,
@@ -245,21 +276,34 @@ export function detectVerticalKey(offer = {}) {
   }
 
   for (const [key, pb] of Object.entries(GLOBAL_VERTICAL_PLAYBOOKS)) {
+    if (key === 'unknown') continue;
     if (pb.aliases.some((re) => re.test(productBlob))) return key;
   }
 
   const verticalField = String(offer.vertical || '');
-  if (/маркет|аренд|marketplace/i.test(verticalField)) return 'marketplace_rental';
-  if (/займ|мфо|loan|credit/i.test(verticalField)) return 'fintech_loans';
-  if (/карт|card|debit|плат[её]ж/i.test(verticalField)) return 'fintech_cards';
-  if (/нутри|бад|похуд/i.test(verticalField)) return 'nutra';
-  // Last resort: cards playbook (PPM-era default)
-  return 'fintech_cards';
+  // Ignore soft UI placeholder "Fintech"
+  if (verticalField && !/^fintech$/i.test(verticalField.trim())) {
+    if (/маркет|аренд|marketplace/i.test(verticalField)) return 'marketplace_rental';
+    if (/займ|мфо|loan|credit|кредит/i.test(verticalField)) return 'fintech_loans';
+    if (/карт|card|debit|плат[её]ж/i.test(verticalField)) return 'fintech_cards';
+    if (/нутри|бад|похуд/i.test(verticalField)) return 'nutra';
+  }
+
+  // CPL + finance-looking brand without card words → loans/leads, not cards
+  if (
+    /\bCPL\b/i.test(productBlob) &&
+    /finan|credit|loan|займ|кредит|cash|money|lend/i.test(productBlob)
+  ) {
+    return 'fintech_loans';
+  }
+
+  // Never invent PPM card stack
+  return 'unknown';
 }
 
 export function globalSourcesForOffer(offer = {}) {
   const key = detectVerticalKey(offer);
-  const pb = GLOBAL_VERTICAL_PLAYBOOKS[key];
+  const pb = GLOBAL_VERTICAL_PLAYBOOKS[key] || GLOBAL_VERTICAL_PLAYBOOKS.unknown;
   const preferred = String(offer.source || offer.traffic_source || '').toLowerCase();
   const sources = [...(pb?.sources || [])];
   sources.sort((a, b) => {
@@ -267,7 +311,11 @@ export function globalSourcesForOffer(offer = {}) {
     const bs = preferred && b.source.toLowerCase().includes(preferred.slice(0, 4)) ? 1 : 0;
     return bs - as;
   });
-  return { verticalKey: key, vertical: pb?.vertical || offer.vertical || 'General', sources };
+  return {
+    verticalKey: key,
+    vertical: pb?.vertical || offer.vertical || 'General',
+    sources,
+  };
 }
 
 /**

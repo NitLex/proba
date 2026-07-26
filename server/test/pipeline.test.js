@@ -60,7 +60,7 @@ test('pipeline dry-run completes all agents', async () => {
   assert.equal(run.steps.length, 6);
   assert.ok(run.steps.every((s) => s.status === 'done'));
   assert.ok(run.context.playbook);
-  assert.equal(run.context.playbook.analysis_scope, 'global_market');
+  assert.equal(run.context.playbook.analysis_scope, 'offer_first');
   assert.ok(run.context.playbook.market?.competitor_sources?.length);
   assert.ok(run.context.semantics?.keywords?.length);
   assert.ok(run.context.creatives?.briefs?.length);

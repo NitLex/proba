@@ -21,6 +21,14 @@ test('detectVerticalKey: PPM card offer', () => {
   assert.equal(key, 'fintech_cards');
 });
 
+test('detectVerticalKey: Finandos-class CPL credit services ≠ cards', () => {
+  const key = detectVerticalKey({
+    name: 'Finandos ES RO PL CZ CPL',
+    products: [{ name: 'Кредитные сервисы (платные)' }],
+  });
+  assert.equal(key, 'fintech_loans');
+});
+
 test('detectVerticalKey: marketplace rental before Money/loan heuristics', () => {
   const key = detectVerticalKey({
     vertical: 'Fintech',
