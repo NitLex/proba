@@ -63,7 +63,7 @@ export async function runQa({ offer, context, dryRun }) {
   const creativeHardFail =
     !creativeQa.ok &&
     (creativeQa.errors || []).some((e) =>
-      /нет ни одной картинки|зарубежная карта|займы:/.test(e.text || ''),
+      /нет ни одной картинки|зарубежная карта|займы:|маркетплейс:/.test(e.text || ''),
     );
 
   const moderationGate = {

@@ -56,3 +56,16 @@ test('buildCreativePrompt differs for graphic vs product', () => {
   assert.match(product, /suitcase|passport|travel|departure/i);
   assert.notEqual(product, graphic);
 });
+
+test('YandexART prompt is short Russian scene by vertical', async () => {
+  const { buildCreativePromptForProvider } = await import('../src/lib/imageGen.js');
+  const mp = buildCreativePromptForProvider('yandex_art', {
+    angle: { id: 'rent', title: 'Аренда' },
+    offer: { name: 'Money marketplace' },
+    format: 'product',
+    verticalKey: 'marketplace_rental',
+  });
+  assert.ok(mp.length <= 500);
+  assert.match(mp, /БЕЗ текста|витрин|маркет/i);
+  assert.doesNotMatch(mp, /ZERO text|Award-style/);
+});

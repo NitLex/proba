@@ -40,18 +40,30 @@ test('creative QA requires overseas-card wording for cards', () => {
   assert.equal(good.ok, true);
 });
 
-test('creative QA blocks card templates on loans', () => {
+test('creative QA blocks card/loan templates on marketplace', () => {
   const bad = validateCreatives(
     [
       {
-        angle_id: 'speed',
+        angle_id: 'rent',
         titles: ['Зарубежная карта'],
         texts: ['Выпуск зарубежной карты'],
       },
     ],
-    { verticalKey: 'fintech_loans', requireImages: false },
+    { verticalKey: 'marketplace_rental', requireImages: false },
   );
   assert.equal(bad.ok, false);
+
+  const good = validateCreatives(
+    [
+      {
+        angle_id: 'rent',
+        titles: ['Аренда витрины на маркетплейсе', 'Полка под товар'],
+        texts: ['Аренда витрины на маркетплейсе. Старт онлайн.'],
+      },
+    ],
+    { verticalKey: 'marketplace_rental', requireImages: false },
+  );
+  assert.equal(good.ok, true);
 });
 
 test('junk lexicon differs for loans vs cards', () => {

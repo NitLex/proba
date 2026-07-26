@@ -59,6 +59,19 @@ export function validateCreatives(briefs = [], { verticalKey = '', requireImages
       briefErrors.push('займы: нельзя шаблоны про зарубежную/виртуальную карту');
     }
 
+    if (verticalKey === 'marketplace_rental') {
+      if (LOAN_FORBIDDEN_CARD.test(blob)) {
+        briefErrors.push('маркетплейс: нельзя шаблоны про зарубежную/виртуальную карту');
+      }
+      if (/займ|микрозайм|мфо/i.test(blob)) {
+        briefErrors.push('маркетплейс: нельзя тексты про займы/МФО');
+      }
+      const hasMp = /маркетплейс|витрин|аренд|магазин/i.test(blob);
+      if (!hasMp) {
+        briefErrors.push('маркетплейс: в текстах нужны витрина / аренда / маркетплейс / магазин');
+      }
+    }
+
     for (const t of brief.titles || []) {
       if (String(t).length > 56) briefWarnings.push(`Title длиннее 56: «${String(t).slice(0, 40)}…»`);
     }
@@ -110,6 +123,7 @@ export function validateCreatives(briefs = [], { verticalKey = '', requireImages
 export function creativeModerationChecklist({ verticalKey = '', qa = {} } = {}) {
   const loan = verticalKey === 'fintech_loans';
   const card = verticalKey === 'fintech_cards';
+  const marketplace = verticalKey === 'marketplace_rental';
   return [
     {
       id: 'image_required',
@@ -120,9 +134,11 @@ export function creativeModerationChecklist({ verticalKey = '', qa = {} } = {}) 
       id: 'vertical_copy',
       text: loan
         ? 'Тексты только про займ/сумму/паспорт — без «зарубежной карты»'
-        : card
-          ? 'В Title/Text явно «зарубежная карта» / «выпуск зарубежной карты»'
-          : 'Тексты соответствуют вертикали оффера',
+        : marketplace
+          ? 'Тексты про витрину/аренду/магазин на маркетплейсе — без займов и карт'
+          : card
+            ? 'В Title/Text явно «зарубежная карта» / «выпуск зарубежной карты»'
+            : 'Тексты соответствуют вертикали оффера',
       required: true,
     },
     {

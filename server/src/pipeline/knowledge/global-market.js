@@ -4,6 +4,43 @@
  */
 
 export const GLOBAL_VERTICAL_PLAYBOOKS = {
+  marketplace_rental: {
+    vertical: 'Marketplace / аренда витрин',
+    aliases: [
+      /маркетплейс|marketplace|wildberries|ozon|аренд[аы].*(витрин|полк|магазин)|витрин[аы].*аренд|магазин\s+под\s+ключ|продавц.*маркет/i,
+    ],
+    sources: [
+      {
+        source: 'Yandex Direct РСЯ',
+        heat: 'warm',
+        funnel: 'direct',
+        where_to_pour: 'РСЯ, гео РФ, 25–45, интерес к бизнесу/e-com. Чистить мусорные площадки на 2–3 день.',
+        creatives: 'Витрина, аренда полки, запуск магазина, рост продаж. Без займов и «зарубежной карты».',
+        bid_hint: 'CPC от теста; смотреть EPC оффера',
+        risks: ['Оффер может требовать документы; не обещать «гарантию продаж»'],
+        angles: [
+          {
+            id: 'rent',
+            title: 'Аренда витрины',
+            hooks: ['аренда витрины на маркетплейсе', 'полка под товар', 'магазин без склада'],
+            creative_notes: 'Акцент на аренду места/витрины, не на кредиты.',
+          },
+          {
+            id: 'shop',
+            title: 'Свой магазин',
+            hooks: ['магазин на маркетплейсе', 'запуск витрины', 'продажа на маркетплейсе'],
+            creative_notes: 'Запуск магазина / витрины.',
+          },
+          {
+            id: 'sales',
+            title: 'Рост продаж',
+            hooks: ['больше продаж на маркетплейсе', 'готовая витрина', 'трафик на магазин'],
+            creative_notes: 'Без гарантий оборота.',
+          },
+        ],
+      },
+    ],
+  },
   fintech_loans: {
     vertical: 'Fintech / МФО',
     aliases: [/займ|микрозайм|мфо|наличн|payday|loan|кредитн(ая|ой) истори|деньги сразу/i],
@@ -184,6 +221,14 @@ export function detectVerticalKey(offer = {}) {
     .filter(Boolean)
     .join(' ');
 
+  // Marketplace / rental before loans (names like Money.* must not force МФО)
+  if (
+    /маркетплейс|marketplace|wildberries|ozon|аренд[аы].*(витрин|полк|магазин)|витрин[аы].*аренд|магазин\s+под\s+ключ|аренд[аы]\s+(на\s+)?маркет|полк[аи]\s+под\s+товар|продавц.*(wb|ozon|маркет)/i.test(
+      productBlob,
+    )
+  ) {
+    return 'marketplace_rental';
+  }
   if (
     /займ|микрозайм|мфо|payday|loan|наличн(ыми|ые)|кредитн(ая|ой) истори|деньги сразу|выдача.*займ/i.test(
       productBlob,
@@ -204,6 +249,7 @@ export function detectVerticalKey(offer = {}) {
   }
 
   const verticalField = String(offer.vertical || '');
+  if (/маркет|аренд|marketplace/i.test(verticalField)) return 'marketplace_rental';
   if (/займ|мфо|loan|credit/i.test(verticalField)) return 'fintech_loans';
   if (/карт|card|debit|плат[её]ж/i.test(verticalField)) return 'fintech_cards';
   if (/нутри|бад|похуд/i.test(verticalField)) return 'nutra';

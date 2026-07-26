@@ -21,6 +21,15 @@ test('detectVerticalKey: PPM card offer', () => {
   assert.equal(key, 'fintech_cards');
 });
 
+test('detectVerticalKey: marketplace rental before Money/loan heuristics', () => {
+  const key = detectVerticalKey({
+    vertical: 'Fintech',
+    name: 'Money.leadgid — маркетплейс в аренду',
+    notes: 'Аренда витрины на маркетплейсе, полка под товар',
+  });
+  assert.equal(key, 'marketplace_rental');
+});
+
 test('stripHtml cleans LeadGid descriptions', () => {
   const t = stripHtml('<p>МФО &laquo;Деньги Сразу&raquo; даёт займы</p>');
   assert.match(t, /МФО «Деньги Сразу» даёт займы/);

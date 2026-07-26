@@ -14,6 +14,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  yandexArtSceneHint,
+  creativeBriefForVertical,
+} from '../pipeline/knowledge/creative-handbook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outRoot = path.resolve(__dirname, '../../../creatives/pipeline');
@@ -90,8 +94,15 @@ function safeName(s) {
     .slice(0, 48);
 }
 
+function productLabel(offer, verticalKey) {
+  if (verticalKey === 'marketplace_rental') return offer?.name || 'маркетплейс витрина';
+  if (verticalKey === 'fintech_loans') return offer?.name || 'онлайн-займ';
+  if (verticalKey === 'nutra') return offer?.name || 'продукт';
+  return offer?.name || 'цифровая карта';
+}
+
 /**
- * Scroll-stopping РСЯ visual prompt (GPT Image).
+ * Scroll-stopping РСЯ visual prompt (OpenAI / long-form).
  * format=graphic → text ON the image (offer data)
  * format=product → clean product/lifestyle photo, NO text (copy in Direct fields)
  */
@@ -101,8 +112,10 @@ export function buildCreativePrompt({
   size = '1024x1024',
   format = 'product',
   overlayLines = [],
+  verticalKey = '',
 } = {}) {
-  const name = offer?.name || 'цифровая карта';
+  const name = productLabel(offer, verticalKey);
+  const brief = creativeBriefForVertical(verticalKey);
   const angleScenes = {
     travel: [
       'Hero scene: matte navy payment card resting on open burgundy passport + boarding pass on a hard-shell suitcase,',
@@ -124,8 +137,29 @@ export function buildCreativePrompt({
       'clean charcoal background, dynamic diagonal energy without clutter,',
       'fast-payment vibe, crisp edges, modern commercial look.',
     ].join(' '),
+    rent: [
+      'Hero scene: modern marketplace storefront shelf with product cards on a clean laptop screen,',
+      'e-commerce rental vibe, soft daylight office, growth without clutter.',
+    ].join(' '),
+    shop: [
+      'Hero scene: online shopfront / marketplace stall ready to sell, boxes and clean UI mock without logos,',
+      'commercial e-com photography, bright confident light.',
+    ].join(' '),
+    sales: [
+      'Hero scene: marketplace dashboard with rising sales chart blur (no readable text), product tiles,',
+      'business growth mood, clean desk setup.',
+    ].join(' '),
+    speed: [
+      'Hero scene: phone in hand with abstract application UI blur, fast everyday light, no luxury bank lobby.',
+    ].join(' '),
+    passport: [
+      'Hero scene: passport booklet and phone on a simple table, calm trustworthy mood.',
+    ].join(' '),
+    amount: [
+      'Hero scene: card and soft cash hint without readable denominations, simple online payout mood.',
+    ].join(' '),
     generic: [
-      'Hero scene: digital payment card as the single dominant subject, soft gradient atmosphere,',
+      'Hero scene: single dominant product subject, soft gradient atmosphere,',
       'premium commercial still-life, strong focal contrast.',
     ].join(' '),
   };
@@ -134,7 +168,7 @@ export function buildCreativePrompt({
   const base = [
     `Award-style photoreal key visual for Russian Yandex Direct РСЯ feed ads, square ${size}.`,
     `Must stop the scroll in 0.5s: bold subject, emotional desire, clear story — not a flat stock template.`,
-    `Product: digital payment card for "${name}". Angle: ${angle?.title || angle?.id || 'main'}.`,
+    `Product/offer: "${name}". Angle: ${angle?.title || angle?.id || 'main'}. Vertical brief: ${brief.visual}`,
     scene,
     'Cinematic lighting, tactile materials, micro-contrast, magazine ad quality.',
     'Composition: subject occupies ~55-70% of frame, negative space for balance, no cluttered collage.',
@@ -153,35 +187,36 @@ export function buildCreativePrompt({
   } else {
     base.push(
       'PRODUCT / lifestyle AD: ZERO text, ZERO letters, ZERO numbers, ZERO captions, ZERO UI labels on the image.',
-      'Card face must be blank (no embossed numbers/names). Desire comes from scene and light only — ad copy is separate.',
+      'If a card is shown, face must be blank (no embossed numbers/names). Desire from scene and light only — ad copy is separate.',
     );
   }
 
   return base.join(' ');
 }
 
-/** YandexART has a hard ~500 char prompt limit. */
+/** YandexART has a hard ~500 char prompt limit — short Russian scene + bans. */
 export function buildCreativePromptForProvider(provider, args) {
   const full = buildCreativePrompt(args);
   if (provider !== 'yandex_art') return full;
 
-  const { angle, offer, format = 'product', overlayLines = [] } = args || {};
-  const name = String(offer?.name || 'цифровая карта').slice(0, 40);
+  const { angle, offer, format = 'product', overlayLines = [], verticalKey = '' } = args || {};
+  const name = String(productLabel(offer, verticalKey)).slice(0, 36);
+  const scene = yandexArtSceneHint(verticalKey, angle?.id);
   const angleTitle = angle?.title || angle?.id || 'main';
   if (format === 'graphic') {
     const lines = (overlayLines || []).filter(Boolean).slice(0, 2).join(' / ');
     return [
-      `Цепляющий баннер 1:1, карта «${name}», ${angleTitle}: яркий сюжет, стоп-скролл.`,
+      `Цепляющий баннер 1:1 «${name}», ${angleTitle}: ${scene}.`,
       lines ? `Крупный чёткий русский текст: ${lines}.` : 'Короткий цепляющий русский заголовок.',
-      'Премиум, без логотипов банков/Visa/Apple Pay, без лиц крупно.',
+      'Без логотипов банков/Visa/Apple Pay/маркетплейсов, без лиц крупно.',
     ]
       .join(' ')
       .slice(0, 500);
   }
   return [
-    `Цепляющее фото 1:1 карты «${name}», сюжет ${angleTitle}, эмоция поездки/оплаты.`,
-    'БЕЗ текста/букв/цифр на фото. Кинематографичный свет, крупный объект.',
-    'Без логотипов Visa, Mastercard, Apple Pay, банков.',
+    `Цепляющее фото 1:1 «${name}»: ${scene}.`,
+    'БЕЗ текста, букв и цифр на фото. Крупный объект 55–70% кадра, кинематографичный свет.',
+    'Без логотипов Visa, Mastercard, Apple Pay, банков, WB/Ozon.',
   ]
     .join(' ')
     .slice(0, 500);
@@ -397,55 +432,72 @@ export async function generateCreativeImage({
   index = 0,
   format = 'product',
   overlayLines = [],
+  verticalKey = '',
 } = {}) {
   const cfg = imageGenConfig();
-  const promptArgs = { angle, offer, format, overlayLines };
+  const promptArgs = { angle, offer, format, overlayLines, verticalKey };
   const prompt = buildCreativePromptForProvider(cfg.provider, promptArgs);
   const dir = path.join(outRoot, String(runId));
   ensureDir(dir);
   const dest = path.join(dir, `${safeName(angle?.id || 'angle')}-${format}-${index}.png`);
+  const retries = Math.max(0, Number(process.env.IMAGE_GEN_RETRIES || 1));
 
   if (cfg.provider === 'none') {
     return {
       ok: false,
       skipped: true,
       provider: 'none',
+      angle_id: angle?.id || null,
       format,
       image_has_text: format === 'graphic',
       prompt,
-      reason: 'Нет YandexART / OPENAI_API_KEY',
+      reason: 'Нет YandexART (YANDEX_CLOUD_*) / OPENAI_API_KEY',
     };
   }
 
   try {
     let result;
-    try {
-      result = await generateWithProvider(cfg.provider, prompt, dest);
-    } catch (err) {
-      // OpenAI geo-block → YandexART only when explicitly allowed
-      const allowFallback = String(process.env.OPENAI_ALLOW_YANDEX_FALLBACK || '') === '1';
-      if (
-        allowFallback &&
-        cfg.provider === 'openai' &&
-        isGeoBlockedError(err) &&
-        yandexCloudKeys().configured
-      ) {
-        const yaPrompt = buildCreativePromptForProvider('yandex_art', promptArgs);
-        result = await genYandexArt(yaPrompt, dest);
-        result = {
-          ...result,
-          fallback_from: 'openai',
-          fallback_reason: err.message,
-          prompt_used: yaPrompt,
-        };
-      } else if (cfg.provider === 'openai' && isGeoBlockedError(err)) {
-        throw new Error(
-          `${err.message}. С RU VPS задай OPENAI_RELAY_URL (scripts/openai-image-relay-server.mjs) или OPENAI_HTTP_PROXY. Тихий откат на YandexART отключён — включи OPENAI_ALLOW_YANDEX_FALLBACK=1 если нужен.`,
-        );
-      } else {
-        throw err;
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const attemptPrompt =
+          attempt === 0
+            ? prompt
+            : `${prompt} Вариация ${attempt + 1}, другой ракурс.`.slice(0, 500);
+        result = await generateWithProvider(cfg.provider, attemptPrompt, dest);
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        // OpenAI geo-block → YandexART only when explicitly allowed
+        const allowFallback = String(process.env.OPENAI_ALLOW_YANDEX_FALLBACK || '') === '1';
+        if (
+          allowFallback &&
+          cfg.provider === 'openai' &&
+          isGeoBlockedError(err) &&
+          yandexCloudKeys().configured
+        ) {
+          const yaPrompt = buildCreativePromptForProvider('yandex_art', promptArgs);
+          result = await genYandexArt(yaPrompt, dest);
+          result = {
+            ...result,
+            fallback_from: 'openai',
+            fallback_reason: err.message,
+            prompt_used: yaPrompt,
+          };
+          lastErr = null;
+          break;
+        }
+        if (cfg.provider === 'openai' && isGeoBlockedError(err)) {
+          throw new Error(
+            `${err.message}. С RU VPS задай OPENAI_RELAY_URL или OPENAI_HTTP_PROXY, либо IMAGE_PROVIDER=yandex_art.`,
+          );
+        }
+        if (attempt >= retries) throw err;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       }
     }
+    if (lastErr) throw lastErr;
 
     const absPath = result.path || dest;
     const rel = path.relative(path.resolve(__dirname, '../../..'), absPath);
@@ -454,6 +506,7 @@ export async function generateCreativeImage({
       prompt,
       ...result,
       path: rel,
+      angle_id: angle?.id || null,
       format,
       image_has_text: format === 'graphic',
     };
@@ -461,6 +514,7 @@ export async function generateCreativeImage({
     return {
       ok: false,
       provider: cfg.provider,
+      angle_id: angle?.id || null,
       format,
       image_has_text: format === 'graphic',
       prompt,
@@ -476,6 +530,7 @@ export async function generateAngleImages({
   limit = 2,
   format = 'product',
   overlaysByAngle = {},
+  verticalKey = '',
 } = {}) {
   const list = (angles || []).slice(0, limit);
   const out = [];
@@ -489,6 +544,7 @@ export async function generateAngleImages({
         index: i,
         format,
         overlayLines: overlaysByAngle[angle.id] || [],
+        verticalKey,
       }),
     );
   }

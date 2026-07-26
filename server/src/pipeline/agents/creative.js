@@ -16,6 +16,10 @@ import {
   validateCreatives,
   creativeModerationChecklist,
 } from '../../lib/creativeQa.js';
+import {
+  creativeAgentSystemPrompt,
+  creativeBriefForVertical,
+} from '../knowledge/creative-handbook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
@@ -147,14 +151,68 @@ function loanAdCopy(angle, offer) {
   return map[angle.id] || map.generic;
 }
 
+/** Marketplace / rental shopfront — never loans or overseas cards. */
+function marketplaceAdCopy(angle, offer, promo) {
+  const f = offerFacts(offer);
+  const code = promo?.code || offer.promo_code || '';
+  const promoBit = code ? `Промокод ${code}` : 'Старт онлайн';
+  const map = {
+    rent: {
+      titles: [
+        sliceTitle('Аренда витрины на маркетплейсе'),
+        sliceTitle('Полка под товар без склада'),
+        sliceTitle(`${f.brand}: аренда витрины`),
+      ],
+      texts: [
+        sliceText(`Аренда витрины на маркетплейсе. ${promoBit}. Без склада.`),
+        sliceText(`Место под товар на маркетплейсе. ${promoBit}.`),
+      ],
+    },
+    shop: {
+      titles: [
+        sliceTitle('Свой магазин на маркетплейсе'),
+        sliceTitle('Запуск витрины онлайн'),
+        sliceTitle(`${f.brand}: магазин`),
+      ],
+      texts: [
+        sliceText(`Магазин на маркетплейсе под ключ. ${promoBit}.`),
+        sliceText(`Запуск витрины и продаж на маркетплейсе. ${promoBit}.`),
+      ],
+    },
+    sales: {
+      titles: [
+        sliceTitle('Рост продаж на маркетплейсе'),
+        sliceTitle('Готовая витрина под товар'),
+      ],
+      texts: [
+        sliceText(`Готовая витрина для продаж на маркетплейсе. ${promoBit}.`),
+        sliceText(`${f.brand}: больше продаж через витрину. Условия на сайте.`),
+      ],
+    },
+    generic: {
+      titles: [
+        sliceTitle('Маркетплейс: аренда витрины'),
+        sliceTitle('Витрина на маркетплейсе'),
+      ],
+      texts: [
+        sliceText(f.summary || `Аренда витрины / магазин на маркетплейсе. ${promoBit}.`),
+        sliceText(`${f.brand}. Маркетплейс без обещаний «гарантии оборота».`),
+      ],
+    },
+  };
+  return map[angle.id] || map.generic;
+}
+
 /**
  * Copy from offer research + vertical.
  * Cards (PPM): must say «зарубежная карта».
  * Loans: only loan claims from offer brief — never card templates.
+ * Marketplace: витрина / аренда — never loans or cards.
  */
 function adCopy(angle, offer, promo, verticalKey) {
   const code = promo?.code || offer.promo_code || '';
   if (verticalKey === 'fintech_loans') return loanAdCopy(angle, offer);
+  if (verticalKey === 'marketplace_rental') return marketplaceAdCopy(angle, offer, promo);
 
   // Foreign / prepaid cards
   const promoBit = code ? `Промокод ${code}` : 'Оформление онлайн';
@@ -203,18 +261,82 @@ function adCopy(angle, offer, promo, verticalKey) {
   return map[angle.id] || map.generic;
 }
 
+function sitelinksForVertical(verticalKey, promo) {
+  if (verticalKey === 'fintech_loans') {
+    return [
+      { title: 'Оформить онлайн', description: 'Заявка за минуты' },
+      { title: 'На карту', description: 'Или наличными в регионе' },
+      { title: 'Условия', description: 'Изучите на сайте' },
+      { title: 'Поддержка', description: 'Помощь по заявке' },
+    ];
+  }
+  if (verticalKey === 'marketplace_rental') {
+    return [
+      { title: 'Аренда витрины', description: 'Место под товар' },
+      { title: 'Свой магазин', description: 'Запуск на маркетплейсе' },
+      {
+        title: promo?.code ? `Промокод ${promo.code}` : 'Условия',
+        description: promo?.note || 'На сайте оффера',
+      },
+      { title: 'Старт онлайн', description: 'Без склада' },
+    ];
+  }
+  return [
+    { title: 'Зарубежная карта', description: 'Выпуск онлайн за минуты' },
+    {
+      title: promo?.code ? `Промокод ${promo.code}` : 'Оформить',
+      description: promo?.note || 'Скидка на выпуск',
+    },
+    { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
+    { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
+  ];
+}
+
+function calloutsForVertical(verticalKey, promo) {
+  if (verticalKey === 'fintech_loans') {
+    return ['Онлайн-займ', 'Оформление быстро', 'На карту', 'Условия на сайте'];
+  }
+  if (verticalKey === 'marketplace_rental') {
+    return [
+      'Маркетплейс',
+      'Аренда витрины',
+      'Старт онлайн',
+      promo?.code ? `Промокод ${promo.code}` : 'Без склада',
+    ];
+  }
+  return [
+    'Выпуск зарубежной карты',
+    'Пополнение по СБП',
+    'Оформление онлайн',
+    promo?.code ? `Промокод ${promo.code}` : 'Без очередей',
+  ];
+}
+
 /**
  * Decide generation format from offer.ad_format.
  * auto → product by default (текст в полях); graphic only when explicitly requested
  * or when notes hint at "текст на баннере".
+ * YandexART: always prefer product unless graphic requested (Cyrillic on image is weak).
  */
-function decideGenerationFormat(offer) {
+function decideGenerationFormat(offer, imgProvider) {
   const requested = normalizeAdFormat(offer.ad_format || offer.adFormat || 'auto');
   if (requested === 'graphic' || requested === 'product') return requested;
   const notes = `${offer.notes || ''} ${offer.creative_notes || ''}`.toLowerCase();
   if (/графич|текст на (баннер|картинк|креатив)|надпис/.test(notes)) return 'graphic';
   // auto default: товарное — чистая картинка, текст в настройках объявления
+  // (особенно важно для YandexART — без «иероглифов» на баннере)
+  if (imgProvider === 'yandex_art' || imgProvider === 'auto' || !imgProvider) return 'product';
   return 'product';
+}
+
+function verticalCursorHint(verticalKey) {
+  if (verticalKey === 'fintech_loans') {
+    return 'Вертикаль МФО/займы: тексты только из брифа оффера (сумма, паспорт, скорость). Не писать про зарубежную карту.';
+  }
+  if (verticalKey === 'marketplace_rental') {
+    return 'Вертикаль маркетплейс/аренда: витрина, аренда, магазин. Без займов и «зарубежной карты».';
+  }
+  return 'В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.';
 }
 
 export async function runCreative({ offer, context }) {
@@ -222,13 +344,15 @@ export async function runCreative({ offer, context }) {
   const angles = playbook.angles || [{ id: 'generic', title: 'Основной' }];
   const promo = (playbook.promo_codes || [])[0] || { code: offer.promo_code || '' };
   const verticalKey = playbook.vertical_key || context.analysis?.vertical_key || '';
+  const verticalBrief = creativeBriefForVertical(verticalKey);
   const assets = listExistingAssets();
   const imgCfg = imageGenConfig();
   const runId = context.run_id || `offer-${Date.now()}`;
   const requestedFormat = normalizeAdFormat(offer.ad_format || offer.adFormat || 'auto');
-  const genFormat = decideGenerationFormat(offer);
+  const genFormat = decideGenerationFormat(offer, imgCfg.provider);
   const imageHasText = genFormat === 'graphic';
   const adFormat = resolveAdFormat({ requested: requestedFormat, imageHasText });
+  const systemRole = creativeAgentSystemPrompt(verticalKey);
 
   const overlaysByAngle = {};
   const creatives = angles.map((angle) => {
@@ -251,47 +375,26 @@ export async function runCreative({ offer, context }) {
       direct_ad_type: 'TextAd',
       titles: copy.titles,
       texts: copy.texts,
-      // Для товарных: текст только в полях. Для графических: те же данные ещё и на картинке.
       overlay_lines: imageHasText ? overlayLines : [],
       image_prompt: buildCreativePromptForProvider(imgCfg.provider || 'yandex_art', {
         angle,
         offer,
         format: genFormat,
         overlayLines: imageHasText ? overlayLines : [],
+        verticalKey,
       }),
-      sitelinks:
-        verticalKey === 'fintech_loans'
-          ? [
-              { title: 'Оформить онлайн', description: 'Заявка за минуты' },
-              { title: 'На карту', description: 'Или наличными в регионе' },
-              { title: 'Условия', description: 'Изучите на сайте' },
-              { title: 'Поддержка', description: 'Помощь по заявке' },
-            ]
-          : [
-              { title: 'Зарубежная карта', description: 'Выпуск онлайн за минуты' },
-              {
-                title: promo?.code ? `Промокод ${promo.code}` : 'Оформить',
-                description: promo?.note || 'Скидка на выпуск',
-              },
-              { title: 'Пополнение по СБП', description: 'Рублями с любого банка' },
-              { title: 'Оплата в сервисах', description: 'Поездки и подписки' },
-            ],
-      callouts:
-        verticalKey === 'fintech_loans'
-          ? ['Онлайн-займ', 'Оформление быстро', 'На карту', 'Условия на сайте']
-          : [
-              'Выпуск зарубежной карты',
-              'Пополнение по СБП',
-              'Оформление онлайн',
-              promo?.code ? `Промокод ${promo.code}` : 'Без очередей',
-            ],
+      sitelinks: sitelinksForVertical(verticalKey, promo),
+      callouts: calloutsForVertical(verticalKey, promo),
       forbidden: [
         'обход санкций/ограничений',
         'гарантии одобрения',
         'P2P/вывод',
         'gambling/adult/crypto',
         'бренды Apple Pay / Google Pay / Booking',
-        ...(verticalKey === 'fintech_loans' ? ['зарубежная карта', 'СБП-выпуск карты'] : []),
+        ...(verticalKey === 'fintech_loans' || verticalKey === 'marketplace_rental'
+          ? ['зарубежная карта', 'СБП-выпуск карты']
+          : []),
+        ...(verticalKey === 'marketplace_rental' ? ['займы', 'микрозаймы', 'гарантия оборота'] : []),
       ],
       sizes: RSYA_SIZES,
       preferred_packs: assets.filter((a) =>
@@ -299,12 +402,15 @@ export async function runCreative({ offer, context }) {
           ? /travel/i.test(a)
           : angle.id === 'services'
             ? /service|subscription/i.test(a)
-            : true,
+            : angle.id === 'rent' || angle.id === 'shop'
+              ? /market|shop|rent|витрин/i.test(a)
+              : true,
       ),
       rule:
         adFormat === 'graphic'
           ? 'Креатив с надписями оффера → TextAd + AdImageHash (текст на баннере)'
           : 'Чистая картинка → товарное TextAd (заголовок/текст в настройках объявления)',
+      vertical_brief: verticalBrief.visual,
     };
   });
 
@@ -315,6 +421,7 @@ export async function runCreative({ offer, context }) {
     limit: Number(process.env.IMAGE_GEN_LIMIT || 2),
     format: genFormat,
     overlaysByAngle,
+    verticalKey,
   });
 
   const okImages = generated.filter((g) => g.ok);
@@ -326,6 +433,7 @@ export async function runCreative({ offer, context }) {
   const checklist = creativeModerationChecklist({ verticalKey });
 
   const summaryParts = [
+    `Роль: ${verticalBrief.role}`,
     `Формат: ${formatLabel(adFormat)} (TextAd + картинка)`,
     `брифы: ${creatives.length}`,
     imgCfg.configured
@@ -333,6 +441,11 @@ export async function runCreative({ offer, context }) {
       : 'генерация выкл',
     qa.ok ? 'QA креативов ok' : `QA: ${qa.errors.length} ошибок`,
   ];
+
+  const hardVerticalFail = qa.errors.some((e) =>
+    /зарубежная карта|займы:|запрещённая формулировка/.test(e.text),
+  );
+  const noImages = Boolean(imgCfg.configured) && okImages.length === 0;
 
   return {
     summary: summaryParts.join(' · '),
@@ -346,24 +459,23 @@ export async function runCreative({ offer, context }) {
       image_provider: imgCfg,
       qa,
       checklist,
+      creative_role: systemRole,
       generator_hint:
-        'graphic = текст на баннере → TextAd+картинка (квадрат GPT); product = чистая картинка → TextAd',
+        'Картинки: YandexART (IMAGE_PROVIDER=yandex_art). Агент пишет брифы/тексты/промпты, не GPT Image.',
       direct_textad_min_size: '450x450 (лучше 1080x1080)',
       rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего через аналитика трафика',
     },
-    failed:
-      Boolean(imgCfg.configured) &&
-      !qa.ok &&
-      qa.errors.some((e) => /нет ни одной картинки|зарубежная карта|займы:/.test(e.text)),
+    // Fail hard on bad vertical copy always; on missing images when provider configured
+    failed: hardVerticalFail || noImages,
     cursor_prompt: [
-      'Ты креатив-агент для РСЯ Яндекс.Директ.',
+      systemRole,
+      '',
       `Формат объявлений: ${adFormat} (${formatLabel(adFormat)}).`,
       adFormat === 'graphic'
         ? 'На баннере надписи оффера. В Директе TEXT_CAMPAIGN: TextAd + AdImageHash (не ImageAd).'
         : 'Картинка без текста. Заголовки/тексты только в полях TextAd.',
-      verticalKey === 'fintech_loans'
-        ? 'Вертикаль МФО/займы: тексты только из брифа оффера (сумма, паспорт, скорость). Не писать про зарубежную карту.'
-        : 'В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.',
+      `Движок картинок: ${imgCfg.provider} (${imgCfg.note}). Не полагайся на GPT Image.`,
+      verticalCursorHint(verticalKey),
       `QA: ${JSON.stringify(qa)}`,
       `Оффер: ${JSON.stringify({
         name: offer.name,
@@ -371,7 +483,7 @@ export async function runCreative({ offer, context }) {
         brief: offer.product_brief || offer.notes,
         promo,
       })}`,
-      `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines })))}`,
+      `Брифы: ${JSON.stringify(creatives.map((c) => ({ id: c.angle_id, format: c.ad_format, overlay: c.overlay_lines, prompt: c.image_prompt })))}`,
       `Файлы: ${JSON.stringify(okImages)}`,
     ].join('\n'),
     context_patch: {
@@ -385,6 +497,7 @@ export async function runCreative({ offer, context }) {
         image_provider: imgCfg,
         qa,
         checklist,
+        creative_role: systemRole,
         rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего',
       },
     },

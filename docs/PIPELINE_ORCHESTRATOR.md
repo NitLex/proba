@@ -67,6 +67,23 @@
 С российского IP OpenAI отвечает `Country, region, or territory not supported`.
 Решение — **OPENAI_RELAY_URL** на не-RU хосте (ключ OpenAI не светится через чужие free-proxy).
 
+## Креативы: YandexART + креатив-агент
+
+Креатив-агент — арт-директор: роль по вертикали, тексты TextAd, промпты, QA.
+Картинки рисует **YandexART** (не GPT Image).
+
+```bash
+IMAGE_PROVIDER=yandex_art
+YANDEX_CLOUD_API_KEY=...
+YANDEX_CLOUD_FOLDER_ID=...
+# IMAGE_GEN_LIMIT=2
+# IMAGE_GEN_RETRIES=1
+```
+
+`IMAGE_PROVIDER=auto` выберет YandexART, если cloud-ключи есть.
+
+### Опционально: GPT Image (relay)
+
 ```bash
 # 1) на не-RU машине / Cloudflare Worker:
 OPENAI_API_KEY=sk-...
@@ -78,22 +95,11 @@ node scripts/openai-image-relay-server.mjs
 IMAGE_PROVIDER=openai
 OPENAI_RELAY_URL=http://127.0.0.1:8787   # или https://xxx.workers.dev
 OPENAI_RELAY_SECRET=long-random
-# OPENAI_API_KEY на VPS не обязателен, если ключ только в relay
 ```
 
 Альтернатива: личный `OPENAI_HTTP_PROXY` (EU/US) + `undici` на VPS.
 
-Тихий откат на YandexART **выключен** (YandexART часто даёт «иероглифы»).
-Включить только явно: `OPENAI_ALLOW_YANDEX_FALLBACK=1`.
-
-### Запасной: YandexART
-```bash
-IMAGE_PROVIDER=yandex_art
-YANDEX_CLOUD_API_KEY=...
-YANDEX_CLOUD_FOLDER_ID=...
-```
-
-`IMAGE_PROVIDER=auto` выберет YandexART, если cloud-ключи есть.
+Тихий откат openai→YandexART **выключен**. Включить: `OPENAI_ALLOW_YANDEX_FALLBACK=1`.
 
 ## Секреты на VPS
 
@@ -103,12 +109,10 @@ ARBTRACK_PUBLIC_URL=https://trekerarbitrag.ru
 YANDEX_DIRECT_TOKEN=...
 YANDEX_DIRECT_LOGIN=...
 LEADGID_TOKEN=...
-IMAGE_PROVIDER=openai
-OPENAI_RELAY_URL=http://127.0.0.1:8787
-OPENAI_RELAY_SECRET=...
-# OPENAI_API_KEY=...  # можно только в relay
+IMAGE_PROVIDER=yandex_art
 YANDEX_CLOUD_API_KEY=...
 YANDEX_CLOUD_FOLDER_ID=...
+# OPENAI_* только если сознательно нужен GPT Image
 ```
 
 ## Домен в объявлении (вместо trekerarbitrag.ru)
