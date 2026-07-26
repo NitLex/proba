@@ -87,11 +87,29 @@ async function getExcludedSites(campaignId) {
   return camp?.ExcludedSites?.Items || [];
 }
 
+function normalizePlacement(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+}
+
+/** Deduplicate placements (case-insensitive) preserving first-seen casing. */
+function uniquePlacements(list) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of list || []) {
+    const norm = normalizePlacement(raw);
+    if (!norm || YANDEX_OWN.test(norm) || seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(norm);
+  }
+  return out;
+}
+
 async function setExcludedSites(campaignId, sites) {
-  const unique = [...new Set(sites.map((s) => String(s).trim()).filter(Boolean))].slice(
-    0,
-    DIRECT_EXCLUDED_PLACEMENTS.limit || 1000,
-  );
+  const unique = uniquePlacements(sites).slice(0, DIRECT_EXCLUDED_PLACEMENTS.limit || 1000);
   return directApiRetry('campaigns', {
     method: 'update',
     params: {
@@ -337,8 +355,8 @@ function buildCampaignAdvice(directCamp, trackerCamp, placementActions) {
 async function applyPlacementExclusions(byCampaign) {
   const results = [];
   for (const [campaignId, placements] of Object.entries(byCampaign)) {
-    const existing = await getExcludedSites(campaignId);
-    const merged = [...new Set([...existing, ...placements])];
+    const existing = uniquePlacements(await getExcludedSites(campaignId));
+    const merged = uniquePlacements([...existing, ...placements]);
     if (merged.length === existing.length) {
       results.push({
         campaign_id: campaignId,
@@ -351,13 +369,15 @@ async function applyPlacementExclusions(byCampaign) {
     }
     const upd = await setExcludedSites(campaignId, merged);
     const err = upd?.error || upd?.result?.UpdateResults?.[0]?.Errors;
+    const ok = !err || (Array.isArray(err) && err.length === 0);
     results.push({
       campaign_id: campaignId,
-      ok: !err && !upd?.skipped,
+      ok: ok && !upd?.skipped,
       added: merged.length - existing.length,
       total: merged.length,
-      error: err || null,
+      error: ok ? null : err,
       skipped: upd?.skipped || false,
+      sample_added: placements.slice(0, 10).map(normalizePlacement),
     });
   }
   return results;
@@ -456,11 +476,14 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
     };
   });
 
-  const toApply = placementActions.filter((a) => a.auto_apply).slice(0, 80);
+  const toApply = placementActions.filter((a) => a.auto_apply).slice(0, 120);
   const byCamp = {};
   for (const a of toApply) {
     if (!byCamp[a.campaign_id]) byCamp[a.campaign_id] = [];
-    byCamp[a.campaign_id].push(a.placement);
+    byCamp[a.campaign_id].push(normalizePlacement(a.placement));
+  }
+  for (const id of Object.keys(byCamp)) {
+    byCamp[id] = uniquePlacements(byCamp[id]);
   }
 
   let applyResult = null;

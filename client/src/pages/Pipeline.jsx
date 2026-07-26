@@ -668,14 +668,41 @@ export default function Pipeline() {
               </div>
             ) : null}
             {active.context?.traffic_analysis ? (
-              <div className="banner ok">
-                Трафик: к запрету{' '}
-                {active.context.traffic_analysis.actions?.exclude_placements?.length || 0} площадок
+              <div
+                className={`banner ${
+                  Array.isArray(active.context.traffic_analysis.apply) &&
+                  active.context.traffic_analysis.apply.some((a) => a.ok === false)
+                    ? 'bad'
+                    : 'ok'
+                }`}
+              >
+                <strong>Аналитик трафика</strong>
+                {' · '}площадок в отчёте {active.context.traffic_analysis.placement_report?.rows ?? 0}
+                {' · '}к запрету{' '}
+                {active.context.traffic_analysis.actions?.exclude_placements?.length || 0}
                 {active.context.traffic_analysis.apply?.dry_run
-                  ? ' · только рекомендации'
-                  : active.context.traffic_analysis.apply
-                    ? ' · правки отправлены в Директ'
+                  ? ' · только рекомендации (галочка «Применить» выкл)'
+                  : Array.isArray(active.context.traffic_analysis.apply)
+                    ? ` · в Директ: ${active.context.traffic_analysis.apply
+                        .map(
+                          (a) =>
+                            `#${a.campaign_id} ${a.ok ? `+${a.added} (всего ${a.total})` : `ошибка`}`,
+                        )
+                        .join('; ')}`
                     : ''}
+                {(active.context.traffic_analysis.actions?.exclude_placements || []).length ? (
+                  <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem' }}>
+                    {active.context.traffic_analysis.actions.exclude_placements
+                      .slice(0, 12)
+                      .map((p) => (
+                        <li key={`${p.campaign_id}-${p.placement}`}>
+                          <code>{p.placement}</code> — {p.clicks} кликов / {p.cost} ₽ /{' '}
+                          {p.conversions} конв.
+                          {p.reasons?.length ? ` · ${p.reasons.join('; ')}` : ''}
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
                 {active.context.traffic_analysis.campaigns?.length ? (
                   <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem' }}>
                     {active.context.traffic_analysis.campaigns.map((c) => (
