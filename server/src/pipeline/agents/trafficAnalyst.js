@@ -575,14 +575,33 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
   };
 }
 
+function applyHasRealError(a) {
+  if (!a || a.ok === true) return false;
+  const err = a.error;
+  if (err == null || err === false) return false;
+  if (Array.isArray(err) && err.length === 0) return false;
+  if (typeof err === 'object' && !Array.isArray(err) && !Object.keys(err).length) return false;
+  // Legacy bug: ok=false with empty Errors [] but added>0 — treat as success
+  if (Number(a.added || 0) > 0 && (err == null || (Array.isArray(err) && !err.length))) {
+    return false;
+  }
+  return a.ok === false && Boolean(err);
+}
+
 /** Compact report for orchestrator UI («что сделали»). */
 export function buildTrafficMiniReport(traffic_analysis, meta = {}) {
   const ta = traffic_analysis || {};
   const applyList = Array.isArray(ta.apply) ? ta.apply : [];
   const dryRun = Boolean(ta.apply?.dry_run);
   const cuts = ta.actions?.exclude_placements || [];
-  const sitesAdded = applyList.reduce((s, a) => s + (a.ok ? Number(a.added || 0) : 0), 0);
-  const applyFailed = applyList.some((a) => a.ok === false);
+  const sitesAdded = applyList.reduce((s, a) => {
+    const n = Number(a.added || 0);
+    if (n <= 0) return s;
+    // count adds even if legacy ok=false with empty error
+    if (a.ok === true || !applyHasRealError(a)) return s + n;
+    return s;
+  }, 0);
+  const applyFailed = applyList.some((a) => applyHasRealError(a));
   const advice = (ta.campaigns || [])
     .flatMap((c) =>
       (c.advice || [])
