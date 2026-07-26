@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "run_id": 1,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "prompt_token": {
+    "prefix": "-o028K0P",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором"
+  },
+  "resolved_token": {
+    "prefix": "gw2cLRts",
+    "status": "ok_200",
+    "note": "Активный token run_id=1 (тот же, что принимал предыдущий успешный ingest)"
+  },
+  "uploads": [
+    {
+      "angle_id": "travel",
+      "mime": "image/jpeg",
+      "file": "travel-agent-0.jpg",
+      "status": 200,
+      "size": 131287
+    },
+    {
+      "angle_id": "services",
+      "mime": "image/jpeg",
+      "file": "services-agent-0.jpg",
+      "status": 200,
+      "size": 155707
+    },
+    {
+      "angle_id": "travel",
+      "mime": "image/png",
+      "file": "travel-agent-0.png",
+      "status": 200,
+      "size": 1411951
+    },
+    {
+      "angle_id": "services",
+      "mime": "image/png",
+      "file": "services-agent-0.png",
+      "status": 200,
+      "size": 1643278
+    }
+  ],
+  "qa_orchestrator": {
+    "ok": true,
+    "images_ok": 6,
+    "briefs": 3
+  }
+}
