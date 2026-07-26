@@ -1,0 +1,105 @@
+{
+  "ad_format": "product",
+  "direct_ad_type": "TextAd",
+  "image_has_text": false,
+  "offer": "Тестовая карта",
+  "vertical_key": "fintech_cards",
+  "promo_code": "LG2026",
+  "engine": "agent",
+  "run_id": 1,
+  "angles": [
+    {
+      "angle_id": "travel",
+      "angle_title": "Поездки / travel-оплаты",
+      "image": "creatives/pipeline/1/travel-agent-0.png",
+      "image_jpg": "creatives/pipeline/1/travel-agent-0.jpg",
+      "titles": [
+        "Зарубежная карта в поездки",
+        "Зарубежная карта в дорогу",
+        "Зарубежная карта онлайн"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. СБП. Промокод LG2026.",
+        "Выпуск зарубежной карты за минуты. Промокод LG2026. Поездки и оплаты."
+      ],
+      "sitelinks": [
+        {"title": "Зарубежная карта", "description": "Выпуск онлайн за минуты"},
+        {"title": "Промокод LG2026", "description": "−500 ₽ (если актуально)"},
+        {"title": "Пополнение по СБП", "description": "Рублями с любого банка"},
+        {"title": "Оплата в сервисах", "description": "Поездки и подписки"}
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    },
+    {
+      "angle_id": "services",
+      "angle_title": "Подписки и онлайн-сервисы",
+      "image": "creatives/pipeline/1/services-agent-0.png",
+      "image_jpg": "creatives/pipeline/1/services-agent-0.jpg",
+      "titles": [
+        "Зарубежная карта для оплаты",
+        "Зарубежная карта для подписок",
+        "Зарубежная карта — сервисы"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. СБП. Промокод LG2026.",
+        "Выпуск зарубежной карты. Подписки и оплаты. Промокод LG2026."
+      ],
+      "sitelinks": [
+        {"title": "Зарубежная карта", "description": "Выпуск онлайн за минуты"},
+        {"title": "Промокод LG2026", "description": "−500 ₽ (если актуально)"},
+        {"title": "Пополнение по СБП", "description": "Рублями с любого банка"},
+        {"title": "Оплата в сервисах", "description": "Поездки и подписки"}
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    },
+    {
+      "angle_id": "sbp",
+      "angle_title": "Быстрый выпуск + СБП",
+      "image": "creatives/pipeline/1/sbp-agent-0.png",
+      "image_jpg": "creatives/pipeline/1/sbp-agent-0.jpg",
+      "titles": [
+        "Зарубежная карта + СБП",
+        "Зарубежная карта с СБП",
+        "Зарубежная карта онлайн"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Пополнение с любого банка по СБП.",
+        "Выпуск зарубежной карты. Рубли по СБП. Промокод LG2026."
+      ],
+      "sitelinks": [
+        {"title": "Зарубежная карта", "description": "Выпуск онлайн за минуты"},
+        {"title": "Промокод LG2026", "description": "−500 ₽ (если актуально)"},
+        {"title": "Пополнение по СБП", "description": "Рублями с любого банка"},
+        {"title": "Оплата в сервисах", "description": "Поездки и подписки"}
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Промокод LG2026"
+      ]
+    }
+  ],
+  "forbidden": [
+    "займы",
+    "микрозаймы",
+    "гарантии одобрения",
+    "обход санкций/ограничений",
+    "Visa/Mastercard/Apple Pay/Google Pay"
+  ],
+  "notes": [
+    "Title ≤56, Text ≤81",
+    "Product format: ZERO text on image; copy only in Direct fields",
+    "Replaced brief title «без отказа» → «для оплаты» (no approval guarantee)"
+  ]
+}
