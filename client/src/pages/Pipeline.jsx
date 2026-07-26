@@ -28,6 +28,7 @@ const STATUS_CLASS = {
 export default function Pipeline() {
   const [roles, setRoles] = useState([]);
   const [pipeline, setPipeline] = useState([]);
+  const [optPipeline, setOptPipeline] = useState([]);
   const [integrations, setIntegrations] = useState(null);
   const [runs, setRuns] = useState([]);
   const [form, setForm] = useState(emptyOffer);
@@ -39,6 +40,10 @@ export default function Pipeline() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [copiedKey, setCopiedKey] = useState('');
+  const [trafficCamps, setTrafficCamps] = useState([]);
+  const [selectedTraffic, setSelectedTraffic] = useState([]);
+  const [applyTraffic, setApplyTraffic] = useState(false);
+  const [trafficBusy, setTrafficBusy] = useState(false);
 
   async function copyField(key, text) {
     if (!text) return;
@@ -51,16 +56,57 @@ export default function Pipeline() {
   const loadList = () => api.get('/api/pipeline/runs').then(setRuns);
 
   useEffect(() => {
-    Promise.all([api.get('/api/pipeline/roles'), api.get('/api/pipeline/runs')])
-      .then(([meta, list]) => {
+    Promise.all([
+      api.get('/api/pipeline/roles'),
+      api.get('/api/pipeline/runs'),
+      api.get('/api/pipeline/traffic/campaigns').catch(() => ({ campaigns: [] })),
+    ])
+      .then(([meta, list, traffic]) => {
         setRoles(meta.roles || []);
         setPipeline(meta.pipeline || []);
+        setOptPipeline(meta.optimization_pipeline || []);
         setIntegrations(meta.integrations || null);
         setRuns(list);
         if (meta.integrations?.direct?.configured) setApplyDirect(true);
+        const camps = traffic.campaigns || [];
+        setTrafficCamps(camps);
+        setSelectedTraffic(camps.filter((c) => c.moderated).map((c) => c.id));
       })
       .catch((e) => setMsg(e.message));
   }, []);
+
+  function toggleTrafficCamp(id) {
+    setSelectedTraffic((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  async function runTrafficAnalyst() {
+    setTrafficBusy(true);
+    setMsg('');
+    try {
+      const run = await api.post('/api/pipeline/traffic/runs', {
+        direct_campaign_ids: selectedTraffic,
+        apply: applyTraffic,
+      });
+      setActive(run);
+      const ta = run.context?.traffic_analysis;
+      const cut = ta?.actions?.exclude_placements?.length || 0;
+      const applied = ta?.apply && !ta.apply.dry_run;
+      setMsg(
+        applied
+          ? `Аналитик трафика: запретил площадки (${cut} кандидатов). Смотри run #${run.id}`
+          : `Аналитик трафика: рекомендации готовы (${cut} площадок к запрету). Run #${run.id}`,
+      );
+      await loadList();
+      const traffic = await api.get('/api/pipeline/traffic/campaigns').catch(() => null);
+      if (traffic?.campaigns) setTrafficCamps(traffic.campaigns);
+    } catch (e) {
+      setMsg(e.message);
+    } finally {
+      setTrafficBusy(false);
+    }
+  }
 
   async function openRun(id) {
     try {
@@ -142,9 +188,8 @@ export default function Pipeline() {
         <div>
           <h1>Оркестратор</h1>
           <p>
-            Вставь ссылку на оффер — агенты соберут данные, креативы, настроят трекер и черновик Директа.
-            На модерацию не отправляем: в конце будет «Кампания готова», запуск — вручную.
-            API-ключи берутся с сервера, вводить ничего не нужно.
+            Запуск оффера: креативы, трекер, черновик Директа (без автомодерации). После модерации —
+            аналитик трафика чистит площадки и предлагает правки по тестам.
           </p>
         </div>
       </header>
@@ -258,6 +303,89 @@ export default function Pipeline() {
             </li>
           ))}
         </ol>
+        {optPipeline.length ? (
+          <>
+            <p className="hint" style={{ padding: '0 1rem', marginBottom: 0 }}>
+              После модерации / набора кликов:
+            </p>
+            <ol className="pipeline-flow">
+              {optPipeline.map((s) => (
+                <li key={s.agent}>
+                  <code>{s.agent}</code> — {s.title}
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : null}
+      </section>
+
+      <section className="panel" style={{ marginBottom: '1rem' }}>
+        <div className="panel-head">
+          <h2>Аналитик трафика</h2>
+        </div>
+        <div style={{ padding: '1rem' }}>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Смотрит кампании, прошедшие модерацию: отчёт «Площадки» в Директе + статистика трекера.
+            Режет мусорные площадки, подсказывает ставки и паузы. Цель — улучшить качество трафика.
+          </p>
+          {!trafficCamps.length ? (
+            <p className="empty">Нет активных кампаний в Директе или токен не настроен</p>
+          ) : (
+            <div className="table-wrap" style={{ marginBottom: '0.75rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Статус</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trafficCamps.map((c) => (
+                    <tr key={c.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedTraffic.includes(c.id)}
+                          onChange={() => toggleTrafficCamp(c.id)}
+                          disabled={!c.moderated && c.status === 'DRAFT'}
+                        />
+                      </td>
+                      <td className="mono">{c.id}</td>
+                      <td>{c.name}</td>
+                      <td>
+                        <span className={c.moderated ? 'badge active' : 'badge paused'}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="mono">{c.state}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <label className="chk">
+            <input
+              type="checkbox"
+              checked={applyTraffic}
+              onChange={(e) => setApplyTraffic(e.target.checked)}
+            />
+            Применить правки в Директе (запретить мусорные площадки)
+          </label>
+          <div style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn"
+              disabled={trafficBusy || !selectedTraffic.length}
+              onClick={runTrafficAnalyst}
+            >
+              {trafficBusy ? 'Анализ…' : 'Запустить аналитика трафика'}
+            </button>
+          </div>
+        </div>
       </section>
 
       <div className="grid-2" style={{ marginBottom: '1rem' }}>
@@ -504,6 +632,30 @@ export default function Pipeline() {
                 ) : null}
               </div>
             ) : null}
+            {active.context?.traffic_analysis ? (
+              <div className="banner ok">
+                Трафик: к запрету{' '}
+                {active.context.traffic_analysis.actions?.exclude_placements?.length || 0} площадок
+                {active.context.traffic_analysis.apply?.dry_run
+                  ? ' · только рекомендации'
+                  : active.context.traffic_analysis.apply
+                    ? ' · правки отправлены в Директ'
+                    : ''}
+                {active.context.traffic_analysis.campaigns?.length ? (
+                  <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem' }}>
+                    {active.context.traffic_analysis.campaigns.map((c) => (
+                      <li key={c.direct?.id || c.direct?.name}>
+                        <code>{c.direct?.id}</code> {c.direct?.name} —{' '}
+                        {(c.advice || [])
+                          .filter((a) => a.level === 'warn' || a.level === 'action' || a.level === 'ok')
+                          .map((a) => a.text)
+                          .join(' · ') || 'ок'}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             {active.error ? <div className="banner bad">{active.error}</div> : null}
             {active.context?.cursor_launches?.length ? (
               <div className="banner">
@@ -525,7 +677,15 @@ export default function Pipeline() {
 
             <div className="pipeline-steps">
               {(active.steps || []).map((s) => (
-                <details key={s.id} className="pipeline-step" open={s.status === 'failed' || s.agent === 'direct'}>
+                <details
+                  key={s.id}
+                  className="pipeline-step"
+                  open={
+                    s.status === 'failed' ||
+                    s.agent === 'direct' ||
+                    s.agent === 'traffic_analyst'
+                  }
+                >
                   <summary>
                     <span className={STATUS_CLASS[s.status] || 'badge'}>{s.status}</span>{' '}
                     <strong>{s.title}</strong> <code>{s.agent}</code>

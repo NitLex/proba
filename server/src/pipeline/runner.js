@@ -1,4 +1,4 @@
-import { DEFAULT_PIPELINE, AGENT_ROLES } from './roles.js';
+import { DEFAULT_PIPELINE, OPTIMIZATION_PIPELINE, AGENT_ROLES } from './roles.js';
 import {
   createRun,
   getRun,
@@ -12,6 +12,7 @@ import { runCreative } from './agents/creative.js';
 import { runTracker } from './agents/tracker.js';
 import { runDirect } from './agents/direct.js';
 import { runQa } from './agents/qa.js';
+import { runTrafficAnalyst } from './agents/trafficAnalyst.js';
 import { maybeSpawnCursorAgents } from './spawnCursor.js';
 
 const HANDLERS = {
@@ -21,6 +22,7 @@ const HANDLERS = {
   tracker: runTracker,
   direct: runDirect,
   qa: runQa,
+  traffic_analyst: runTrafficAnalyst,
 };
 
 function nowIso() {
@@ -93,11 +95,20 @@ export async function executeRun(runId, options = {}) {
             throw new Error(`Unknown agent ${step.agent}`);
           }
           try {
+            const applyTraffic =
+              options.applyTraffic !== undefined
+                ? Boolean(options.applyTraffic)
+                : false;
             const result = await handler({
               offer,
               context: waveContext,
               dryRun,
-              apply: step.agent === 'direct' ? applyDirect : undefined,
+              apply:
+                step.agent === 'direct'
+                  ? applyDirect
+                  : step.agent === 'traffic_analyst'
+                    ? applyTraffic
+                    : undefined,
               ownerUserId: options.ownerUserId || waveContext.owner_user_id || null,
             });
             const output = {
@@ -108,6 +119,7 @@ export async function executeRun(runId, options = {}) {
               ...(result.tracker ? { tracker: result.tracker } : {}),
               ...(result.direct ? { direct: result.direct } : {}),
               ...(result.qa ? { qa: result.qa } : {}),
+              ...(result.traffic_analysis ? { traffic_analysis: result.traffic_analysis } : {}),
               ...(result.ready_message ? { ready_message: result.ready_message } : {}),
               cursor_prompt: result.cursor_prompt,
               agent_role: AGENT_ROLES[step.agent] || { id: step.agent },
@@ -191,4 +203,45 @@ export async function runPipeline(offerInput, options = {}) {
   return executeRun(id, options);
 }
 
-export { AGENT_ROLES, DEFAULT_PIPELINE, HANDLERS };
+/** Post-launch traffic optimization run (traffic_analyst only). */
+export async function runTrafficOptimization(options = {}) {
+  const ids = (options.directCampaignIds || []).map(String).filter(Boolean);
+  const title =
+    options.title ||
+    (ids.length
+      ? `Трафик: кампании ${ids.slice(0, 3).join(', ')}${ids.length > 3 ? '…' : ''}`
+      : 'Трафик: модерированные кампании');
+
+  const runId = startPipeline(
+    {
+      name: 'Traffic optimization',
+      direct_campaign_ids: ids,
+      geo: options.geo || 'RU',
+    },
+    { title, pipeline: OPTIMIZATION_PIPELINE },
+  );
+
+  const cur = getRun(runId);
+  updateRun(runId, {
+    context: {
+      ...(cur?.context || {}),
+      run_id: runId,
+      owner_user_id: options.ownerUserId || null,
+      direct_campaign_ids: ids,
+      traffic_date_from: options.dateFrom || null,
+      traffic_date_to: options.dateTo || null,
+      traffic_min_clicks: options.minClicks,
+      traffic_max_cost_no_conv: options.maxCostNoConv,
+      kind: 'traffic_optimization',
+    },
+  });
+
+  return executeRun(runId, {
+    dryRun: Boolean(options.dryRun),
+    applyDirect: false,
+    applyTraffic: Boolean(options.applyTraffic),
+    ownerUserId: options.ownerUserId || null,
+  });
+}
+
+export { AGENT_ROLES, DEFAULT_PIPELINE, OPTIMIZATION_PIPELINE, HANDLERS };

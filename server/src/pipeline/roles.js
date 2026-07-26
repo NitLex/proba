@@ -40,6 +40,12 @@ export const AGENT_ROLES = {
     description:
       'После сборки: click 302, YandexBot/YaDirectFetcher не 403, редирект на оффер, postback-шаблон, кампания Директа.',
   },
+  traffic_analyst: {
+    id: 'traffic_analyst',
+    name: 'Аналитик трафика',
+    description:
+      'После модерации: смотрит статистику трекера и отчёт «Площадки», режет мусор, советует ставки/паузы. Цель — улучшить качество трафика.',
+  },
 };
 
 /** Default DAG: analyst → parallel → direct → qa smoke. */
@@ -57,5 +63,14 @@ export const DEFAULT_PIPELINE = [
     agent: 'qa',
     title: 'Проверка ссылок и кликов',
     dependsOn: ['tracker', 'direct'],
+  },
+];
+
+/** Post-launch optimization (not part of offer launch). */
+export const OPTIMIZATION_PIPELINE = [
+  {
+    agent: 'traffic_analyst',
+    title: 'Анализ трафика и чистка площадок',
+    dependsOn: [],
   },
 ];

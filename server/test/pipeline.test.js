@@ -19,13 +19,25 @@ const owner = db
   .run(hashPassword('secret1'));
 const OWNER_ID = Number(owner.lastInsertRowid);
 await import('../src/pipeline/store.js');
-const { runPipeline, AGENT_ROLES, DEFAULT_PIPELINE } = await import('../src/pipeline/runner.js');
+const {
+  runPipeline,
+  runTrafficOptimization,
+  AGENT_ROLES,
+  DEFAULT_PIPELINE,
+  OPTIMIZATION_PIPELINE,
+} = await import('../src/pipeline/runner.js');
 
 test('roles and default graph exist', () => {
-  assert.equal(Object.keys(AGENT_ROLES).length >= 6, true);
+  assert.equal(Object.keys(AGENT_ROLES).length >= 7, true);
   assert.equal(DEFAULT_PIPELINE[0].agent, 'analyst');
   assert.ok(DEFAULT_PIPELINE.find((s) => s.agent === 'direct'));
   assert.ok(DEFAULT_PIPELINE.find((s) => s.agent === 'qa'));
+  assert.ok(AGENT_ROLES.traffic_analyst);
+  assert.equal(OPTIMIZATION_PIPELINE[0].agent, 'traffic_analyst');
+  assert.ok(
+    !DEFAULT_PIPELINE.find((s) => s.agent === 'traffic_analyst'),
+    'traffic analyst is post-launch, not in launch DAG',
+  );
 });
 
 test('pipeline dry-run completes all agents', async () => {
@@ -79,6 +91,33 @@ test('pipeline creates tracker entities when not dry-run', async () => {
   assert.equal(camp.user_id, OWNER_ID);
   assert.equal(camp.currency, 'RUB');
   delete process.env.PIPELINE_SKIP_QA;
+});
+
+test('traffic optimization run completes without Direct token', async () => {
+  const prevToken = process.env.YANDEX_DIRECT_TOKEN;
+  const prevLogin = process.env.YANDEX_DIRECT_LOGIN;
+  delete process.env.YANDEX_DIRECT_TOKEN;
+  delete process.env.YANDEX_DIRECT_LOGIN;
+
+  const run = await runTrafficOptimization({
+    directCampaignIds: ['713057647'],
+    dryRun: true,
+    applyTraffic: false,
+    ownerUserId: OWNER_ID,
+  });
+
+  assert.equal(run.status, 'done', run.error || '');
+  assert.equal(run.steps.length, 1);
+  assert.equal(run.steps[0].agent, 'traffic_analyst');
+  assert.equal(run.steps[0].status, 'done');
+  assert.ok(run.context.traffic_analysis);
+  assert.ok(run.context.kind === 'traffic_optimization');
+  assert.ok(run.steps[0].output?.summary);
+
+  if (prevToken) process.env.YANDEX_DIRECT_TOKEN = prevToken;
+  else delete process.env.YANDEX_DIRECT_TOKEN;
+  if (prevLogin) process.env.YANDEX_DIRECT_LOGIN = prevLogin;
+  else delete process.env.YANDEX_DIRECT_LOGIN;
 });
 
 after(() => {

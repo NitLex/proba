@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { requireRegistered } from '../middleware/auth.js';
-import { AGENT_ROLES, DEFAULT_PIPELINE, executeRun, startPipeline } from '../pipeline/runner.js';
+import {
+  AGENT_ROLES,
+  DEFAULT_PIPELINE,
+  OPTIMIZATION_PIPELINE,
+  executeRun,
+  startPipeline,
+  runTrafficOptimization,
+} from '../pipeline/runner.js';
 import { getRun, listRuns, updateRun } from '../pipeline/store.js';
 import { wordstatConfig } from '../lib/wordstat.js';
 import { cursorAgentsConfig, DEFAULT_CURSOR_SPAWN_AGENTS } from '../lib/cursorAgents.js';
@@ -14,6 +21,7 @@ import {
   publicTrackerBase,
 } from '../lib/leadgidPostback.js';
 import { DIRECT_DOC_SOURCES } from '../pipeline/knowledge/direct-handbook.js';
+import { listModeratedDirectCampaigns } from '../pipeline/agents/trafficAnalyst.js';
 
 const router = Router();
 // Double-guard: demo account must never use orchestrator (UI also hides the tab)
@@ -37,6 +45,7 @@ router.get('/roles', (_req, res) => {
   res.json({
     roles: Object.values(AGENT_ROLES),
     pipeline: DEFAULT_PIPELINE,
+    optimization_pipeline: OPTIMIZATION_PIPELINE,
     integrations: {
       wordstat: {
         configured: wordstatConfig().configured,
@@ -177,6 +186,54 @@ router.post('/runs/:id/retry', async (req, res, next) => {
       applyDirect: req.body?.apply_direct,
     });
     res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Campaigns in Direct that traffic analyst can watch (moderated / serving). */
+router.get('/traffic/campaigns', async (_req, res, next) => {
+  try {
+    const listed = await listModeratedDirectCampaigns();
+    res.json(listed);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Post-launch traffic optimization.
+ * Body: {
+ *   direct_campaign_ids?: string[],
+ *   apply?: bool,           // exclude junk placements in Direct
+ *   dry_run?: bool,
+ *   date_from?: YYYY-MM-DD,
+ *   date_to?: YYYY-MM-DD,
+ *   min_clicks?: number,
+ *   max_cost_no_conv?: number
+ * }
+ */
+router.post('/traffic/runs', async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    const ids = Array.isArray(body.direct_campaign_ids)
+      ? body.direct_campaign_ids.map(String)
+      : body.direct_campaign_id
+        ? [String(body.direct_campaign_id)]
+        : [];
+
+    const run = await runTrafficOptimization({
+      directCampaignIds: ids,
+      applyTraffic: Boolean(body.apply),
+      dryRun: Boolean(body.dry_run),
+      dateFrom: body.date_from || undefined,
+      dateTo: body.date_to || undefined,
+      minClicks: body.min_clicks,
+      maxCostNoConv: body.max_cost_no_conv,
+      ownerUserId: req.user?.id || null,
+      title: body.title,
+    });
+    res.status(201).json(run);
   } catch (err) {
     next(err);
   }
