@@ -26,6 +26,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const mode = app?.mode || 'full';
+    if (mode === 'orchestrator') {
+      document.title = 'Orkestr.online — оркестратор';
+      const link = document.querySelector("link[rel='icon']");
+      if (link) link.href = '/favicon-orchestrator.svg';
+    } else {
+      document.title = 'ArbTrack — арбитражный трекер';
+      const link = document.querySelector("link[rel='icon']");
+      if (link) link.href = '/favicon.svg';
+    }
+  }, [app?.mode]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function boot() {

@@ -140,7 +140,16 @@ export function createApp() {
 
   const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
   if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist));
+    // Distinct tab icon / title before SPA boots (avoid tracker green triangle on orkestr)
+    app.get('/favicon.svg', (req, res) => {
+      const file = isOrchestratorMode()
+        ? path.join(clientDist, 'favicon-orchestrator.svg')
+        : path.join(clientDist, 'favicon.svg');
+      if (!fs.existsSync(file)) return res.status(404).end();
+      res.type('image/svg+xml').sendFile(file);
+    });
+
+    app.use(express.static(clientDist, { index: false }));
     app.get('*', (req, res, next) => {
       if (
         req.path.startsWith('/api') ||
@@ -151,7 +160,25 @@ export function createApp() {
       ) {
         return next();
       }
-      res.sendFile(path.join(clientDist, 'index.html'));
+      const indexPath = path.join(clientDist, 'index.html');
+      if (!isOrchestratorMode()) {
+        return res.sendFile(indexPath);
+      }
+      try {
+        let html = fs.readFileSync(indexPath, 'utf8');
+        html = html
+          .replace(
+            /<title>[^<]*<\/title>/,
+            '<title>Orkestr.online — оркестратор</title>'
+          )
+          .replace(
+            /href="\/favicon\.svg"/,
+            'href="/favicon-orchestrator.svg"'
+          );
+        res.type('html').send(html);
+      } catch {
+        res.sendFile(indexPath);
+      }
     });
   }
 
