@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import {
   yandexArtSceneHint,
   creativeBriefForVertical,
+  yandexArtFallbackPrompts,
 } from '../pipeline/knowledge/creative-handbook.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -246,6 +247,28 @@ function isGeoBlockedError(err) {
   );
 }
 
+function isYandexArtRefusal(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('не могу сгенерировать') ||
+    msg.includes('другую тему') ||
+    msg.includes('cannot generate') ||
+    msg.includes('try a different')
+  );
+}
+
+function isTransientImageError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    isYandexArtRefusal(err) ||
+    msg.includes('timeout') ||
+    msg.includes('fetch failed') ||
+    msg.includes('econnreset') ||
+    msg.includes('503') ||
+    msg.includes('429')
+  );
+}
+
 /** Optional proxy for OpenAI (EU/US HTTP(S) proxy). Uses undici if present. */
 async function openaiFetch(url, init) {
   const proxy = process.env.OPENAI_HTTP_PROXY || process.env.HTTPS_PROXY || '';
@@ -458,18 +481,24 @@ export async function generateCreativeImage({
   try {
     let result;
     let lastErr;
-    for (let attempt = 0; attempt <= retries; attempt++) {
+    const fallbacks =
+      cfg.provider === 'yandex_art'
+        ? yandexArtFallbackPrompts({ verticalKey, angle, offer })
+        : [];
+    // Main prompt + safe YandexART fallbacks (refusals are flaky)
+    const queue = [prompt, ...fallbacks].filter(Boolean);
+    const maxAttempts = Math.max(queue.length, retries + 1);
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const attemptPrompt = (queue[attempt] || `${prompt} Вариация ${attempt + 1}.`).slice(0, 500);
       try {
-        const attemptPrompt =
-          attempt === 0
-            ? prompt
-            : `${prompt} Вариация ${attempt + 1}, другой ракурс.`.slice(0, 500);
         result = await generateWithProvider(cfg.provider, attemptPrompt, dest);
+        if (attempt > 0) {
+          result = { ...result, prompt_used: attemptPrompt, retry_attempt: attempt };
+        }
         lastErr = null;
         break;
       } catch (err) {
         lastErr = err;
-        // OpenAI geo-block → YandexART only when explicitly allowed
         const allowFallback = String(process.env.OPENAI_ALLOW_YANDEX_FALLBACK || '') === '1';
         if (
           allowFallback &&
@@ -493,8 +522,8 @@ export async function generateCreativeImage({
             `${err.message}. С RU VPS задай OPENAI_RELAY_URL или OPENAI_HTTP_PROXY, либо IMAGE_PROVIDER=yandex_art.`,
           );
         }
-        if (attempt >= retries) throw err;
-        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        if (attempt >= maxAttempts - 1) throw err;
+        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
     }
     if (lastErr) throw lastErr;
