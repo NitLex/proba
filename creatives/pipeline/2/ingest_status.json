@@ -1,0 +1,20 @@
+{
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "run_id": 2,
+  "token_hint": "kBh-DJMy-…",
+  "ok": false,
+  "error": "Run not found",
+  "note": "Endpoint reachable; token accepted past auth gate but run_id=2 missing on orchestrator. Local creatives ready — re-run upload_ingest.py --prefer-jpeg when run is active.",
+  "attempts": [
+    {
+      "file": "generic-agent-0.jpg",
+      "status": 404,
+      "body": "{\"error\":\"Run not found\"}"
+    },
+    {
+      "file": "generic-agent-1.jpg",
+      "status": 404,
+      "body": "{\"error\":\"Run not found\"}"
+    }
+  ]
+}

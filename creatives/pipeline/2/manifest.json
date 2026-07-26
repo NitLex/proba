@@ -1,0 +1,61 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "engine": "agent",
+  "image_provider": "cursor-agent-GenerateImage",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "promo_code": ""
+  },
+  "creatives": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 0,
+      "file": "generic-agent-0.png",
+      "file_jpeg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "Матовая blank-карта, cinematic rim light, тёмный фон",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. Заявка без очередей.",
+        "Зарубежная карта: оформите заявку онлайн. Пополнение по СБП.",
+        "Pipeline Live — выпуск зарубежной карты. Условия на сайте."
+      ]
+    },
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 1,
+      "file": "generic-agent-1.png",
+      "file_jpeg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "Светлая blank-карта с золотым торцом, cool/warm light",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. Заявка без очередей.",
+        "Зарубежная карта: оформите заявку онлайн. Пополнение по СБП.",
+        "Pipeline Live — выпуск зарубежной карты. Условия на сайте."
+      ]
+    }
+  ],
+  "qa": {
+    "product_no_text_on_image": true,
+    "no_payment_brand_logos": true,
+    "no_guarantees": true,
+    "required_copy_phrase": "зарубежная карта / выпуск зарубежной карты",
+    "title_max": 56,
+    "text_max": 81
+  }
+}
