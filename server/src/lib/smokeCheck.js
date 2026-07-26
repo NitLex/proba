@@ -168,14 +168,15 @@ export async function checkPostbackTemplate(postbackUrl) {
 export async function checkOfferAffSub(offerUrl) {
   const { validateOfferTrackingUrl } = await import('./leadgidPostback.js');
   const v = validateOfferTrackingUrl(offerUrl);
-  // Soft: warn so smoke/pipeline не валится на старых URL без aff_sub, но сигнал есть
+  // Hard-fail for LeadGid / missing clickid — иначе постбэки не склеятся
+  const ok = Boolean(v.ok);
   return {
     id: 'offer_aff_sub',
-    ok: true,
-    severity: v.has_aff_sub ? 'ok' : 'warn',
-    summary: v.has_aff_sub
-      ? 'в URL оффера есть aff_sub={clickid}'
-      : `оффер: ${v.reason} (рекомендуется aff_sub={clickid})`,
+    ok,
+    severity: ok ? 'ok' : 'fail',
+    summary: ok
+      ? 'в URL оффера есть aff_sub={clickid} (или clickid-макрос)'
+      : `оффер: ${v.reason} — обязателен aff_sub={clickid}`,
     ...v,
   };
 }

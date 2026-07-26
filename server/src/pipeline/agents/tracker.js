@@ -3,6 +3,7 @@ import {
   buildLeadgidPostbackUrl,
   leadgidPostbackInstructions,
   validateOfferTrackingUrl,
+  ensureOfferTrackingUrl,
 } from '../../lib/leadgidPostback.js';
 import { makeCampaignKey } from '../../lib/tracking.js';
 import { generatePreland } from '../../lib/preland.js';
@@ -72,21 +73,61 @@ function upsertSourceLocal(name, postbackUrl, userId) {
   return db.prepare(`SELECT * FROM traffic_sources WHERE id = ?`).get(info.lastInsertRowid);
 }
 
-function upsertOfferLocal(offer, userId) {
-  const name = offer.name || offer.offer_name || 'Pipeline offer';
-  const url = offer.url || offer.offer_url || 'https://example.com/?clickid={clickid}';
-  const currency = offer.currency || 'RUB';
-  const existing = userId
+function findExistingOfferLocal(offer, name, url, userId) {
+  const byExact = userId
     ? db.prepare(`SELECT * FROM offers WHERE name = ? AND url = ? AND user_id = ?`).get(name, url, userId)
     : db.prepare(`SELECT * FROM offers WHERE name = ? AND url = ?`).get(name, url);
+  if (byExact) return byExact;
+
+  // Same LeadGid offer_id / name without aff_sub yet → reuse and patch URL
+  const lgId = offer.network_offer_id || offer.offer_id || '';
+  if (lgId) {
+    const byLg = userId
+      ? db
+          .prepare(
+            `SELECT * FROM offers
+             WHERE user_id = ? AND (url LIKE ? OR notes LIKE ?)
+             ORDER BY id DESC LIMIT 1`,
+          )
+          .get(userId, `%offer_id=${lgId}%`, `%pipeline:${lgId}%`)
+      : db
+          .prepare(
+            `SELECT * FROM offers
+             WHERE url LIKE ? OR notes LIKE ?
+             ORDER BY id DESC LIMIT 1`,
+          )
+          .get(`%offer_id=${lgId}%`, `%pipeline:${lgId}%`);
+    if (byLg) return byLg;
+  }
+
+  if (name) {
+    const byName = userId
+      ? db.prepare(`SELECT * FROM offers WHERE name = ? AND user_id = ? ORDER BY id DESC LIMIT 1`).get(name, userId)
+      : db.prepare(`SELECT * FROM offers WHERE name = ? ORDER BY id DESC LIMIT 1`).get(name);
+    if (byName && /leadgid|go\.leadgid/i.test(byName.url || '')) return byName;
+  }
+  return null;
+}
+
+function upsertOfferLocal(offer, userId) {
+  const name = offer.name || offer.offer_name || 'Pipeline offer';
+  const rawUrl = offer.url || offer.offer_url || 'https://example.com/?clickid={clickid}';
+  const network = offer.network || '';
+  const url = ensureOfferTrackingUrl(rawUrl, { network });
+  const currency = offer.currency || 'RUB';
+  const existing = findExistingOfferLocal(offer, name, url, userId);
   if (existing) {
+    const fixedUrl = ensureOfferTrackingUrl(existing.url || url, {
+      network: network || existing.network || '',
+    });
     db.prepare(
-      `UPDATE offers SET payout = ?, currency = ?, geo = ?, network = ?, notes = ?, status = 'active', user_id = COALESCE(user_id, ?) WHERE id = ?`,
+      `UPDATE offers SET url = ?, payout = ?, currency = ?, geo = ?, network = ?, notes = ?, status = 'active', user_id = COALESCE(user_id, ?) WHERE id = ?`,
     ).run(
+      fixedUrl,
       Number(offer.payout || existing.payout || 0),
       currency || existing.currency || 'RUB',
       offer.geo || existing.geo || '',
-      offer.network || existing.network || '',
+      network || existing.network || '',
       offer.notes || existing.notes || '',
       userId || null,
       existing.id,
@@ -105,7 +146,7 @@ function upsertOfferLocal(offer, userId) {
       Number(offer.payout || 0),
       currency,
       offer.geo || '',
-      offer.network || '',
+      network,
       offer.notes || 'pipeline',
     );
   return db.prepare(`SELECT * FROM offers WHERE id = ?`).get(info.lastInsertRowid);
@@ -166,21 +207,38 @@ async function upsertSourceRemote(token, name) {
 async function upsertOfferRemote(token, offer) {
   const list = await remoteApi(token, 'GET', '/api/offers');
   const name = offer.name || offer.offer_name || 'Pipeline offer';
-  const url = offer.url || offer.offer_url || 'https://example.com/?clickid={clickid}';
+  const network = offer.network || '';
+  const url = ensureOfferTrackingUrl(
+    offer.url || offer.offer_url || 'https://example.com/?clickid={clickid}',
+    { network },
+  );
   const marker = offer.network_offer_id || offer.offer_id || name;
   const existing = (list || []).find(
     (o) =>
       (o.name === name && o.url === url) ||
-      String(o.notes || '').includes(`pipeline:${marker}`),
+      String(o.notes || '').includes(`pipeline:${marker}`) ||
+      (marker && String(o.url || '').includes(`offer_id=${marker}`)),
   );
-  if (existing) return existing;
+  if (existing) {
+    const fixedUrl = ensureOfferTrackingUrl(existing.url || url, {
+      network: network || existing.network || '',
+    });
+    if (fixedUrl !== existing.url) {
+      return remoteApi(token, 'PUT', `/api/offers/${existing.id}`, {
+        ...existing,
+        url: fixedUrl,
+        status: 'active',
+      });
+    }
+    return existing;
+  }
   return remoteApi(token, 'POST', '/api/offers', {
     name,
     url,
     payout: Number(offer.payout || 0),
     currency: offer.currency || 'RUB',
     geo: offer.geo || '',
-    network: offer.network || '',
+    network,
     status: 'active',
     notes: `pipeline:${marker}\n${offer.notes || ''}`,
   });
@@ -220,7 +278,12 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   const wantPreland =
     String(process.env.PIPELINE_PRELAND || offer.use_preland || '1') !== '0' &&
     /fintech_cards|fintech_loans/i.test(verticalKey || 'fintech_cards');
-  const offerTrack = validateOfferTrackingUrl(offer.url || offer.offer_url || '');
+  // Normalize offer URL before create/validate (LeadGid → aff_sub={clickid})
+  offer.url = ensureOfferTrackingUrl(offer.url || offer.offer_url || '', {
+    network: offer.network || '',
+  });
+  if (offer.offer_url) offer.offer_url = offer.url;
+  const offerTrack = validateOfferTrackingUrl(offer.url || '');
 
   if (dryRun) {
     const tracker = {
@@ -232,13 +295,23 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
       postback_help: postbackHelp,
       offer_tracking: offerTrack,
       preland_planned: wantPreland,
-      planned: { sourceName, campaignName, cpc, postbackTemplate, base, currency },
+      planned: {
+        sourceName,
+        campaignName,
+        cpc,
+        postbackTemplate,
+        base,
+        currency,
+        offer_url: offer.url,
+      },
     };
     return {
       summary: `Dry-run: трекер ${useRemote ? 'REMOTE ' + remoteBase() : 'local'} — сущности не создавались. Постбэк LeadGid — вручную.`,
       tracker,
+      failed: !offerTrack.ok,
       cursor_prompt: [
         'Проверь план трекера и создай source/offer/campaign.',
+        `Offer URL: ${offer.url}`,
         `LeadGid postback (вручную): ${postbackTemplate}`,
       ].join('\n'),
       context_patch: { tracker },
@@ -311,6 +384,7 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
     ? `${base}/click/${key}?utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}`
     : `${base}/click/?utm_campaign={campaign_id}&utm_content={ad_id}`;
 
+  const finalOfferTrack = validateOfferTrackingUrl(offerRow.url || '');
   const tracker = {
     mode: useRemote ? 'remote' : 'local',
     base,
@@ -327,7 +401,7 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
       ? { id: landing.id, name: landing.name, url: landing.url }
       : null,
     preland,
-    offer_tracking: offerTrack,
+    offer_tracking: finalOfferTrack,
     campaign: {
       id: campaign.id,
       name: campaign.name,
@@ -342,14 +416,19 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
     postback_help: postbackHelp,
   };
 
+  const trackingOk = Boolean(finalOfferTrack.ok);
   return {
-    summary: `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · user #${userId || '—'} · ${currency}${preland ? ' · preland' : ''} · постбэк LeadGid — вручную`,
+    summary: trackingOk
+      ? `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · user #${userId || '—'} · ${currency}${preland ? ' · preland' : ''} · aff_sub ok · постбэк LeadGid — вручную`
+      : `Трекер: нет aff_sub={clickid} в URL оффера — постбэки не склеятся (${finalOfferTrack.reason})`,
+    failed: !trackingOk,
     tracker,
     cursor_prompt: [
       `Трекер: ${base} (mode=${tracker.mode}, user_id=${userId})`,
       `Click: ${clickUrl}`,
+      `Offer URL: ${offerRow.url}`,
       preland ? `Preland: ${preland.url}` : 'Preland: off (direct-to-offer)',
-      `Offer tracking: ${offerTrack.reason}`,
+      `Offer tracking: ${finalOfferTrack.reason}`,
       `LeadGid Postback (ВРУЧНУЮ в кабинете): ${postbackTemplate}`,
       postbackHelp.where,
       postbackHelp.note,

@@ -15,6 +15,8 @@ const { phaseForDay, scheduleAdvice, daysSince } = await import('../src/lib/opti
 const {
   validateOfferTrackingUrl,
   leadgidPostbackInstructions,
+  ensureOfferTrackingUrl,
+  ensureLeadgidAffSubOnRedirect,
 } = await import('../src/lib/leadgidPostback.js');
 const { buildQualitySnapshot, buildTrafficMiniReport } = await import(
   '../src/pipeline/agents/trafficAnalyst.js'
@@ -126,6 +128,18 @@ test('offer tracking URL validation', () => {
   );
   assert.equal(validateOfferTrackingUrl('https://go.example/').ok, false);
   assert.ok(leadgidPostbackInstructions().url.includes('postback'));
+});
+
+test('ensureOfferTrackingUrl appends aff_sub for LeadGid', () => {
+  const raw = 'https://go.leadgid.ru/aff_c?aff_id=123072&offer_id=7397&p=adnetwork';
+  const fixed = ensureOfferTrackingUrl(raw, { network: 'LeadGid' });
+  assert.match(fixed, /aff_sub=\{clickid\}/);
+  assert.equal(ensureOfferTrackingUrl(fixed), fixed);
+  assert.equal(validateOfferTrackingUrl(fixed).ok, true);
+  assert.equal(validateOfferTrackingUrl(raw).ok, false);
+
+  const live = ensureLeadgidAffSubOnRedirect(raw, 'AbCd1234EfGh5678');
+  assert.match(live, /aff_sub=AbCd1234EfGh5678/);
 });
 
 test('quality snapshot and mini-report', () => {

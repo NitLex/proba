@@ -41,20 +41,72 @@ export function offerUrlHasAffSub(url = '') {
   return /aff_sub\s*=\s*\{clickid\}/i.test(s) || /[?&]aff_sub=/i.test(s);
 }
 
+export function isLeadgidOfferUrl(url = '', network = '') {
+  return /leadgid|go\.leadgid\.ru/i.test(String(url || '')) || /leadgid/i.test(String(network || ''));
+}
+
+/**
+ * Ensure offer destination carries a clickid macro LeadGid can echo as {aff_sub}.
+ * Idempotent. For LeadGid always uses aff_sub={clickid}.
+ */
+export function ensureOfferTrackingUrl(url = '', { network = '' } = {}) {
+  let s = String(url || '').trim();
+  if (!s) return s;
+
+  const leadgid = isLeadgidOfferUrl(s, network);
+
+  // Already correct LeadGid form
+  if (/aff_sub\s*=\s*\{clickid\}/i.test(s)) return s;
+
+  // aff_sub present but not our macro → force {clickid}
+  if (/[?&]aff_sub=/i.test(s)) {
+    return s.replace(/([?&]aff_sub=)[^&]*/i, '$1{clickid}');
+  }
+
+  // Non-LeadGid already has some {clickid} macro
+  if (!leadgid && /\{clickid\}/i.test(s)) return s;
+
+  const sep = s.includes('?') ? '&' : '?';
+  if (leadgid) return `${s}${sep}aff_sub={clickid}`;
+  // Generic networks: clickid= is fine; LeadGid-style aff_sub also works if network echoes it
+  return `${s}${sep}clickid={clickid}`;
+}
+
+/**
+ * Runtime safety net after macros: if LeadGid URL still has no aff_sub, append live clickid.
+ */
+export function ensureLeadgidAffSubOnRedirect(destUrl = '', clickid = '') {
+  const dest = String(destUrl || '');
+  const cid = String(clickid || '');
+  if (!dest || !cid) return dest;
+  if (!isLeadgidOfferUrl(dest)) return dest;
+  if (/[?&]aff_sub=/i.test(dest)) return dest;
+  const sep = dest.includes('?') ? '&' : '?';
+  return `${dest}${sep}aff_sub=${encodeURIComponent(cid)}`;
+}
+
 export function validateOfferTrackingUrl(url = '') {
   const s = String(url || '');
   if (!s) return { ok: false, reason: 'empty_offer_url' };
+  const hasAffSubMacro = /aff_sub\s*=\s*\{clickid\}/i.test(s);
   const hasAffSub = offerUrlHasAffSub(s);
   const hasClickidMacro = /\{clickid\}/i.test(s);
+  const leadgid = isLeadgidOfferUrl(s);
+  // LeadGid: require aff_sub={clickid} specifically
+  const ok = leadgid ? hasAffSubMacro : hasAffSub || hasClickidMacro;
   return {
-    ok: hasAffSub || hasClickidMacro,
+    ok,
     has_aff_sub: hasAffSub,
+    has_aff_sub_macro: hasAffSubMacro,
     has_clickid_macro: hasClickidMacro,
-    reason: hasAffSub
+    leadgid,
+    reason: hasAffSubMacro
       ? 'ok'
-      : hasClickidMacro
-        ? 'has {clickid} but prefer aff_sub={clickid} for LeadGid'
-        : 'missing aff_sub={clickid}',
+      : leadgid
+        ? 'missing aff_sub={clickid}'
+        : hasClickidMacro
+          ? 'has {clickid} but prefer aff_sub={clickid} for LeadGid'
+          : 'missing aff_sub={clickid}',
     required: 'aff_sub={clickid}',
   };
 }

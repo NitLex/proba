@@ -47,13 +47,14 @@ test('runSmokeSuite with mocked fetch passes bot + browser 302', async () => {
       clickUrl: 'https://trekerarbitrag.ru/click/AB12CD34?utm_campaign={campaign_id}',
       postbackUrl:
         'https://trekerarbitrag.ru/postback?clickid={aff_sub}&payout={payout}&status={status}',
-      offerUrl: 'https://go.leadgid.ru/aff_c?offer_id=1',
+      offerUrl: 'https://go.leadgid.ru/aff_c?offer_id=1&aff_sub={clickid}',
       directCampaignId: null,
     });
     assert.equal(suite.ok, true);
     assert.ok(suite.checks.find((c) => c.id === 'click_yandexbot')?.ok);
     assert.ok(suite.checks.find((c) => c.id === 'click_yadirectfetcher')?.ok);
     assert.ok(suite.checks.find((c) => c.id === 'offer_redirect')?.ok);
+    assert.ok(suite.checks.find((c) => c.id === 'offer_aff_sub')?.ok);
   } finally {
     globalThis.fetch = real;
   }

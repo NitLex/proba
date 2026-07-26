@@ -10,6 +10,7 @@ import {
   parseCost,
   pickWeighted,
 } from '../lib/tracking.js';
+import { ensureLeadgidAffSubOnRedirect } from '../lib/leadgidPostback.js';
 import { resolveRoute } from '../lib/routing.js';
 import {
   scoreClickFraud,
@@ -246,7 +247,8 @@ router.get('/click/:key', (req, res) => {
 
   const offerUrl = route.offer_url || campaign.offer_url;
   if (!offerUrl) return res.status(400).send('No offer or landing configured');
-  return res.redirect(302, applyMacros(offerUrl, ctx));
+  const dest = ensureLeadgidAffSubOnRedirect(applyMacros(offerUrl, ctx), clickid);
+  return res.redirect(302, dest);
 });
 
 router.get('/to-offer', (req, res) => {
@@ -270,29 +272,32 @@ router.get('/to-offer', (req, res) => {
     return res.status(403).send('Bot traffic blocked');
   }
 
-  const dest = applyMacros(click.offer_url, {
-    clickid: click.clickid,
-    campaign_id: click.campaign_id,
-    campaign_name: click.campaign_name,
-    campaign_key: click.campaign_key,
-    offer_id: click.offer_id,
-    offer_name: click.offer_name,
-    cost: click.cost,
-    payout: click.offer_payout,
-    country: click.country,
-    city: click.city,
-    device: click.device,
-    os: click.os,
-    browser: click.browser,
-    ip: click.ip,
-    user_agent: click.user_agent,
-    referer: click.referer,
-    token1: click.token1,
-    token2: click.token2,
-    token3: click.token3,
-    token4: click.token4,
-    token5: click.token5,
-  });
+  const dest = ensureLeadgidAffSubOnRedirect(
+    applyMacros(click.offer_url, {
+      clickid: click.clickid,
+      campaign_id: click.campaign_id,
+      campaign_name: click.campaign_name,
+      campaign_key: click.campaign_key,
+      offer_id: click.offer_id,
+      offer_name: click.offer_name,
+      cost: click.cost,
+      payout: click.offer_payout,
+      country: click.country,
+      city: click.city,
+      device: click.device,
+      os: click.os,
+      browser: click.browser,
+      ip: click.ip,
+      user_agent: click.user_agent,
+      referer: click.referer,
+      token1: click.token1,
+      token2: click.token2,
+      token3: click.token3,
+      token4: click.token4,
+      token5: click.token5,
+    }),
+    click.clickid,
+  );
 
   return res.redirect(302, dest);
 });
