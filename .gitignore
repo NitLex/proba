@@ -8,3 +8,5 @@ client/dist/
 .DS_Store
 *.log
 .env
+# Pipeline creatives are uploaded to orkestr.online; keep binaries out of git
+creatives/pipeline/

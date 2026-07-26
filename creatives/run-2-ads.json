@@ -1,0 +1,83 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "image_provider": "agent",
+  "engine": "cursor-agent-GenerateImage",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "promo_code": null
+  },
+  "angles": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "ad_format": "product",
+      "image_has_text": false,
+      "images": [
+        {
+          "file": "pipeline/2/generic-agent-0.png",
+          "variant": 0,
+          "hook": "Матовая blank-карта с золотым чипом на тёмном мраморе — премиум stop-scroll"
+        },
+        {
+          "file": "pipeline/2/generic-agent-1.png",
+          "variant": 1,
+          "hook": "Матовая frosted-карта на сланце — минимализм, сильный свет"
+        },
+        {
+          "file": "pipeline/2/generic-agent-2.png",
+          "variant": 2,
+          "hook": "Blank-карта на карте мира + travel props — эмоция зарубежного доступа"
+        }
+      ],
+      "titles": [
+        "Зарубежная карта онлайн",
+        "Выпуск зарубежной карты",
+        "Зарубежная карта — заявка"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Оформление заявки онлайн.",
+        "Зарубежная карта. Пополнение по СБП. Без очередей.",
+        "Оформите зарубежную карту онлайн. Условия на сайте."
+      ],
+      "sitelinks": [
+        {
+          "title": "Оформить онлайн",
+          "description": "Заявка на сайте"
+        },
+        {
+          "title": "Условия",
+          "description": "Актуальные на лендинге"
+        },
+        {
+          "title": "Как это работает",
+          "description": "Коротко о шагах"
+        },
+        {
+          "title": "Поддержка",
+          "description": "Помощь по заявке"
+        }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ],
+      "forbidden": [
+        "обход санкций/ограничений",
+        "гарантии одобрения",
+        "P2P/вывод",
+        "gambling/adult/crypto",
+        "бренды Apple Pay / Google Pay / Booking"
+      ]
+    }
+  ],
+  "qa_notes": [
+    "Product format: ZERO text on images; Title/Text only in Direct fields",
+    "Titles/texts include «зарубежная карта» / «выпуск зарубежной карты» for license moderation",
+    "No Visa/MC/Apple Pay/Google Pay/bank logos; blank card faces",
+    "1024×1024 square; hero object ~55–70% of frame"
+  ]
+}

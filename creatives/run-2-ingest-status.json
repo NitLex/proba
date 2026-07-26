@@ -1,0 +1,16 @@
+{
+  "at": "2026-07-26T22:10:09.024741+00:00",
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "run_id": 2,
+  "local_files": [
+    "generic-agent-0.png",
+    "generic-agent-1.png",
+    "generic-agent-2.png"
+  ],
+  "image_count": 3,
+  "ok": false,
+  "http": 404,
+  "response": {
+    "error": "Run not found"
+  }
+}
