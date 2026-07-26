@@ -25,6 +25,12 @@ import {
   listModeratedDirectCampaigns,
   buildTrafficMiniReport,
 } from '../pipeline/agents/trafficAnalyst.js';
+import {
+  OPTIMIZATION_SCHEDULE,
+  scheduleAdvice,
+  daysSince,
+} from '../lib/optimizationSchedule.js';
+import { findTrackerByDirectCampaignId } from '../lib/directTrackerLink.js';
 
 const router = Router();
 // Double-guard: demo account must never use orchestrator (UI also hides the tab)
@@ -267,6 +273,78 @@ router.post('/traffic/runs', async (req, res, next) => {
       maxCostNoConv: body.max_cost_no_conv,
       ownerUserId: req.user?.id || null,
       title: body.title,
+    });
+    res.status(201).json(run);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Playbook schedule (day 0 / 2–3 / 5–7) for moderated campaigns. */
+router.get('/traffic/schedule', async (req, res, next) => {
+  try {
+    const listed = await listModeratedDirectCampaigns();
+    const items = (listed.campaigns || []).map((c) => {
+      const tracker = findTrackerByDirectCampaignId(c.id, req.user?.id) ||
+        findTrackerByDirectCampaignId(c.id);
+      const advice = scheduleAdvice({
+        createdAt: tracker?.created_at,
+        moderated: c.moderated,
+        serving: c.serving,
+      });
+      return {
+        direct: c,
+        tracker: tracker
+          ? { id: tracker.id, name: tracker.name, key: tracker.key, created_at: tracker.created_at }
+          : null,
+        ...advice,
+      };
+    });
+    res.json({
+      ok: true,
+      playbook: OPTIMIZATION_SCHEDULE,
+      campaigns: items,
+      due_for_analyst: items.filter((i) => i.ready_for_traffic_analyst).map((i) => i.direct.id),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Run traffic analyst «по расписанию» for campaigns in day 2–7 phases.
+ * Body: { apply?: bool, dry_run?: bool }
+ */
+router.post('/traffic/schedule/run', async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    const listed = await listModeratedDirectCampaigns();
+    const due = (listed.campaigns || [])
+      .filter((c) => c.moderated)
+      .map((c) => {
+        const tracker = findTrackerByDirectCampaignId(c.id, req.user?.id) ||
+          findTrackerByDirectCampaignId(c.id);
+        const day = daysSince(tracker?.created_at);
+        return { id: c.id, day: day ?? 3, ready: (day ?? 3) >= 2 };
+      })
+      .filter((c) => c.ready)
+      .map((c) => c.id);
+
+    if (!due.length) {
+      return res.status(200).json({
+        ok: true,
+        skipped: true,
+        reason: 'нет кампаний в фазе день 2+',
+        playbook: OPTIMIZATION_SCHEDULE,
+      });
+    }
+
+    const run = await runTrafficOptimization({
+      directCampaignIds: due,
+      applyTraffic: Boolean(body.apply),
+      dryRun: Boolean(body.dry_run),
+      ownerUserId: req.user?.id || null,
+      title: `Трафик по расписанию: ${due.slice(0, 3).join(', ')}`,
     });
     res.status(201).json(run);
   } catch (err) {

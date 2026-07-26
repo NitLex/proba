@@ -5,6 +5,7 @@
  */
 
 import { expandSeeds, wordstatConfig } from '../../lib/wordstat.js';
+import { mergeNegatives, junkLexiconForVertical } from '../../lib/junkLexicon.js';
 
 function seedsFromAngles(angles = [], verticalKey = '') {
   const seeds = [];
@@ -44,32 +45,9 @@ function seedsFromAngles(angles = [], verticalKey = '') {
   return [...new Set(seeds.filter(Boolean))];
 }
 
-const BASE_NEGATIVES = [
-  'бесплатно',
-  'халява',
-  'взлом',
-  'кряк',
-  'скачать',
-  'торрент',
-  'работа',
-  'вакансия',
-  'казино',
-  'ставки',
-  '1xbet',
-  'крипта',
-  'bitcoin',
-  'p2p',
-  'обнал',
-  'для детей',
-  'школьник',
-];
-
-/** Loan negatives only for non-loan verticals (otherwise we kill our own keywords). */
+/** Negatives from junk lexicon (per vertical). */
 function negativesForVertical(verticalKey) {
-  if (verticalKey === 'fintech_loans') {
-    return [...BASE_NEGATIVES, 'зарубежная карта', 'виртуальная карта', 'сбп карта'];
-  }
-  return [...BASE_NEGATIVES, 'займ', 'микрозайм', 'кредит наличными'];
+  return mergeNegatives([], verticalKey);
 }
 
 function assignGroup(phrase, angles) {
@@ -107,6 +85,7 @@ export async function runWordstat({ offer, context }) {
   const seeds = seedsFromAngles(angles, verticalKey);
   if (offer.name) seeds.unshift(String(offer.name).slice(0, 80));
   const negatives = negativesForVertical(verticalKey);
+  const lexicon = junkLexiconForVertical(verticalKey);
 
   const cfg = wordstatConfig();
   let mode = 'heuristic';
@@ -163,9 +142,11 @@ export async function runWordstat({ offer, context }) {
       keywords,
       groups: byGroup,
       negatives,
+      junk_lexicon: lexicon,
       autotargeting: 'suspended_on_start',
       seeds,
       vertical_key: verticalKey,
+      note: 'Кластеры строго по углам; автоминуса дети/игры/скачать/вакансии + junk lexicon вертикали',
     },
     cursor_prompt: [
       'Ты агент семантики (Wordstat) для Яндекс.Директ РСЯ.',
@@ -174,6 +155,7 @@ export async function runWordstat({ offer, context }) {
       `Углы: ${JSON.stringify(angles)}`,
       `Топ ключей: ${JSON.stringify(keywords.slice(0, 40))}`,
       `Минус-слова: ${JSON.stringify(negatives)}`,
+      `Junk lexicon: ${lexicon.note}`,
       'Дополни кластеры по углам оффера, убери мусор. Не минусуй ядро вертикали.',
     ].join('\n'),
     context_patch: {
@@ -182,6 +164,7 @@ export async function runWordstat({ offer, context }) {
         keywords,
         groups: byGroup,
         negatives,
+        junk_lexicon: lexicon,
       },
     },
   };

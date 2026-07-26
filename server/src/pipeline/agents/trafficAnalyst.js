@@ -11,6 +11,8 @@ import {
   moscowDate,
 } from '../../lib/directReports.js';
 import { resolveTrackerForDirect } from '../../lib/directTrackerLink.js';
+import { placementPatternsForVertical } from '../../lib/junkLexicon.js';
+import { scheduleAdvice } from '../../lib/optimizationSchedule.js';
 import {
   DIRECT_EXCLUDED_PLACEMENTS,
   DIRECT_BID_MODIFIERS,
@@ -165,6 +167,8 @@ function trackerStatsForCampaign(campaignId, { from, to } = {}) {
   const conv = db
     .prepare(
       `SELECT COUNT(*) AS conversions,
+              COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN 1 ELSE 0 END),0) AS approved,
+              COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END),0) AS rejected,
               COALESCE(SUM(CASE WHEN status IN ('lead','sale') THEN payout ELSE 0 END),0) AS revenue
        FROM conversions WHERE ${convWhere}`,
     )
@@ -172,9 +176,11 @@ function trackerStatsForCampaign(campaignId, { from, to } = {}) {
 
   const clickN = Number(clicks.clicks || 0);
   const cost = Number(clicks.cost || 0);
-  const conversions = Number(conv.conversions || 0);
+  const conversions = Number(conv.approved || 0);
+  const rejected = Number(conv.rejected || 0);
   const revenue = Number(conv.revenue || 0);
   const profit = revenue - cost;
+  const decided = conversions + rejected;
   return {
     id: c.id,
     name: c.name,
@@ -186,6 +192,8 @@ function trackerStatsForCampaign(campaignId, { from, to } = {}) {
     clicks: clickN,
     cost: round(cost),
     conversions,
+    rejected,
+    reject_rate: decided > 0 ? round((rejected / decided) * 100) : null,
     revenue: round(revenue),
     profit: round(profit),
     roi: cost > 0 ? round((profit / cost) * 100) : null,
@@ -235,8 +243,14 @@ function trackerStatsForUser(userId, { from, to } = {}) {
   return { campaigns: enriched, byToken };
 }
 
-export function scorePlacements(rows, { minClicks = 5, maxCostNoConv = 30 } = {}) {
-  const patterns = DIRECT_EXCLUDED_PLACEMENTS.seed_blocklist_patterns || [];
+export function scorePlacements(
+  rows,
+  { minClicks = 5, maxCostNoConv = 30, verticalKey = '', maxRejectRate = 70 } = {},
+) {
+  const patterns = [
+    ...(DIRECT_EXCLUDED_PLACEMENTS.seed_blocklist_patterns || []),
+    ...placementPatternsForVertical(verticalKey),
+  ];
   const actions = [];
 
   for (const r of rows) {
@@ -250,6 +264,16 @@ export function scorePlacements(rows, { minClicks = 5, maxCostNoConv = 30 } = {}
       severity += 3;
     } else if (r.clicks >= minClicks * 2 && r.conversions <= 0) {
       reasons.push(`${r.clicks} кликов без конверсий`);
+      severity += 2;
+    }
+
+    // Reject-rate style signal from Direct conversions column when present as bounce
+    const rejectRate =
+      r.rejects != null && r.conversions + r.rejects > 0
+        ? (r.rejects / (r.conversions + r.rejects)) * 100
+        : null;
+    if (rejectRate != null && rejectRate >= maxRejectRate && r.clicks >= minClicks) {
+      reasons.push(`reject rate ${round(rejectRate)}%`);
       severity += 2;
     }
 
@@ -395,6 +419,13 @@ function buildCampaignAdvice(directCamp, trackerCamp, placementActions, extra = 
         level: 'warn',
         text: `CPC ${trackerCamp.cpc} ₽ > EPC ${trackerCamp.epc} ₽ — снизь BidCeiling / убери дорогие площадки`,
         suggested_bid_ceiling_rub: round(Math.max(2, trackerCamp.epc * 0.85), 1),
+      });
+    }
+    if (trackerCamp.reject_rate != null && trackerCamp.reject_rate >= 60 && trackerCamp.rejected >= 3) {
+      advice.push({
+        type: 'high_reject_rate',
+        level: 'warn',
+        text: `Reject rate ${trackerCamp.reject_rate}% (${trackerCamp.rejected} reject / ${trackerCamp.conversions} lead) — режь площадки по качеству лида, не только по «0 конв.»`,
       });
     }
     if (trackerCamp.conversions === 0 && trackerCamp.cost >= 150) {
@@ -731,6 +762,11 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
   const maxCostNoConv = Number(context.traffic_max_cost_no_conv || 30);
   const adMinClicks = Number(context.traffic_ad_min_clicks || 12);
   const adMaxCost = Number(context.traffic_ad_max_cost_no_conv || 40);
+  const verticalKey =
+    context.playbook?.vertical_key ||
+    context.analysis?.vertical_key ||
+    offer.vertical_key ||
+    '';
   const applyChanges = Boolean(apply) && !dryRun;
   const applyAds = context.traffic_apply_ads !== false;
   const applyBids = context.traffic_apply_bids !== false;
@@ -804,6 +840,7 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
   const placementActions = scorePlacements(placementReport.rows || [], {
     minClicks,
     maxCostNoConv,
+    verticalKey,
   });
   const weakAds = scoreWeakAds(adReport.rows || [], {
     minClicks: adMinClicks,
@@ -836,6 +873,12 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
     if (economics.bidCeiling) bidCeilingPlans.push(economics.bidCeiling);
     if (economics.spendStop) spendStopPlans.push(economics.spendStop);
 
+    const sched = scheduleAdvice({
+      createdAt: linkedRow?.created_at || context.traffic_campaign_started_at,
+      moderated: dc.moderated,
+      serving: dc.serving,
+    });
+
     // Kids −100% always recommended for moderated serving campaigns
     if (dc.moderated) {
       bidModPlans.push({
@@ -851,6 +894,12 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
       bidCeiling: economics.bidCeiling,
       spendStop: economics.spendStop,
     });
+    advice.unshift({
+      type: 'schedule_phase',
+      level: 'info',
+      text: `День ${sched.day} · фаза «${sched.phase.title}»: ${sched.hint}`,
+      phase: sched.phase.id,
+    });
 
     perCampaign.push({
       direct: dc,
@@ -860,6 +909,7 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
         tracker_campaign_id: linkedRow?.id || null,
         direct_campaign_id: dc.id,
       },
+      schedule: sched,
       alerts,
       placements_to_cut: placementActions.filter((a) => a.campaign_id === dc.id).slice(0, 40),
       ads_to_pause: adsForCamp.slice(0, 20),
@@ -996,7 +1046,13 @@ export async function runTrafficAnalyst({ offer = {}, context = {}, dryRun, appl
       total_clicks: tracker.campaigns.reduce((s, c) => s + c.clicks, 0),
       total_cost: round(tracker.campaigns.reduce((s, c) => s + c.cost, 0)),
       total_conversions: tracker.campaigns.reduce((s, c) => s + c.conversions, 0),
+      total_rejected: tracker.campaigns.reduce((s, c) => s + (c.rejected || 0), 0),
       linked: perCampaign.filter((c) => c.tracker).length,
+    },
+    quality: buildQualitySnapshot(perCampaign, placementReport.rows || [], adReport.rows || []),
+    schedule: {
+      note: 'День 0 запуск → день 2–3 площадки → день 5–7 креативы/ставки',
+      phases: ['day0', 'day2_3', 'day5_7'],
     },
     campaigns: perCampaign,
     actions: {
@@ -1049,6 +1105,57 @@ function applyHasRealError(a) {
     return false;
   }
   return a.ok === false && Boolean(err);
+}
+
+/** Quality snapshot: CPC/EPC/CR, junk share, live ads. */
+export function buildQualitySnapshot(perCampaign = [], placementRows = [], adRows = []) {
+  const linked = perCampaign.map((c) => c.tracker).filter(Boolean);
+  const clicks = linked.reduce((s, t) => s + t.clicks, 0);
+  const cost = linked.reduce((s, t) => s + t.cost, 0);
+  const revenue = linked.reduce((s, t) => s + t.revenue, 0);
+  const conversions = linked.reduce((s, t) => s + t.conversions, 0);
+  const rejected = linked.reduce((s, t) => s + (t.rejected || 0), 0);
+  const profit = revenue - cost;
+
+  const junkPatterns = DIRECT_EXCLUDED_PLACEMENTS.seed_blocklist_patterns || [];
+  const placeClicks = placementRows.reduce((s, r) => s + (r.clicks || 0), 0);
+  const junkClicks = placementRows
+    .filter((r) => matchesJunkPattern(r.placement, junkPatterns))
+    .reduce((s, r) => s + (r.clicks || 0), 0);
+
+  const topSpend = [...placementRows]
+    .sort((a, b) => (b.cost || 0) - (a.cost || 0))
+    .slice(0, 8)
+    .map((r) => ({
+      placement: r.placement,
+      cost: round(r.cost || 0),
+      clicks: r.clicks || 0,
+      conversions: r.conversions || 0,
+    }));
+
+  const liveAds = (adRows || []).filter((r) => (r.clicks || 0) > 0 || (r.impressions || 0) > 0);
+  const weakLive = liveAds.filter((r) => r.conversions <= 0 && r.clicks >= 12);
+
+  return {
+    cpc: clicks > 0 ? round(cost / clicks) : 0,
+    epc: clicks > 0 ? round(revenue / clicks) : 0,
+    cr: clicks > 0 ? round((conversions / clicks) * 100) : 0,
+    roi: cost > 0 ? round((profit / cost) * 100) : null,
+    profit: round(profit),
+    cost: round(cost),
+    revenue: round(revenue),
+    clicks,
+    conversions,
+    rejected,
+    reject_rate:
+      conversions + rejected > 0
+        ? round((rejected / (conversions + rejected)) * 100)
+        : null,
+    junk_share_pct: placeClicks > 0 ? round((junkClicks / placeClicks) * 100) : null,
+    top_spend_placements: topSpend,
+    ads_live: liveAds.length,
+    ads_weak_live: weakLive.length,
+  };
 }
 
 /** Compact report for orchestrator UI («что сделали»). */
@@ -1164,6 +1271,7 @@ export function buildTrafficMiniReport(traffic_analysis, meta = {}) {
     advice,
     alerts: alerts.map((a) => a.text),
     tracker: ta.tracker_summary || null,
+    quality: ta.quality || null,
     would: dryRun
       ? {
           pause_ads: applyObj.would_pause_ads || 0,

@@ -403,7 +403,7 @@ export default function Pipeline() {
             />
             Применить правки в Директе (площадки, пауза слабых объявлений, дети −100%, BidCeiling, стоп по сливу)
           </label>
-          <div style={{ marginTop: '0.75rem' }}>
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="btn"
@@ -411,6 +411,37 @@ export default function Pipeline() {
               onClick={runTrafficAnalyst}
             >
               {trafficBusy ? 'Анализ…' : 'Запустить аналитика трафика'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={trafficBusy}
+              onClick={async () => {
+                setTrafficBusy(true);
+                setMsg('');
+                try {
+                  const run = await api.post('/api/pipeline/traffic/schedule/run', {
+                    apply: applyTraffic,
+                  });
+                  if (run.skipped) {
+                    setMsg(run.reason || 'Нет кампаний по расписанию (день 2+)');
+                  } else {
+                    setActive(run);
+                    const mini = run.context?.mini_report;
+                    setMsg(
+                      `По расписанию · ${OUTCOME_LABEL[mini?.outcome] || run.status} · Run #${run.id}`,
+                    );
+                    await loadList();
+                    await loadTrafficReports();
+                  }
+                } catch (e) {
+                  setMsg(e.message);
+                } finally {
+                  setTrafficBusy(false);
+                }
+              }}
+            >
+              По расписанию (день 2+)
             </button>
           </div>
 
@@ -479,6 +510,28 @@ export default function Pipeline() {
                       <span>BidCeiling: {r.bid_ceilings_updated ?? 0}</span>
                       <span>Стоп кампаний: {r.campaigns_suspended ?? 0}</span>
                     </div>
+                    {r.quality ? (
+                      <div className="traffic-report-metrics" style={{ marginTop: '0.35rem' }}>
+                        <span>CPC {r.quality.cpc ?? '—'} ₽</span>
+                        <span>EPC {r.quality.epc ?? '—'} ₽</span>
+                        <span>CR {r.quality.cr ?? '—'}%</span>
+                        <span>
+                          ROI {r.quality.roi != null ? `${r.quality.roi}%` : '—'}
+                        </span>
+                        <span>
+                          Мусор {r.quality.junk_share_pct != null ? `${r.quality.junk_share_pct}%` : '—'}
+                        </span>
+                        <span>
+                          Объявл. живых {r.quality.ads_live ?? 0}
+                          {r.quality.ads_weak_live
+                            ? ` (слабых ${r.quality.ads_weak_live})`
+                            : ''}
+                        </span>
+                        {r.quality.reject_rate != null ? (
+                          <span>Reject {r.quality.reject_rate}%</span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {r.alerts?.length ? (
                       <p className="hint" style={{ margin: '0.35rem 0 0', color: 'var(--danger, #b33)' }}>
                         {r.alerts.slice(0, 2).join(' · ')}

@@ -11,6 +11,11 @@ import {
   pickWeighted,
 } from '../lib/tracking.js';
 import { resolveRoute } from '../lib/routing.js';
+import {
+  scoreClickFraud,
+  frequencyLimit,
+  frequencyThresholdHours,
+} from '../lib/antifraud.js';
 
 const router = Router();
 
@@ -56,8 +61,9 @@ router.get('/click/:key', (req, res) => {
 
   const ua = req.headers['user-agent'] || '';
   const isBot = detectBot(ua);
+  const adReview = isAdReviewBot(ua);
   // Allow YandexBot / AdsBot through for Direct (and similar) moderation checks
-  if (campaign.block_bots && isBot && !isAdReviewBot(ua)) {
+  if (campaign.block_bots && isBot && !adReview) {
     return res.status(403).send('Bot traffic blocked');
   }
 
@@ -70,6 +76,27 @@ router.get('/click/:key', (req, res) => {
     .split(',')[0]
     .trim()
     .slice(0, 16);
+
+  const freqHours = frequencyThresholdHours();
+  const recentIpCount = db
+    .prepare(
+      `SELECT COUNT(*) AS c FROM clicks
+       WHERE campaign_id = ? AND ip = ?
+         AND created_at > datetime('now', ?)`,
+    )
+    .get(campaign.id, ip, `-${freqHours} hours`);
+  const fraud = scoreClickFraud({
+    ip,
+    userAgent: ua,
+    isBot,
+    isAdReview: adReview,
+    recentSameIp: Number(recentIpCount?.c || 0),
+    frequencyLimit: frequencyLimit(),
+  });
+
+  if (campaign.block_bots && fraud.action === 'block' && !adReview) {
+    return res.status(403).send('Fraud score blocked');
+  }
 
   const token1 = tokenValue(req, campaign.src_token1);
   const token2 = tokenValue(req, campaign.src_token2);
@@ -117,12 +144,16 @@ router.get('/click/:key', (req, res) => {
   const clickid = makeClickId();
   const costParam = campaign.source_cost_param || 'cost';
   const costFromQs = parseCost(req.query[costParam], null);
-  const cost =
+  let cost =
     costFromQs !== null
       ? costFromQs
       : campaign.cost_model === 'cpc'
         ? campaign.cost_value
         : 0;
+  // Cheap-cost path for suspected fraud (still track, don't inflate spend)
+  if (fraud.action === 'cheap' && !adReview) {
+    cost = Math.min(Number(cost) || 0, 0.01);
+  }
 
   const uniqueHours = Math.max(1, Number(campaign.unique_hours || 24));
   const recent = db
@@ -164,13 +195,19 @@ router.get('/click/:key', (req, res) => {
     referer: req.headers.referer || '',
     cost,
     is_unique: isUnique,
-    is_bot: isBot,
+    is_bot: isBot || (fraud.is_fraud && !adReview ? 1 : 0),
     token1,
     token2,
     token3,
     token4,
     token5,
-    query_string: new URLSearchParams(req.query).toString(),
+    query_string: [
+      new URLSearchParams(req.query).toString(),
+      fraud.flags.length ? `fraud=${fraud.flags.join('+')}` : '',
+      fraud.score ? `fscore=${fraud.score}` : '',
+    ]
+      .filter(Boolean)
+      .join('&'),
   });
 
   const ctx = {

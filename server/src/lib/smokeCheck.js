@@ -165,6 +165,39 @@ export async function checkPostbackTemplate(postbackUrl) {
   };
 }
 
+export async function checkOfferAffSub(offerUrl) {
+  const { validateOfferTrackingUrl } = await import('./leadgidPostback.js');
+  const v = validateOfferTrackingUrl(offerUrl);
+  // Soft: warn so smoke/pipeline не валится на старых URL без aff_sub, но сигнал есть
+  return {
+    id: 'offer_aff_sub',
+    ok: true,
+    severity: v.has_aff_sub ? 'ok' : 'warn',
+    summary: v.has_aff_sub
+      ? 'в URL оффера есть aff_sub={clickid}'
+      : `оффер: ${v.reason} (рекомендуется aff_sub={clickid})`,
+    ...v,
+  };
+}
+
+export async function checkPostbackLivePing() {
+  const { pingPostbackEndpoint } = await import('./leadgidPostback.js');
+  const ping = await pingPostbackEndpoint();
+  // Soft warn if endpoint unreachable in offline/dev; hard fail only on non-200 response
+  const softSkip = ping.status === 0;
+  return {
+    id: 'postback_live',
+    ok: ping.ok || softSkip,
+    severity: ping.ok ? 'ok' : softSkip ? 'warn' : 'fail',
+    summary: ping.ok
+      ? `тест постбэка HTTP ${ping.status} (LeadGid OK)`
+      : softSkip
+        ? `тест постбэка недоступен: ${ping.error || 'network'}`
+        : `тест постбэка fail: HTTP ${ping.status}`,
+    ...ping,
+  };
+}
+
 export async function checkDirectCampaign(campaignId, { directApi } = {}) {
   if (!campaignId) {
     return {
@@ -258,6 +291,8 @@ export async function runSmokeSuite({
 
   checks.push(await checkOfferReachable(clickUrl, offerUrl));
   checks.push(await checkPostbackTemplate(postbackUrl));
+  checks.push(await checkOfferAffSub(offerUrl));
+  checks.push(await checkPostbackLivePing());
   checks.push(await checkDirectCampaign(directCampaignId, { directApi }));
 
   const fails = checks.filter((c) => !c.ok && c.severity === 'fail' && !c.skipped);

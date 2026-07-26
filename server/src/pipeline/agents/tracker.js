@@ -2,8 +2,10 @@ import { db } from '../../db.js';
 import {
   buildLeadgidPostbackUrl,
   leadgidPostbackInstructions,
+  validateOfferTrackingUrl,
 } from '../../lib/leadgidPostback.js';
 import { makeCampaignKey } from '../../lib/tracking.js';
+import { generatePreland } from '../../lib/preland.js';
 import {
   remoteApi,
   remoteBase,
@@ -109,15 +111,38 @@ function upsertOfferLocal(offer, userId) {
   return db.prepare(`SELECT * FROM offers WHERE id = ?`).get(info.lastInsertRowid);
 }
 
-function createCampaignLocal({ name, sourceId, offerId, cpc, notes, userId, currency }) {
+function createCampaignLocal({ name, sourceId, offerId, landingId, cpc, notes, userId, currency }) {
   const key = makeCampaignKey();
   const info = db
     .prepare(
       `INSERT INTO campaigns (user_id, name, key, traffic_source_id, offer_id, landing_id, cost_model, cost_value, currency, status, notes)
-       VALUES (?, ?, ?, ?, ?, NULL, 'cpc', ?, ?, 'active', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, 'cpc', ?, ?, 'active', ?)`,
     )
-    .run(userId || null, name, key, sourceId, offerId, cpc, currency || 'RUB', notes);
+    .run(
+      userId || null,
+      name,
+      key,
+      sourceId,
+      offerId,
+      landingId || null,
+      cpc,
+      currency || 'RUB',
+      notes,
+    );
   return db.prepare(`SELECT * FROM campaigns WHERE id = ?`).get(info.lastInsertRowid);
+}
+
+function upsertLandingLocal({ name, url, userId, notes }) {
+  const existing = userId
+    ? db.prepare(`SELECT * FROM landings WHERE url = ? AND user_id = ?`).get(url, userId)
+    : db.prepare(`SELECT * FROM landings WHERE url = ?`).get(url);
+  if (existing) return existing;
+  const info = db
+    .prepare(
+      `INSERT INTO landings (user_id, name, url, notes) VALUES (?, ?, ?, ?)`,
+    )
+    .run(userId || null, name, url, notes || 'pipeline preland');
+  return db.prepare(`SELECT * FROM landings WHERE id = ?`).get(info.lastInsertRowid);
 }
 
 async function upsertSourceRemote(token, name) {
@@ -191,6 +216,11 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   const postbackHelp = leadgidPostbackInstructions(postbackTemplate);
   const userId = resolveOwnerUserId(ownerUserId || context.owner_user_id);
   const currency = offer.currency || 'RUB';
+  const verticalKey = playbook.vertical_key || '';
+  const wantPreland =
+    String(process.env.PIPELINE_PRELAND || offer.use_preland || '1') !== '0' &&
+    /fintech_cards|fintech_loans/i.test(verticalKey || 'fintech_cards');
+  const offerTrack = validateOfferTrackingUrl(offer.url || offer.offer_url || '');
 
   if (dryRun) {
     const tracker = {
@@ -200,6 +230,8 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
       owner_user_id: userId,
       postback_url: postbackTemplate,
       postback_help: postbackHelp,
+      offer_tracking: offerTrack,
+      preland_planned: wantPreland,
       planned: { sourceName, campaignName, cpc, postbackTemplate, base, currency },
     };
     return {
@@ -216,6 +248,19 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   let source;
   let offerRow;
   let campaign;
+  let landing = null;
+  let preland = null;
+
+  if (wantPreland && !useRemote) {
+    const angle = (playbook.angles || [])[0] || { id: 'main', title: 'Основной' };
+    preland = generatePreland({
+      offer,
+      angle,
+      verticalKey: verticalKey || 'fintech_cards',
+      runId: context.run_id || `offer-${Date.now()}`,
+      publicBase: base,
+    });
+  }
 
   if (useRemote) {
     const token = await remoteLogin();
@@ -241,10 +286,19 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
     }
     source = upsertSourceLocal(sourceName, postbackTemplate, userId);
     offerRow = upsertOfferLocal(offer, userId);
+    if (preland?.url) {
+      landing = upsertLandingLocal({
+        name: `Preland · ${offer.name || 'offer'}`,
+        url: preland.url,
+        userId,
+        notes: `pipeline preland ${preland.slug}`,
+      });
+    }
     campaign = createCampaignLocal({
       name: campaignName,
       sourceId: source.id,
       offerId: offerRow.id,
+      landingId: landing?.id || null,
       cpc,
       userId,
       currency,
@@ -269,6 +323,11 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
       payout: offerRow.payout,
       currency: offerRow.currency || currency,
     },
+    landing: landing
+      ? { id: landing.id, name: landing.name, url: landing.url }
+      : null,
+    preland,
+    offer_tracking: offerTrack,
     campaign: {
       id: campaign.id,
       name: campaign.name,
@@ -276,6 +335,7 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
       cost_value: campaign.cost_value,
       currency: campaign.currency || currency,
       status: campaign.status,
+      landing_id: campaign.landing_id || landing?.id || null,
     },
     click_url: clickUrl,
     postback_url: postbackTemplate,
@@ -283,11 +343,13 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   };
 
   return {
-    summary: `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · user #${userId || '—'} · ${currency} · постбэк LeadGid — вручную`,
+    summary: `Трекер (${tracker.mode}): ${campaign.name}${key ? ' · key ' + key : ''} · user #${userId || '—'} · ${currency}${preland ? ' · preland' : ''} · постбэк LeadGid — вручную`,
     tracker,
     cursor_prompt: [
       `Трекер: ${base} (mode=${tracker.mode}, user_id=${userId})`,
       `Click: ${clickUrl}`,
+      preland ? `Preland: ${preland.url}` : 'Preland: off (direct-to-offer)',
+      `Offer tracking: ${offerTrack.reason}`,
       `LeadGid Postback (ВРУЧНУЮ в кабинете): ${postbackTemplate}`,
       postbackHelp.where,
       postbackHelp.note,

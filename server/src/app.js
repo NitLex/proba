@@ -14,6 +14,7 @@ import analyticsRouter, { recordSiteVisit } from './routes/analytics.js';
 import pipelineRouter from './routes/pipeline.js';
 import { crudRouter } from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
+import { prelandFilePath } from './lib/preland.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,13 @@ export function createApp() {
   // Public tracking endpoints (must stay open for ads & affiliate networks)
   app.use(trackRouter);
   app.use(postbackRouter);
+
+  // Generated prelands (public HTML)
+  app.get('/preland/:slug', (req, res) => {
+    const file = prelandFilePath(req.params.slug);
+    if (!file) return res.status(404).send('Preland not found');
+    res.type('html').sendFile(file);
+  });
 
   // Protected dashboard API
   app.use('/api', requireAuth);
@@ -94,7 +102,8 @@ export function createApp() {
         req.path.startsWith('/api') ||
         req.path.startsWith('/click') ||
         req.path.startsWith('/postback') ||
-        req.path.startsWith('/to-offer')
+        req.path.startsWith('/to-offer') ||
+        req.path.startsWith('/preland')
       ) {
         return next();
       }

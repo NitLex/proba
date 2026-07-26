@@ -12,9 +12,14 @@ import {
   overlayLinesForOffer,
   formatLabel,
 } from '../../lib/adFormat.js';
+import {
+  validateCreatives,
+  creativeModerationChecklist,
+} from '../../lib/creativeQa.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const creativesRoot = path.resolve(__dirname, '../../../../creatives/rsya');
+const creativesPipelineRoot = path.resolve(__dirname, '../../../../creatives/pipeline');
 
 const RSYA_SIZES = [
   '300x250',
@@ -29,16 +34,22 @@ const RSYA_SIZES = [
 
 function listExistingAssets() {
   const found = [];
-  if (!fs.existsSync(creativesRoot)) return found;
-  for (const name of fs.readdirSync(creativesRoot)) {
-    if (/\.(zip|mp4|jpg|png)$/i.test(name)) {
-      found.push(path.join('creatives/rsya', name));
+  const roots = [
+    { abs: creativesRoot, rel: 'creatives/rsya' },
+    { abs: creativesPipelineRoot, rel: 'creatives/pipeline' },
+  ];
+  for (const { abs, rel } of roots) {
+    if (!fs.existsSync(abs)) continue;
+    for (const name of fs.readdirSync(abs)) {
+      if (/\.(zip|mp4|jpg|png|webp)$/i.test(name)) {
+        found.push(path.join(rel, name));
+      }
     }
-  }
-  const textAd = path.join(creativesRoot, 'direct-textad');
-  if (fs.existsSync(textAd)) {
-    for (const name of fs.readdirSync(textAd)) {
-      if (/\.(jpg|png)$/i.test(name)) found.push(path.join('creatives/rsya/direct-textad', name));
+    const textAd = path.join(abs, 'direct-textad');
+    if (fs.existsSync(textAd)) {
+      for (const name of fs.readdirSync(textAd)) {
+        if (/\.(jpg|png|webp)$/i.test(name)) found.push(path.join(rel, 'direct-textad', name));
+      }
     }
   }
   return found;
@@ -307,12 +318,20 @@ export async function runCreative({ offer, context }) {
   });
 
   const okImages = generated.filter((g) => g.ok);
+  const qa = validateCreatives(creatives, {
+    verticalKey,
+    requireImages: true,
+    generatedImages: generated,
+  });
+  const checklist = creativeModerationChecklist({ verticalKey });
+
   const summaryParts = [
     `Формат: ${formatLabel(adFormat)} (TextAd + картинка)`,
     `брифы: ${creatives.length}`,
     imgCfg.configured
       ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
       : 'генерация выкл',
+    qa.ok ? 'QA креативов ok' : `QA: ${qa.errors.length} ошибок`,
   ];
 
   return {
@@ -325,10 +344,17 @@ export async function runCreative({ offer, context }) {
       existing_assets: assets,
       generated_images: generated,
       image_provider: imgCfg,
+      qa,
+      checklist,
       generator_hint:
         'graphic = текст на баннере → TextAd+картинка (квадрат GPT); product = чистая картинка → TextAd',
       direct_textad_min_size: '450x450 (лучше 1080x1080)',
+      rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего через аналитика трафика',
     },
+    failed:
+      Boolean(imgCfg.configured) &&
+      !qa.ok &&
+      qa.errors.some((e) => /нет ни одной картинки|зарубежная карта|займы:/.test(e.text)),
     cursor_prompt: [
       'Ты креатив-агент для РСЯ Яндекс.Директ.',
       `Формат объявлений: ${adFormat} (${formatLabel(adFormat)}).`,
@@ -338,6 +364,7 @@ export async function runCreative({ offer, context }) {
       verticalKey === 'fintech_loans'
         ? 'Вертикаль МФО/займы: тексты только из брифа оффера (сумма, паспорт, скорость). Не писать про зарубежную карту.'
         : 'В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты» — иначе Директ требует банковскую лицензию.',
+      `QA: ${JSON.stringify(qa)}`,
       `Оффер: ${JSON.stringify({
         name: offer.name,
         vertical_key: verticalKey,
@@ -356,6 +383,9 @@ export async function runCreative({ offer, context }) {
         existing_assets: assets,
         generated_images: generated,
         image_provider: imgCfg,
+        qa,
+        checklist,
+        rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего',
       },
     },
   };

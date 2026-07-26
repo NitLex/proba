@@ -401,11 +401,11 @@ async function applyDraft(plan) {
     for (const ad of (group.ads || []).slice(0, 3)) {
       const hash = await hashFor(ad.image_path || group.image_path);
 
-      // Always TextAd for TEXT_CAMPAIGN (graphic = image with text baked in + Title/Text fields)
-      if ((ad.type === 'ImageAd' || group.direct_ad_type === 'ImageAd') && !hash) {
+      // Creative QA: TextAd without image hash → skip (no empty ads)
+      if (!hash) {
         log.push({
-          step: `ads.skip_imagead:${adGroupIds[i]}`,
-          error: 'нет hash картинки для графического объявления',
+          step: `ads.skip_no_image:${adGroupIds[i]}`,
+          error: 'нет AdImageHash — объявление без картинки не создаём',
         });
         continue;
       }
@@ -414,9 +414,9 @@ async function applyDraft(plan) {
         Text: String(ad.text || group.overlay_lines?.[1] || 'Оформление онлайн').slice(0, 81),
         Href: ad.href || plan.href,
         Mobile: 'NO',
+        AdImageHash: hash,
       };
       if (ad.display_url_path) textAd.DisplayUrlPath = String(ad.display_url_path).slice(0, 20);
-      if (hash) textAd.AdImageHash = hash;
       adsPayload.push({ AdGroupId: adGroupIds[i], TextAd: textAd });
     }
 
@@ -433,9 +433,11 @@ async function applyDraft(plan) {
   const imageFail = imageUploads.filter((l) => l.result && !l.result.ok).length;
   const neededImages = (plan.ad_groups || []).some((g) => g.image_path || g.ads?.some((a) => a.image_path));
 
-  const incomplete = adsAdded === 0 || adGroupIds.length === 0;
+  const incomplete = adsAdded === 0 || adGroupIds.length === 0 || imageOk === 0;
   const warnings = [];
-  if (neededImages && imageFail > 0 && imageOk === 0) {
+  if (imageOk === 0) {
+    warnings.push('Нет загруженных картинок — объявления без AdImageHash запрещены');
+  } else if (neededImages && imageFail > 0 && imageOk === 0) {
     warnings.push('Креативы не загрузились в Директ (adimages) — объявления без картинок');
   }
   if (adsAdded === 0) warnings.push('Объявления не созданы');

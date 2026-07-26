@@ -123,7 +123,7 @@ export const DIRECT_EXCLUDED_PLACEMENTS = {
   cannot_block: 'поисковые проекты Яндекса запретить нельзя',
   when_to_clean: 'через 2–3 дня после старта по отчёту «Площадки» (Мастер отчётов → массовые действия → Запретить)',
   seed_blocklist_patterns: [
-    // типовой мусор для fintech/карточных офферов — уточнять по отчёту
+    // типовой мусор + junk lexicon (дети/игры/вакансии/торрент)
     'games',
     'kids',
     'children',
@@ -134,6 +134,11 @@ export const DIRECT_EXCLUDED_PLACEMENTS = {
     'radio',
     'music-free',
     'file-hosting',
+    'job',
+    'vacancy',
+    'rabota',
+    'casino',
+    'betting',
   ],
   seed_note:
     'На старте НЕ заливаем 1000 площадок в запрет — только паттерны-кандидаты. Реальные домены баним из отчёта.',
