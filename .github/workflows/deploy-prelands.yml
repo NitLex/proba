@@ -35,6 +35,8 @@ jobs:
           test -f _site/.nojekyll || touch _site/.nojekyll
           test -f _site/index.html
           test -f _site/finmfo-7426.html
+          test -f _site/finzaymo-7331.html
+          test -f _site/assets/finzaymo-hero.jpg
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
