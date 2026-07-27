@@ -11,3 +11,6 @@ client/dist/
 SECRETS.env
 creatives/pipeline/
 prelands/
+prelands/
+!prelands/*.html
+!prelands/README.md
