@@ -9,10 +9,15 @@
 | Direct ads | `ACCEPTED` / `ON`, href → `https://trekerarbitrag.ru/click/nVwo8PuS` |
 | TrackingParams | `utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}` |
 | Direct ↔ tracker | `campaigns.direct_campaign_id = 713096941` |
-| Landing #7 | `https://trekerarbitrag.ru/preland/7-speed` (не 404) |
 | Offer #17 | `https://fin-lg.com/aff_c?aff_id=123072&offer_id=7304&p=adnetwork&aff_sub={clickid}` |
-| Цепочка | click → preland?clickid= → /to-offer → `fin-lg.com/...&aff_sub=<clickid>` → finmi.ru |
+| Путь клика | **direct-to-offer** (без преленда): `/click` → `fin-lg.com?...&aff_sub=<clickid>` → finmi.ru |
 | Постбэк endpoint | HTTP 200; тестовый клик сматчился в conversion |
+
+### Почему в LeadGid были нули (27.07)
+
+В nginx: клики `/click/nVwo8PuS` шли, **`/to-offer` = 0**.  
+Директ считал клик на преленд; до LeadGid пользователи не доходили (второй клик по CTA).  
+Исправлено: `landing_id=NULL`, `block_bots=0`, `aff_sub={clickid}` восстановлен.
 
 ## Постбэк — вставь в кабинет LeadGid
 
