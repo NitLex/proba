@@ -14,7 +14,7 @@ import analyticsRouter, { recordSiteVisit } from './routes/analytics.js';
 import pipelineRouter from './routes/pipeline.js';
 import { crudRouter } from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
-import { prelandFilePath } from './lib/preland.js';
+import { prelandFilePath, PRELAND_DIR } from './lib/preland.js';
 import {
   appMeta,
   isOrchestratorMode,
@@ -79,7 +79,8 @@ export function createApp() {
     app.use(trackRouter);
     app.use(postbackRouter);
 
-    // Generated prelands (public HTML)
+    // Generated prelands (public HTML) + curated assets (hero images)
+    app.use('/preland-assets', express.static(path.join(PRELAND_DIR, 'assets'), { maxAge: '7d' }));
     app.get('/preland/:slug', (req, res) => {
       const file = prelandFilePath(req.params.slug);
       if (!file) return res.status(404).send('Preland not found');

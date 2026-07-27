@@ -6,9 +6,12 @@
 ## Файл
 
 `prelands/finmfo-7426.html`  
+Hero: `prelands/assets/finmfo-hero.jpg` → **https://trekerarbitrag.ru/preland-assets/finmfo-hero.jpg**  
 Прод: **https://trekerarbitrag.ru/preland/finmfo-7426**
 
 Поток: `/click/<key>` → преленд `?clickid=&ck=` → CTA → `/to-offer?clickid=` → LeadGid с `aff_sub`.
+
+Оформление: full-bleed фото-hero, крупный бренд, jade CTA, timeline без карточек; legal-блок без изменений по смыслу.
 
 ## Что смягчили относительно основного сайта (для Директа)
 

@@ -11,272 +11,468 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   />
   <style>
     :root {
-      --bg0: #07140f;
-      --bg1: #0d2a1f;
-      --ink: #f3f7f4;
-      --muted: #a8bdb2;
-      --line: rgba(243, 247, 244, 0.12);
-      --accent: #d7b56d;
-      --accent-ink: #1a1408;
-      --card: rgba(255, 255, 255, 0.04);
-      --ok: #7dcea0;
+      --ink: #10241c;
+      --paper: #f3f7f2;
+      --mist: #d7e6dc;
+      --jade: #1f8f63;
+      --jade-deep: #0f6b48;
+      --gold: #c9a24a;
+      --muted: rgba(16, 36, 28, 0.68);
+      --line: rgba(16, 36, 28, 0.12);
+      --hero-ink: #f4f8f3;
+      --hero-muted: rgba(244, 248, 243, 0.78);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
+    html { scroll-behavior: smooth; }
     body {
+      margin: 0;
+      min-height: 100%;
       font-family: Manrope, system-ui, sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(215, 181, 109, 0.16), transparent 55%),
-        radial-gradient(900px 500px at 100% 0%, rgba(125, 206, 160, 0.1), transparent 50%),
-        linear-gradient(165deg, var(--bg0), var(--bg1) 55%, #081811);
+      background: var(--paper);
     }
-    a { color: var(--accent); }
-    .page {
-      width: min(720px, calc(100% - 2rem));
+    a { color: var(--jade-deep); }
+
+    /* ——— Full-bleed hero ——— */
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      color: var(--hero-ink);
+      display: grid;
+      align-items: stretch;
+      isolation: isolate;
+    }
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(8, 28, 20, 0.78) 0%, rgba(8, 28, 20, 0.35) 48%, rgba(8, 28, 20, 0.72) 100%),
+        linear-gradient(180deg, rgba(8, 22, 16, 0.2) 0%, rgba(8, 22, 16, 0.88) 100%),
+        url('/preland-assets/finmfo-hero.jpg') center / cover no-repeat;
+      transform: scale(1.05);
+      animation: ken 22s ease-in-out infinite alternate;
+    }
+    .hero-grain {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.18;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+      mix-blend-mode: soft-light;
+    }
+    .hero-frame {
+      width: min(1080px, calc(100% - 2rem));
       margin: 0 auto;
-      padding: 1.5rem 0 3rem;
+      padding: 1.4rem 0 2.4rem;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100svh;
     }
     .top {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
-      margin-bottom: 2.25rem;
+      animation: rise 0.8s cubic-bezier(.2,.8,.2,1) both;
     }
     .brand {
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      font-size: 1.35rem;
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
+      font-size: clamp(2rem, 5.5vw, 3.15rem);
+      letter-spacing: -0.045em;
+      line-height: 0.95;
     }
-    .brand span { color: var(--accent); }
+    .brand em {
+      font-style: normal;
+      color: #e6c56d;
+    }
     .age {
       font-size: 0.78rem;
-      color: var(--muted);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 0.35rem 0.7rem;
-    }
-    .hero h1 {
-      font-family: "Source Serif 4", Georgia, serif;
       font-weight: 700;
-      font-size: clamp(1.85rem, 5vw, 2.6rem);
-      line-height: 1.12;
-      letter-spacing: -0.02em;
-      margin: 0 0 0.85rem;
-      max-width: 14ch;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hero-muted);
+      border-bottom: 1px solid rgba(244, 248, 243, 0.35);
+      padding-bottom: 0.2rem;
     }
-    .hero .lead {
-      margin: 0 0 1.4rem;
-      color: var(--muted);
-      font-size: 1.05rem;
+
+    .hero-copy {
+      display: grid;
+      align-content: end;
+      padding: clamp(2rem, 10vh, 5.5rem) 0 1.2rem;
+      max-width: 16ch;
+    }
+    .hero-copy h1 {
+      margin: 0 0 1rem;
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
+      font-size: clamp(2.2rem, 6.4vw, 3.55rem);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.08s both;
+    }
+    .hero-copy h1 .mark {
+      display: inline;
+      background: linear-gradient(transparent 62%, rgba(230, 197, 109, 0.38) 62%);
+    }
+    .lead {
+      margin: 0 0 1.5rem;
+      color: var(--hero-muted);
+      font-size: clamp(1rem, 2.1vw, 1.12rem);
       line-height: 1.5;
-      max-width: 36ch;
+      max-width: 34ch;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.16s both;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.9rem 1.15rem;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.26s both;
     }
     .cta {
+      position: relative;
+      overflow: hidden;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 0.45rem;
-      min-height: 3.15rem;
-      padding: 0.85rem 1.35rem;
-      border-radius: 12px;
-      background: var(--accent);
-      color: var(--accent-ink);
-      font-weight: 800;
-      text-decoration: none;
-      font-size: 1.02rem;
-      box-shadow: 0 10px 30px rgba(215, 181, 109, 0.22);
-    }
-    .cta:hover { filter: brightness(1.05); }
-    .hint {
-      margin: 0.85rem 0 0;
-      color: var(--muted);
-      font-size: 0.86rem;
-    }
-    .warn {
-      margin-top: 1.35rem;
-      padding: 0.85rem 1rem;
-      border: 1px solid rgba(215, 181, 109, 0.35);
-      background: rgba(215, 181, 109, 0.08);
-      border-radius: 12px;
-      font-size: 0.82rem;
-      line-height: 1.45;
-      color: #f0e2c0;
-    }
-    .section {
-      margin-top: 2.4rem;
-      padding-top: 1.6rem;
-      border-top: 1px solid var(--line);
-    }
-    .section h2 {
-      margin: 0 0 1rem;
-      font-size: 1.05rem;
-      font-weight: 700;
-    }
-    .steps {
-      display: grid;
-      gap: 0.75rem;
-    }
-    .step {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.85rem;
-      padding: 0.95rem 1rem;
-      background: var(--card);
-      border: 1px solid var(--line);
+      gap: 0.55rem;
+      min-height: 3.4rem;
+      padding: 0.95rem 1.4rem;
       border-radius: 14px;
+      text-decoration: none;
+      color: #f4fbf7;
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #2bb57d, var(--jade) 45%, var(--jade-deep));
+      box-shadow: 0 12px 30px rgba(15, 107, 72, 0.35);
+      transition: transform .2s ease, filter .2s ease;
     }
-    .n {
-      width: 1.7rem;
-      height: 1.7rem;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: rgba(215, 181, 109, 0.15);
-      color: var(--accent);
-      font-size: 0.8rem;
+    .cta:hover { transform: translateY(-2px); filter: brightness(1.05); }
+    .cta .arrow {
+      display: inline-block;
+      transition: transform .2s ease;
+    }
+    .cta:hover .arrow { transform: translateX(3px); }
+    .cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.28), transparent 65%);
+      transform: translateX(-120%);
+      animation: sweep 4.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .cta-note {
+      color: var(--hero-muted);
+      font-size: 0.88rem;
+      max-width: 16ch;
+      line-height: 1.35;
+    }
+
+    .warn {
+      margin-top: 1.4rem;
+      max-width: 40rem;
+      padding: 0.85rem 0 0;
+      border-top: 1px solid rgba(244, 248, 243, 0.22);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: rgba(244, 248, 243, 0.72);
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.34s both;
+    }
+
+    /* ——— Below hero ——— */
+    .below {
+      position: relative;
+      background:
+        radial-gradient(900px 320px at 100% -10%, rgba(31, 143, 99, 0.12), transparent 55%),
+        radial-gradient(700px 260px at 0% 20%, rgba(201, 162, 74, 0.1), transparent 50%),
+        linear-gradient(180deg, #eef5ef 0%, var(--paper) 35%, #ebf3ec 100%);
+      padding: 0 0 3.4rem;
+    }
+    .wrap {
+      width: min(920px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+    .ribbon {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem 1.5rem;
+      margin-top: -1.15rem;
+      margin-bottom: 2.4rem;
+      padding: 1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(16, 36, 28, 0.06);
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.4s both;
+    }
+    .ribbon span {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .ribbon strong {
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .section { margin-top: 2.5rem; }
+    .section h2 {
+      margin: 0 0 0.35rem;
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.55rem, 3.2vw, 2rem);
+      letter-spacing: -0.025em;
       font-weight: 700;
     }
-    .step strong { display: block; margin-bottom: 0.2rem; }
-    .step p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
-    .facts {
+    .section .sub {
+      margin: 0 0 1.35rem;
+      color: var(--muted);
+      max-width: 42ch;
+      line-height: 1.45;
+    }
+
+    .path {
+      display: grid;
+      gap: 0;
+      border-left: 2px solid var(--mist);
+      margin-left: 0.55rem;
+      padding-left: 1.35rem;
+    }
+    .path article {
+      position: relative;
+      padding: 0.35rem 0 1.45rem;
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .path article:nth-child(1) { animation-delay: 0.05s; }
+    .path article:nth-child(2) { animation-delay: 0.12s; }
+    .path article:nth-child(3) { animation-delay: 0.19s; }
+    .path article:last-child { padding-bottom: 0.2rem; }
+    .path article::before {
+      content: '';
+      position: absolute;
+      left: calc(-1.35rem - 6px);
+      top: 0.55rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--jade);
+      box-shadow: 0 0 0 4px rgba(31, 143, 99, 0.15);
+    }
+    .path .n {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.2rem;
+    }
+    .path strong {
+      display: block;
+      font-size: 1.08rem;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.015em;
+    }
+    .path p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+      max-width: 46ch;
+    }
+
+    .ranges {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.65rem;
+      gap: 1.25rem 1.5rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid var(--line);
     }
-    @media (max-width: 640px) {
-      .facts { grid-template-columns: 1fr; }
+    @media (max-width: 760px) {
+      .ranges { grid-template-columns: 1fr; }
+      .hero-copy { max-width: 100%; }
+      .brand { font-size: clamp(1.7rem, 8vw, 2.3rem); }
     }
-    .fact {
-      padding: 0.9rem 1rem;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--card);
-    }
-    .fact b { display: block; color: var(--ok); margin-bottom: 0.25rem; font-size: 0.92rem; }
-    .fact span { color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
-    .legal {
-      margin-top: 2rem;
-      padding: 1.1rem 1.15rem;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(0, 0, 0, 0.22);
+    .ranges dt {
+      margin: 0 0 0.25rem;
       font-size: 0.78rem;
-      line-height: 1.5;
-      color: #9bb0a5;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--jade-deep);
     }
-    .legal strong { color: #d5e4db; }
+    .ranges dd {
+      margin: 0;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .ranges .hint {
+      display: block;
+      margin-top: 0.35rem;
+      font-family: Manrope, system-ui, sans-serif;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .legal {
+      margin-top: 2.6rem;
+      padding: 1.25rem 0 0;
+      border-top: 1px solid var(--line);
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: rgba(16, 36, 28, 0.62);
+    }
+    .legal strong { color: var(--ink); }
     .legal p { margin: 0 0 0.65rem; }
     .legal p:last-child { margin: 0; }
     .foot {
-      margin-top: 1rem;
+      margin-top: 1.1rem;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem 1.1rem;
+      gap: 0.75rem 1.2rem;
       font-size: 0.78rem;
       color: var(--muted);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes ken {
+      from { transform: scale(1.05) translate3d(0, 0, 0); }
+      to { transform: scale(1.1) translate3d(-1.4%, 0.8%, 0); }
+    }
+    @keyframes sweep {
+      0%, 60% { transform: translateX(-120%); }
+      85%, 100% { transform: translateX(120%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .hero-media, .cta::before, .top, .hero-copy h1, .lead, .cta-row, .warn, .ribbon, .path article {
+        animation: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header class="top">
-      <div class="brand">finmfo<span>.tech</span></div>
-      <div class="age">18+</div>
-    </header>
+  <section class="hero">
+    <div class="hero-media" aria-hidden="true"></div>
+    <div class="hero-grain" aria-hidden="true"></div>
 
-    <section class="hero">
-      <h1>Подбор предложений микрозаймов онлайн</h1>
-      <p class="lead">
-        Информационный сервис: покажем варианты партнёрских МФО.
-        Решение о выдаче и точные условия — только на сайте выбранной организации.
-      </p>
-      <a class="cta" id="go" href="#">Перейти к подбору →</a>
-      <p class="hint">Бесплатно для пользователя · без обещания одобрения</p>
-      <div class="warn">
-        Изучите все условия кредита (займа) на сайте в соответствующем разделе.
-        Оценивайте свои финансовые возможности и риски.
-      </div>
-    </section>
+    <div class="hero-frame">
+      <header class="top">
+        <div class="brand">finmfo<em>.tech</em></div>
+        <div class="age">18+</div>
+      </header>
 
-    <section class="section">
-      <h2>Как это работает</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="n">1</div>
-          <div>
-            <strong>Откройте форму подбора</strong>
-            <p>На сайте сервиса укажите номер телефона и согласие на обработку данных.</p>
-          </div>
+      <div class="hero-copy">
+        <h1>Деньги на карту — <span class="mark">подберём</span> предложения МФО</h1>
+        <p class="lead">
+          Информационный сервис: сравните варианты партнёров.
+          Решение и точные условия — только на сайте выбранной МФО.
+        </p>
+        <div class="cta-row">
+          <a class="cta" id="go" href="#">Перейти к подбору <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="cta-note">Бесплатно · без обещания одобрения</span>
         </div>
-        <div class="step">
-          <div class="n">2</div>
-          <div>
-            <strong>Сравните предложения партнёров</strong>
-            <p>Сервис подбирает варианты МФО из реестра Банка России. Это не заявка в БКИ.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="n">3</div>
-          <div>
-            <strong>Оформите займ у выбранной МФО</strong>
-            <p>Паспорт РФ, возраст от 18 лет и карта на ваше имя — типичные требования партнёров.</p>
-          </div>
+        <div class="warn">
+          Изучите все условия кредита (займа) на сайте в соответствующем разделе.
+          Оценивайте свои финансовые возможности и риски.
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="section">
-      <h2>Ориентиры по условиям партнёров</h2>
-      <div class="facts">
-        <div class="fact">
-          <b>Сумма</b>
-          <span>от 1 000 до 100 000 ₽ (у конкретной МФО может быть уже)</span>
-        </div>
-        <div class="fact">
-          <b>Срок</b>
-          <span>от 61 до 365 дней с учётом возможной пролонгации</span>
-        </div>
-        <div class="fact">
-          <b>ПСК</b>
-          <span>от 0% до 292% годовых — смотрите до договора</span>
-        </div>
+  <div class="below">
+    <div class="wrap">
+      <div class="ribbon" aria-label="Кратко о сервисе">
+        <span><strong>Не кредитор</strong> — подбор предложений</span>
+        <span><strong>МФО из реестра</strong> Банка России</span>
+        <span><strong>Условия</strong> — у партнёра на сайте</span>
       </div>
-    </section>
 
-    <section class="legal" id="terms">
-      <p>
-        <strong>Реклама.</strong>
-        Сервис finmfo.tech не является кредитором, банком или микрофинансовой организацией
-        и не оказывает финансовых услуг. Займы предоставляют МФО-партнёры.
-        Решение о выдаче принимает МФО. Сервис не гарантирует одобрение.
-      </p>
-      <p>
-        <strong>Владелец сервиса:</strong>
-        ИП Турова Дарья Романовна, ИНН 772384698796, ОГРНИП 325774600634990,
-        адрес: 109387, г. Москва, ул. Люблинская, д. 59, 384,
-        e-mail: <a href="mailto:info@finmfo.tech">info@finmfo.tech</a>,
-        тел. <a href="tel:+78002222205">8 800 222-22-05</a>.
-      </p>
-      <p>
-        Диапазон полной стоимости кредита (ПСК): от 0% до 292% годовых.
-        Пример: заём 10 000 ₽ на 30 дней по ставке 0,8% в день — переплата 2 400 ₽, к возврату 12 400 ₽.
-        Точные условия устанавливает МФО на своём сайте.
-        Займы — лицам старше 18 лет, гражданам РФ.
-        Неисполнение обязательств может повлечь штрафы и передачу данных в БКИ.
-      </p>
-    </section>
+      <section class="section">
+        <h2>Три шага до подборки</h2>
+        <p class="sub">Короткий путь от клика до формы на сайте сервиса — без гарантий выдачи.</p>
+        <div class="path">
+          <article>
+            <div class="n">Шаг 01</div>
+            <strong>Откройте форму</strong>
+            <p>На сайте сервиса укажите номер и согласие на обработку данных.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 02</div>
+            <strong>Сравните партнёров</strong>
+            <p>Варианты МФО из реестра Банка России. Это не заявка в БКИ.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 03</div>
+            <strong>Оформите у МФО</strong>
+            <p>Обычно нужны паспорт РФ 18+, карта на ваше имя — уточняйте у партнёра.</p>
+          </article>
+        </div>
+      </section>
 
-    <div class="foot">
-      <a href="https://finmfo.tech/privacy" target="_blank" rel="noopener">Политика конфиденциальности</a>
-      <a href="https://finmfo.tech/terms" target="_blank" rel="noopener">Пользовательское соглашение</a>
-      <span>LeadGid offer #7426</span>
+      <section class="section">
+        <h2>Ориентиры по условиям партнёров</h2>
+        <p class="sub">Диапазоны зависят от конкретной МФО — сверяйте до договора.</p>
+        <dl class="ranges">
+          <div>
+            <dt>Сумма</dt>
+            <dd>1 000 – 100 000 ₽<span class="hint">зависит от конкретной МФО</span></dd>
+          </div>
+          <div>
+            <dt>Срок</dt>
+            <dd>61 – 365 дней<span class="hint">с учётом возможной пролонгации</span></dd>
+          </div>
+          <div>
+            <dt>ПСК</dt>
+            <dd>0% – 292% годовых<span class="hint">смотрите до подписания договора</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal" id="terms">
+        <p>
+          <strong>Реклама.</strong>
+          Сервис finmfo.tech не является кредитором, банком или микрофинансовой организацией
+          и не оказывает финансовых услуг. Займы предоставляют МФО-партнёры.
+          Решение о выдаче принимает МФО. Сервис не гарантирует одобрение.
+        </p>
+        <p>
+          <strong>Владелец сервиса:</strong>
+          ИП Турова Дарья Романовна, ИНН 772384698796, ОГРНИП 325774600634990,
+          адрес: 109387, г. Москва, ул. Люблинская, д. 59, 384,
+          e-mail: <a href="mailto:info@finmfo.tech">info@finmfo.tech</a>,
+          тел. <a href="tel:+78002222205">8 800 222-22-05</a>.
+        </p>
+        <p>
+          Диапазон полной стоимости кредита (ПСК): от 0% до 292% годовых.
+          Пример: заём 10 000 ₽ на 30 дней по ставке 0,8% в день — переплата 2 400 ₽, к возврату 12 400 ₽.
+          Точные условия устанавливает МФО на своём сайте.
+          Займы — лицам старше 18 лет, гражданам РФ.
+          Неисполнение обязательств может повлечь штрафы и передачу данных в БКИ.
+        </p>
+      </section>
+
+      <div class="foot">
+        <a href="https://finmfo.tech/privacy" target="_blank" rel="noopener">Политика конфиденциальности</a>
+        <a href="https://finmfo.tech/terms" target="_blank" rel="noopener">Пользовательское соглашение</a>
+        <span>LeadGid offer #7426</span>
+      </div>
     </div>
   </div>
 
@@ -289,7 +485,6 @@
       if (ck) href += '&ck=' + encodeURIComponent(ck);
       var go = document.getElementById('go');
       go.href = href;
-      // Soft fallback if opened without clickid (preview)
       if (!clickid) {
         go.href = 'https://finmfo.tech/';
         go.setAttribute('rel', 'noopener');

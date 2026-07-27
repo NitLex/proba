@@ -10,7 +10,9 @@ client/dist/
 .env
 SECRETS.env
 creatives/pipeline/
-prelands/
-prelands/
+# Generated pipeline prelands are local; curated HTML + assets are tracked
+prelands/*
 !prelands/*.html
+!prelands/assets/
+!prelands/assets/**
 !prelands/README.md
