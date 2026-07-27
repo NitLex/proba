@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "uploads": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.jpg",
+      "mime": "image/jpeg",
+      "size": 128081,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.jpg",
+      "mime": "image/jpeg",
+      "size": 179370,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "prompt_token": {
+    "prefix": "qznD4RCq",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token)"
+  },
+  "probed_tokens": [
+    {
+      "prefix": "qznD4RCq",
+      "run_id": 2,
+      "status": 403
+    },
+    {
+      "prefix": "gaMliGhx6o",
+      "run_id": 2,
+      "status": 403,
+      "note": "token sibling agent 92a7"
+    },
+    {
+      "prefix": "V-qzvHeWSO",
+      "run_id": 2,
+      "status": 403,
+      "note": "token sibling agent a226"
+    },
+    {
+      "prefix": "rd-e5euMwzL",
+      "run_id": 2,
+      "status": 403,
+      "note": "token sibling agent 2dfe"
+    }
+  ],
+  "local_assets": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.png",
+      "jpg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.png",
+      "jpg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024"
+    }
+  ],
+  "note": "Локальные product-креативы готовы (GenerateImage). Параллельные spawn'ы шага creative крутят creative_ingest.hash — все токены из промптов агентов дают HTTP 403. Нужен актуальный creative_ingest token для run_id=2. Повтор: python3 upload_ingest.py --run-id 2 --token '<TOKEN>' --prefer-jpeg"
+}
