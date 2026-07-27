@@ -1,0 +1,64 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "token_prefix": "t-DTilhy",
+  "uploads": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.jpg",
+      "mime": "image/jpeg",
+      "size": 174760,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.jpg",
+      "mime": "image/jpeg",
+      "size": 161125,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-2.jpg",
+      "mime": "image/jpeg",
+      "size": 131192,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "prompt_token": {
+    "prefix": "t-DTilhy",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token). Вероятно creative_ingest.hash уже перезаписан параллельным spawn creative-агента."
+  },
+  "local_assets": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.png",
+      "jpg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "matte black brushed-metal blank card"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.png",
+      "jpg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "champagne pearl blank card on silk"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-2.png",
+      "jpg": "generic-agent-2.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "frosted ice-blue blank card teal spotlight"
+    }
+  ],
+  "note": "Локальные product-креативы готовы (Cursor GenerateImage, 3×1024). Ingest HTTP 403 — нужен актуальный creative_ingest token для run_id=2. Повтор: python3 creatives/pipeline/2/upload_ingest.py --run-id 2 --token '<TOKEN>' --prefer-jpeg"
+}

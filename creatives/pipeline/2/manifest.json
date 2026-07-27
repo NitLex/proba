@@ -1,0 +1,73 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "engine": "agent",
+  "image_provider": "cursor-agent GenerateImage",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "promo_code": ""
+  },
+  "creatives": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 0,
+      "file": "generic-agent-0.png",
+      "jpeg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "matte black brushed-metal blank card, cinematic rim light on charcoal stone",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Заявка онлайн, без очередей.",
+        "Зарубежная карта онлайн. Пополнение по СБП. Условия на сайте.",
+        "Выпуск зарубежной карты. Оформление заявки онлайн."
+      ]
+    },
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 1,
+      "file": "generic-agent-1.png",
+      "jpeg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "champagne pearl blank card on silk, warm soft directional light",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Заявка онлайн, без очередей.",
+        "Зарубежная карта онлайн. Пополнение по СБП. Условия на сайте.",
+        "Выпуск зарубежной карты. Оформление заявки онлайн."
+      ]
+    },
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 2,
+      "file": "generic-agent-2.png",
+      "jpeg": "generic-agent-2.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "hook": "frosted ice-blue blank card, cool teal spotlight on deep navy",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Заявка онлайн, без очередей.",
+        "Зарубежная карта онлайн. Пополнение по СБП. Условия на сайте.",
+        "Выпуск зарубежной карты. Оформление заявки онлайн."
+      ]
+    }
+  ]
+}
