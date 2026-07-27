@@ -1,0 +1,48 @@
+{
+  "ok": false,
+  "run_id": 1,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "prompt_token": {
+    "prefix": "ELL3GORS",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token)"
+  },
+  "sibling_tokens_tried": [
+    {
+      "prefix": "OPgvNQY5",
+      "branch": "cursor/ppm-creative-4caa",
+      "status": "invalid_403"
+    },
+    {
+      "prefix": "BdnfCgMy",
+      "branch": "cursor/ppm-creative-4f84",
+      "status": "invalid_403"
+    }
+  ],
+  "uploads": [
+    {
+      "angle_id": "travel",
+      "mime": "image/jpeg",
+      "file": "travel-agent-0.jpg",
+      "status": 403,
+      "size": 141879,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "services",
+      "mime": "image/jpeg",
+      "file": "services-agent-0.jpg",
+      "status": 403,
+      "size": 114223,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "local_assets": {
+    "travel": ["travel-agent-0.png", "travel-agent-0.jpg"],
+    "services": ["services-agent-0.png", "services-agent-0.jpg"],
+    "size": "1024x1024",
+    "format": "product",
+    "engine": "agent"
+  },
+  "note": "Локальные product-креативы готовы (GenerateImage). Параллельные spawn'ы шага creative крутят creative_ingest.hash — токены из промптов дают HTTP 403. Нужен актуальный creative_ingest token для run_id=1. Повтор: python3 upload_ingest.py --run-id 1 --token '<TOKEN>' --prefer-jpeg"
+}
