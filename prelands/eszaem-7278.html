@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EsZaem — подбор предложений микрозаймов онлайн</title>
+  <title>Рябина — подбор предложений микрозаймов онлайн</title>
   <meta
     name="description"
     content="Информационный сервис подбора предложений МФО. Не кредитор. 18+. Условия и решение — на сайте партнёра."
@@ -85,13 +85,16 @@
       animation: rise 0.75s cubic-bezier(.2,.8,.2,1) both;
     }
     .brand {
-      font-family: Bricolage Grotesque, system-ui, sans-serif;
-      font-weight: 800;
-      font-size: clamp(1.9rem, 5vw, 2.85rem);
-      letter-spacing: -0.05em;
-      line-height: 0.95;
+      display: inline-flex;
+      align-items: center;
+      line-height: 0;
     }
-    .brand span { color: var(--sun); }
+    .brand img {
+      display: block;
+      height: clamp(1.85rem, 4.8vw, 2.55rem);
+      width: auto;
+      filter: drop-shadow(0 2px 12px rgba(0,0,0,0.28));
+    }
     .age {
       font-size: 0.76rem;
       font-weight: 800;
@@ -107,25 +110,6 @@
       max-width: 16ch;
       padding-bottom: 0.35rem;
     }
-    .kicker {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      margin: 0 0 0.85rem;
-      font-size: 0.84rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: var(--sun);
-      animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.06s both;
-    }
-    .kicker::before {
-      content: '';
-      width: 0.55rem;
-      height: 0.55rem;
-      border-radius: 50%;
-      background: var(--sun);
-      box-shadow: 0 0 0 4px rgba(255, 210, 74, 0.25);
-    }
     .hero-copy h1 {
       margin: 0 0 1rem;
       font-family: Bricolage Grotesque, system-ui, sans-serif;
@@ -134,7 +118,7 @@
       line-height: 0.98;
       letter-spacing: -0.04em;
       text-wrap: balance;
-      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.12s both;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.08s both;
     }
     .hero-copy h1 em {
       font-style: normal;
@@ -376,7 +360,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .hero-media, .hero-blob, .cta::before, .top, .kicker, .hero-copy h1, .lead, .cta-row, .warn, .mascot-note, .path article {
+      .hero-media, .hero-blob, .cta::before, .top, .hero-copy h1, .lead, .cta-row, .warn, .mascot-note, .path article {
         animation: none !important;
       }
     }
@@ -389,15 +373,16 @@
 
     <div class="hero-frame">
       <header class="top">
-        <div class="brand">Es<span>Zaem</span></div>
+        <a class="brand" href="https://eszaem.com/" target="_blank" rel="noopener" aria-label="Рябина">
+          <img src="assets/ryabina-logo.svg" alt="Рябина" width="147" height="30" />
+        </a>
         <div class="age">18+</div>
       </header>
 
       <div class="hero-copy">
-        <p class="kicker">Сервис подбора · LeadGid #7278</p>
         <h1>Деньги на карту — <em>подберём</em> варианты МФО</h1>
         <p class="lead">
-          Информационный сервис EsZaem: сравните предложения партнёров.
+          Информационный сервис Рябина: сравните предложения партнёров.
           Решение и точные условия — только на сайте выбранной МФО.
         </p>
         <div class="cta-row">
@@ -469,7 +454,7 @@
       <section class="legal" id="terms">
         <p>
           <strong>Реклама.</strong>
-          Сервис EsZaem (eszaem.com) не является кредитором, банком или микрофинансовой организацией
+          Сервис Рябина (eszaem.com) не является кредитором, банком или микрофинансовой организацией
           и не оказывает финансовых услуг самостоятельно. Займы предоставляют МФО-партнёры.
           Решение о выдаче принимает МФО. Сервис не гарантирует одобрение и не обещает «100%» выдачу.
         </p>
