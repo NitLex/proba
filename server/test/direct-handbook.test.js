@@ -70,6 +70,18 @@ test('loan checklist does not require overseas-card wording', () => {
   assert.match(foreign.text, /займ|мфо/i);
 });
 
+test('loan checklist requires graphic RSYa disclaimer item', () => {
+  const list = buildDirectOperatorChecklist({
+    plan: { href: 'https://trekerarbitrag.ru/click/x', ad_format: 'graphic' },
+    offer: { name: 'FinMi - Выдача займа нерезидентам' },
+    playbook: { vertical_key: 'fintech_loans', angles: [{ id: 'speed' }] },
+  });
+  const disc = list.find((i) => i.id === 'loan_rsya_disclaimer');
+  assert.equal(disc.required, true);
+  assert.match(disc.text, /10%/);
+  assert.ok(DIRECT_FINANCE_DOCS.loan_rsya_disclaimers.graphic_required.length >= 3);
+});
+
 test('direct knowledge brief and system prompt mention help root', () => {
   const brief = getDirectKnowledgeBrief();
   assert.match(brief.help_root, /support\/direct/);

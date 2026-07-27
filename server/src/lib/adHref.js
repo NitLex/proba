@@ -18,12 +18,36 @@ const PATH_BY_ANGLE = {
   generic: 'vypusk-karty',
 };
 
+const LOAN_PATH_BY_ANGLE = {
+  speed: 'zaym-online',
+  passport: 'zaym-pasport',
+  amount: 'zaym-na-kartu',
+  generic: 'zaym-online',
+};
+
 const DOMAIN_ENV_BY_ANGLE = {
   travel: 'AD_DISPLAY_DOMAIN_TRAVEL',
   services: 'AD_DISPLAY_DOMAIN_SERVICES',
   premium: 'AD_DISPLAY_DOMAIN_PREMIUM',
   sbp: 'AD_DISPLAY_DOMAIN_SBP',
 };
+
+function looksLikeLoanOffer(offer = {}, angle = {}) {
+  const blob = [
+    offer.name,
+    offer.offer_name,
+    offer.notes,
+    offer.vertical,
+    offer.facts?.payout_model,
+    ...(offer.facts?.products || []),
+    angle?.id,
+    angle?.title,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  if (offer.facts?.non_resident_audience) return true;
+  return /займ|микрозайм|мфо|нерезидент|fintech_loans|\bloan\b/i.test(blob);
+}
 
 export function normalizeHost(raw) {
   if (!raw) return '';
@@ -95,9 +119,16 @@ export function displayUrlPathForAngle(angle = {}, offer = {}) {
     offer.display_url_path ||
     offer.displayUrlPath ||
     angle.display_url_path ||
-    PATH_BY_ANGLE[angle?.id] ||
-    PATH_BY_ANGLE.generic;
-  return sanitizeDisplayUrlPath(custom);
+    null;
+  if (custom) return sanitizeDisplayUrlPath(custom);
+
+  if (looksLikeLoanOffer(offer, angle)) {
+    return sanitizeDisplayUrlPath(
+      LOAN_PATH_BY_ANGLE[angle?.id] || LOAN_PATH_BY_ANGLE.generic,
+    );
+  }
+
+  return sanitizeDisplayUrlPath(PATH_BY_ANGLE[angle?.id] || PATH_BY_ANGLE.generic);
 }
 
 /**

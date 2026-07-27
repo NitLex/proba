@@ -35,3 +35,20 @@ test('buildAdLinkFields uses angle path and offer domain', () => {
   assert.equal(link.display_preview, 'payservices.ru/karta/poezdki');
   assert.equal(displayUrlPathForAngle({ id: 'services' }), 'karta/servisy');
 });
+
+test('loan offers get zaym DisplayUrlPath, not vypusk-karty', () => {
+  assert.equal(
+    displayUrlPathForAngle(
+      { id: 'speed' },
+      { name: 'FinMi - Выдача займа нерезидентам', vertical: 'МФО' },
+    ),
+    'zaym-online',
+  );
+  assert.equal(
+    displayUrlPathForAngle(
+      { id: 'passport' },
+      { name: 'Займ онлайн', facts: { products: ['МФО'] } },
+    ),
+    'zaym-pasport',
+  );
+});
