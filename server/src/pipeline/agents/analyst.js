@@ -380,9 +380,9 @@ export async function runAnalyst({ offer }) {
       ...(geo
         ? []
         : ['Гео не извлечено из оффера — не подставляй РФ автоматически']),
-      ...(facts.geo_required
+      ...(facts.non_resident_audience
         ? [
-            'Оффер про нерезидентов: обязательно укажи geo вручную (UZ/KZ/…), иначе Директ получит пустые RegionIds и начнёт плодить черновики',
+            'Аудитория «нерезиденты» — это угол оффера; гео трафика для РСЯ обычно РФ (225), не UZ/KZ',
           ]
         : []),
       'Модерация: только утверждения из фактов оффера, без чужих шаблонов',
@@ -405,8 +405,8 @@ export async function runAnalyst({ offer }) {
     payout_model: facts.payout_model || null,
     products: facts.products || [],
     source:
-      facts.ru_traffic_fit === 'mismatch_rsya_ru' || facts.geo_required
-        ? 'Review traffic source / set geo first'
+      facts.ru_traffic_fit === 'mismatch_rsya_ru'
+        ? 'Review traffic source (geo ≠ RU)'
         : offer.source || offer.traffic_source || primarySource?.source || 'Yandex Direct РСЯ',
     funnel: offer.funnel || primarySource?.funnel || 'direct',
     angles,

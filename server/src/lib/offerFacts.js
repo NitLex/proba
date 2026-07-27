@@ -175,30 +175,43 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   const payoutModel = extractPayoutModel(offer);
   const brand = extractBrand(name);
   const network = detectAffiliateNetwork(offer.url || '', offer.network || '');
-  const nonResidentOffer = /нерезидент|non[-\s]?resident|foreigner|иностранц/i.test(textBlob);
-  // "Займы нерезидентам" ≠ geo=RU: don't invent RU just because Wordstat is RU-centric
-  if (!geos.length && nonResidentOffer) {
-    // leave geos empty — operator must set geo explicitly
-  }
-  const regionIds = regionIdsForGeos(geos);
-  const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
-  const nonRu = geos.some((g) => g !== 'RU');
+
+  // "Займы нерезидентам" = audience/product angle (who gets the loan), NOT traffic geo.
+  // РСЯ for such offers is still РФ (region 225): advertise in Russia to non-resident borrowers.
+  const nonResidentAudience = /нерезидент|non[-\s]?resident|foreigner|иностранц/i.test(textBlob);
 
   const products = Array.isArray(offer.products)
     ? offer.products
     : Array.isArray(enrich?.leadgid?.products)
       ? enrich.leadgid.products
       : [];
-
   const productNames = products.map((p) => p.name || p).filter(Boolean);
+
+  // Default RU only when safe: RUB + Russian MFO/loan cues + no foreign ISO2 already found.
+  // Never invent RU for EUR/multi-geo CPL (Finandos ES RO…).
+  const currency = String(offer.currency || enrich?.leadgid?.currency || '').toUpperCase();
+  const looksRuMfo =
+    currency === 'RUB' &&
+    (/мфо|займ|кредит/i.test(`${name} ${productNames.join(' ')} ${textBlob}`) ||
+      nonResidentAudience);
+  if (!geos.length && looksRuMfo) {
+    geos = ['RU'];
+  }
+
+  const regionIds = regionIdsForGeos(geos);
+  const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
+  const nonRu = geos.some((g) => g !== 'RU');
 
   const evidence = [];
   if (payoutModel) evidence.push(`payout_model: ${payoutModel}`);
   if (productNames.length) evidence.push(`products: ${productNames.join('; ')}`);
   if (brand) evidence.push(`brand: ${brand}`);
   if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
-  if (nonResidentOffer && !geos.length) {
-    evidence.push('geo_required: offer targets non-residents — set geo explicitly');
+  if (nonResidentAudience) {
+    evidence.push('audience: non-residents (product angle; traffic geo still RU for РСЯ)');
+  }
+  if (looksRuMfo && geos.length === 1 && geos[0] === 'RU') {
+    evidence.push('geo_default: RU from RUB+МФО/займ (нерезидентам ≠ foreign GEO)');
   }
   if (offer.currency) evidence.push(`currency: ${offer.currency}`);
   if (offer.payout != null) evidence.push(`payout: ${offer.payout} ${offer.currency || ''}`.trim());
@@ -215,15 +228,9 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     currency: offer.currency || null,
     payout: offer.payout ?? null,
     epc: offer.epc ?? null,
-    non_resident_offer: nonResidentOffer,
-    geo_required: Boolean(nonResidentOffer && !geos.length),
-    ru_traffic_fit: ruOnly
-      ? 'fit'
-      : nonRu
-        ? 'mismatch_rsya_ru'
-        : nonResidentOffer
-          ? 'geo_required'
-          : 'unknown',
+    non_resident_audience: nonResidentAudience,
+    geo_required: false,
+    ru_traffic_fit: ruOnly ? 'fit' : nonRu ? 'mismatch_rsya_ru' : 'unknown',
     evidence,
   };
 }
@@ -260,10 +267,12 @@ export function seedsFromOfferFacts(offer = {}, facts = {}) {
   if (geos.includes('PL')) seeds.push('pożyczka online', 'kredyt online');
   if (geos.includes('CZ')) seeds.push('půjčka online');
   if (geos.includes('RO')) seeds.push('credit online');
-  // Only inject RU loan seeds when geo is explicitly RU — never for empty/non-resident
   if (geos.includes('RU')) {
-    if (/займ|кредит|loan|mfo|мфо/i.test(`${offer.name} ${products.join(' ')}`)) {
+    if (/займ|кредит|loan|mfo|мфо|нерезидент/i.test(`${offer.name} ${products.join(' ')}`)) {
       seeds.push('займ онлайн', 'кредит онлайн');
+      if (/нерезидент/i.test(String(offer.name || ''))) {
+        seeds.push('займ нерезидентам', 'кредит для иностранцев');
+      }
     }
   }
 
