@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FinZaymo — подбор предложений микрозаймов</title>
+  <meta
+    name="description"
+    content="Информационный сервис подбора предложений МФО. Не кредитор. 18+. Условия и решение — на сайте партнёра."
+  />
+  <meta name="arbtrack-tracker" content="https://trekerarbitrag.ru" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --ink: #121a14;
+      --paper: #f4f7ef;
+      --mist: #dce8cf;
+      --lime: #8fce4a;
+      --lime-deep: #5c932d;
+      --lime-soft: #e0fdc7;
+      --muted: rgba(18, 26, 20, 0.64);
+      --line: rgba(18, 26, 20, 0.12);
+      --hero: #f7faf2;
+      --hero-muted: rgba(247, 250, 242, 0.78);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Outfit, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    a { color: var(--lime-deep); }
+
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      color: var(--hero);
+      display: grid;
+      isolation: isolate;
+    }
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(105deg, rgba(12, 22, 14, 0.82) 0%, rgba(12, 22, 14, 0.42) 46%, rgba(12, 22, 14, 0.7) 100%),
+        linear-gradient(180deg, rgba(12, 22, 14, 0.15) 0%, rgba(12, 22, 14, 0.88) 100%),
+        url('assets/finzaymo-hero.jpg') center / cover no-repeat;
+      transform: scale(1.04);
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+    .hero-sheen {
+      position: absolute;
+      inset: auto -10% -20% auto;
+      width: min(70vw, 520px);
+      height: min(70vw, 520px);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(143, 206, 74, 0.28), transparent 68%);
+      filter: blur(6px);
+      z-index: -1;
+      pointer-events: none;
+      animation: breathe 6s ease-in-out infinite;
+    }
+    .hero-frame {
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+      min-height: 100svh;
+      padding: 1.35rem 0 2.4rem;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      animation: rise 0.75s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .brand {
+      font-family: Instrument Serif, Georgia, serif;
+      font-size: clamp(2.15rem, 6vw, 3.4rem);
+      letter-spacing: -0.04em;
+      line-height: 0.92;
+      font-weight: 400;
+    }
+    .brand em {
+      font-style: italic;
+      color: var(--lime);
+    }
+    .age {
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--hero-muted);
+      border-bottom: 1px solid rgba(247, 250, 242, 0.35);
+      padding-bottom: 0.15rem;
+    }
+
+    .hero-copy {
+      align-self: end;
+      max-width: 15ch;
+      padding-bottom: 0.4rem;
+    }
+    .kicker {
+      display: inline-block;
+      margin: 0 0 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--lime-soft);
+      animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.05s both;
+    }
+    .hero-copy h1 {
+      margin: 0 0 1rem;
+      font-family: Instrument Serif, Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(2.45rem, 7vw, 4.2rem);
+      line-height: 0.96;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.1s both;
+    }
+    .hero-copy h1 i {
+      font-style: italic;
+      color: var(--lime);
+    }
+    .lead {
+      margin: 0 0 1.45rem;
+      color: var(--hero-muted);
+      font-size: clamp(1.02rem, 2.2vw, 1.15rem);
+      line-height: 1.5;
+      max-width: 34ch;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.18s both;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.9rem 1.2rem;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.26s both;
+    }
+    .cta {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      min-height: 3.45rem;
+      padding: 0.95rem 1.4rem;
+      border-radius: 14px;
+      text-decoration: none;
+      color: #102012;
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.015em;
+      background: linear-gradient(135deg, #c8f08a, var(--lime) 42%, var(--lime-deep));
+      box-shadow: 0 14px 34px rgba(92, 147, 45, 0.32);
+      transition: transform .2s ease, filter .2s ease;
+    }
+    .cta:hover { transform: translateY(-2px); filter: brightness(1.04); }
+    .cta .arrow { transition: transform .2s ease; }
+    .cta:hover .arrow { transform: translateX(3px); }
+    .cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.35), transparent 70%);
+      transform: translateX(-120%);
+      animation: sweep 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .cta-note {
+      color: var(--hero-muted);
+      font-size: 0.88rem;
+      max-width: 16ch;
+      line-height: 1.35;
+    }
+    .warn {
+      margin-top: 1.35rem;
+      max-width: 42rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid rgba(247, 250, 242, 0.22);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: rgba(247, 250, 242, 0.72);
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.34s both;
+    }
+
+    .below {
+      background:
+        radial-gradient(820px 300px at 100% 0%, rgba(143, 206, 74, 0.14), transparent 55%),
+        radial-gradient(640px 240px at 0% 30%, rgba(224, 253, 199, 0.55), transparent 50%),
+        linear-gradient(180deg, #eef4e6 0%, var(--paper) 40%, #eef3e7 100%);
+      padding: 0 0 3.5rem;
+    }
+    .wrap {
+      width: min(920px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+    .pull {
+      margin-top: -1.2rem;
+      margin-bottom: 2.5rem;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 1rem 1.5rem;
+      padding: 1.15rem 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(18, 26, 20, 0.06);
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.4s both;
+    }
+    @media (max-width: 760px) {
+      .pull { grid-template-columns: 1fr; }
+      .hero-copy { max-width: 100%; }
+    }
+    .pull strong {
+      display: block;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .pull span { color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+
+    .section { margin-top: 2.4rem; }
+    .section h2 {
+      margin: 0 0 0.35rem;
+      font-family: Instrument Serif, Georgia, serif;
+      font-size: clamp(1.7rem, 3.4vw, 2.15rem);
+      font-weight: 400;
+      letter-spacing: -0.025em;
+    }
+    .section .sub {
+      margin: 0 0 1.4rem;
+      color: var(--muted);
+      max-width: 44ch;
+      line-height: 1.45;
+    }
+
+    .path {
+      border-left: 2px solid var(--mist);
+      margin-left: 0.5rem;
+      padding-left: 1.35rem;
+    }
+    .path article {
+      position: relative;
+      padding: 0.2rem 0 1.4rem;
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .path article:nth-child(1) { animation-delay: .05s; }
+    .path article:nth-child(2) { animation-delay: .12s; }
+    .path article:nth-child(3) { animation-delay: .19s; }
+    .path article:last-child { padding-bottom: 0.15rem; }
+    .path article::before {
+      content: '';
+      position: absolute;
+      left: calc(-1.35rem - 5px);
+      top: 0.45rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--lime-deep);
+      box-shadow: 0 0 0 4px rgba(143, 206, 74, 0.2);
+    }
+    .path .n {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--lime-deep);
+      margin-bottom: 0.2rem;
+    }
+    .path strong {
+      display: block;
+      font-size: 1.08rem;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.015em;
+    }
+    .path p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+      max-width: 48ch;
+    }
+
+    .ranges {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.2rem 1.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    @media (max-width: 760px) {
+      .ranges { grid-template-columns: 1fr; }
+    }
+    .ranges dt {
+      margin: 0 0 0.25rem;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--lime-deep);
+    }
+    .ranges dd {
+      margin: 0;
+      font-family: Instrument Serif, Georgia, serif;
+      font-size: 1.45rem;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .ranges .hint {
+      display: block;
+      margin-top: 0.35rem;
+      font-family: Outfit, system-ui, sans-serif;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .legal {
+      margin-top: 2.6rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: rgba(18, 26, 20, 0.62);
+    }
+    .legal strong { color: var(--ink); }
+    .legal p { margin: 0 0 0.65rem; }
+    .legal p:last-child { margin: 0; }
+    .foot {
+      margin-top: 1.1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.2rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes drift {
+      from { transform: scale(1.04) translate3d(0,0,0); }
+      to { transform: scale(1.09) translate3d(-1.2%, 0.7%, 0); }
+    }
+    @keyframes breathe {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.08); }
+    }
+    @keyframes sweep {
+      0%, 58% { transform: translateX(-120%); }
+      82%, 100% { transform: translateX(120%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .hero-media, .hero-sheen, .cta::before, .top, .kicker, .hero-copy h1, .lead, .cta-row, .warn, .pull, .path article {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-media" aria-hidden="true"></div>
+    <div class="hero-sheen" aria-hidden="true"></div>
+
+    <div class="hero-frame">
+      <header class="top">
+        <div class="brand">Fin<em>Zaymo</em></div>
+        <div class="age">18+</div>
+      </header>
+
+      <div class="hero-copy">
+        <p class="kicker">Сервис подбора · LeadGid #7331</p>
+        <h1>Деньги на карту — <i>сравните</i> предложения МФО</h1>
+        <p class="lead">
+          Информационный сервис FinZaymo: выберите сумму и параметры,
+          затем перейдите к партнёрам. Решение и точные условия — только у МФО.
+        </p>
+        <div class="cta-row">
+          <a class="cta" id="go" href="#">Подобрать предложения <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="cta-note">Бесплатно · без обещания одобрения</span>
+        </div>
+        <div class="warn">
+          Изучите все условия кредита (займа) на сайте в соответствующем разделе.
+          Оценивайте свои финансовые возможности и риски.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="below">
+    <div class="wrap">
+      <div class="pull" aria-label="О сервисе">
+        <div>
+          <strong>Не кредитор — подбор предложений</strong>
+          <span>Сервис не выдаёт займы сам. Заявку рассматривает МФО-партнёр.</span>
+        </div>
+        <div>
+          <strong>Ориентир по сумме</strong>
+          <span>На витрине — варианты до 30 / 50 / 100 тыс. ₽. Максимум в первый раз брать не обязательно.</span>
+        </div>
+      </div>
+
+      <section class="section">
+        <h2>Как это работает</h2>
+        <p class="sub">Короткий путь к форме на сайте сервиса — без гарантий выдачи.</p>
+        <div class="path">
+          <article>
+            <div class="n">Шаг 01</div>
+            <strong>Откройте подбор</strong>
+            <p>Укажите желаемую сумму и ответы на короткие вопросы — это не заявка в БКИ.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 02</div>
+            <strong>Сравните партнёров</strong>
+            <p>Варианты МФО из реестра Банка России. Условия и ставки — на сайте выбранной компании.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 03</div>
+            <strong>Оформите у МФО</strong>
+            <p>Обычно нужны паспорт РФ 18+ и карта на ваше имя — уточняйте у партнёра до договора.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Ориентиры по условиям партнёров</h2>
+        <p class="sub">Диапазоны зависят от конкретной МФО — сверяйте до подписания.</p>
+        <dl class="ranges">
+          <div>
+            <dt>Сумма</dt>
+            <dd>до 100 000 ₽<span class="hint">на витрине также 30 и 50 тыс.</span></dd>
+          </div>
+          <div>
+            <dt>Срок</dt>
+            <dd>короткий / с продлением<span class="hint">точный срок — у МФО на сайте</span></dd>
+          </div>
+          <div>
+            <dt>ПСК</dt>
+            <dd>от 0% до 292%<span class="hint">годовых; смотрите до договора</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal" id="terms">
+        <p>
+          <strong>Реклама.</strong>
+          Сервис FinZaymo (finzaymo.ru) не является кредитором, банком или микрофинансовой организацией
+          и не оказывает финансовых услуг. Займы предоставляют МФО-партнёры.
+          Решение о выдаче принимает МФО. Сервис не гарантирует одобрение и не обещает «бесплатный» заём —
+          акции и ставки зависят от условий конкретной организации.
+        </p>
+        <p>
+          Диапазон полной стоимости кредита (ПСК) у партнёров может составлять от 0% до 292% годовых.
+          Пример: заём 10 000 ₽ на 30 дней по ставке 0,8% в день — переплата 2 400 ₽, к возврату 12 400 ₽.
+          Точные условия устанавливает МФО на своём сайте.
+          Займы — лицам старше 18 лет, гражданам РФ.
+          Неисполнение обязательств может повлечь штрафы и передачу данных в БКИ.
+        </p>
+        <p>
+          Реквизиты и политика обработки данных — на сайте сервиса:
+          <a href="https://finzaymo.ru/" target="_blank" rel="noopener">finzaymo.ru</a>.
+          Оффер LeadGid #7331 «Ю-Займ — Заявка».
+        </p>
+      </section>
+
+      <div class="foot">
+        <a href="https://finzaymo.ru/" target="_blank" rel="noopener">Сайт сервиса</a>
+        <span>LeadGid offer #7331</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var clickid = q.get('clickid') || '';
+      var ck = q.get('ck') || '';
+      var meta = document.querySelector('meta[name="arbtrack-tracker"]');
+      var base = ((meta && meta.content) || 'https://trekerarbitrag.ru').replace(/\/$/, '');
+      var href = base + '/to-offer?clickid=' + encodeURIComponent(clickid);
+      if (ck) href += '&ck=' + encodeURIComponent(ck);
+      var go = document.getElementById('go');
+      go.href = href;
+      if (!clickid) {
+        go.href = 'https://finzaymo.ru/ext/?cpa=yes&affiliate_id=leadgid_cp';
+        go.setAttribute('rel', 'noopener');
+        go.setAttribute('target', '_blank');
+      }
+    })();
+  </script>
+</body>
+</html>
