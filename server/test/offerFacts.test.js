@@ -75,7 +75,7 @@ test('buildOfferFacts for Finandos-class offer', () => {
   );
 });
 
-test('buildOfferFacts: FinMi non-residents does not invent RU geo', () => {
+test('buildOfferFacts: FinMi non-residents is RU traffic geo (audience ≠ geo)', () => {
   const facts = buildOfferFacts({
     name: 'FinMi - Выдача займа нерезидентам',
     currency: 'RUB',
@@ -83,12 +83,12 @@ test('buildOfferFacts: FinMi non-residents does not invent RU geo', () => {
     products: [{ name: 'МФО' }],
     geo: null,
   });
-  assert.equal(facts.geo, null);
-  assert.deepEqual(facts.geos, []);
-  assert.deepEqual(facts.region_ids, []);
-  assert.equal(facts.geo_required, true);
-  assert.equal(facts.non_resident_offer, true);
-  assert.equal(facts.ru_traffic_fit, 'geo_required');
-  const seeds = seedsFromOfferFacts({ name: facts.brand }, facts);
-  assert.equal(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'), false);
+  assert.equal(facts.geo, 'RU');
+  assert.deepEqual(facts.geos, ['RU']);
+  assert.deepEqual(facts.region_ids, [225]);
+  assert.equal(facts.non_resident_audience, true);
+  assert.equal(facts.geo_required, false);
+  assert.equal(facts.ru_traffic_fit, 'fit');
+  const seeds = seedsFromOfferFacts({ name: facts.brand || 'FinMi' }, facts);
+  assert.ok(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'));
 });
