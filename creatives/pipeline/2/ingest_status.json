@@ -1,10 +1,7 @@
 {
   "url": "https://orkestr.online/api/pipeline/ingest-creatives",
   "run_id": 2,
-  "token_hint": "VwZmJugq…C2Pr",
   "ok": false,
-  "error": "Неверный ingest token",
-  "note": "Endpoint reachable; token from pipeline brief rejected (HTTP 403). Local creatives ready — re-run: python3 creatives/pipeline/2/upload_ingest.py --prefer-jpeg --token <FRESH_TOKEN>",
   "results": [
     {
       "file": "generic-agent-0",
@@ -21,5 +18,8 @@
       "status": 403,
       "body": "{\"error\":\"Неверный ingest token\"}"
     }
-  ]
+  ],
+  "token_hint": "VwZmJugq…C2Pr",
+  "error": "Неверный ingest token",
+  "note": "Endpoint reachable; token from pipeline brief rejected (HTTP 403). Local creatives ready — re-run: python3 creatives/pipeline/2/upload_ingest.py --prefer-jpeg --token <FRESH_TOKEN>"
 }

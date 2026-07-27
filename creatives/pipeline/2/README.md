@@ -27,3 +27,6 @@ python3 creatives/pipeline/2/upload_ingest.py \
 ```
 
 Статус последней попытки: `ingest_status.json`.
+
+> Ingest с токеном из брифа вернул HTTP 403 (`Неверный ingest token`).
+> Локальные ассеты готовы — повторите upload с актуальным токеном рана.
