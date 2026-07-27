@@ -86,15 +86,15 @@
       animation: rise 0.75s cubic-bezier(.2,.8,.2,1) both;
     }
     .brand {
-      font-family: Instrument Serif, Georgia, serif;
-      font-size: clamp(2.15rem, 6vw, 3.4rem);
-      letter-spacing: -0.04em;
-      line-height: 0.92;
-      font-weight: 400;
+      display: inline-flex;
+      align-items: center;
+      line-height: 0;
     }
-    .brand em {
-      font-style: italic;
-      color: var(--lime);
+    .brand img {
+      display: block;
+      height: clamp(2rem, 5vw, 2.75rem);
+      width: auto;
+      filter: drop-shadow(0 2px 12px rgba(0,0,0,0.28));
     }
     .age {
       font-size: 0.76rem;
@@ -111,16 +111,6 @@
       max-width: 15ch;
       padding-bottom: 0.4rem;
     }
-    .kicker {
-      display: inline-block;
-      margin: 0 0 0.85rem;
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--lime-soft);
-      animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.05s both;
-    }
     .hero-copy h1 {
       margin: 0 0 1rem;
       font-family: Instrument Serif, Georgia, serif;
@@ -129,7 +119,7 @@
       line-height: 0.96;
       letter-spacing: -0.035em;
       text-wrap: balance;
-      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.1s both;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.08s both;
     }
     .hero-copy h1 i {
       font-style: italic;
