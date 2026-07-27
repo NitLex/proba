@@ -1,0 +1,67 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "image_has_text": false,
+  "direct_ad_type": "TextAd",
+  "engine": "agent",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "promo_code": ""
+  },
+  "angles": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "ad_format": "product",
+      "images": [
+        "generic-agent-0.png",
+        "generic-agent-1.png",
+        "generic-agent-2.png"
+      ],
+      "jpeg": [
+        "generic-agent-0.jpg",
+        "generic-agent-1.jpg",
+        "generic-agent-2.jpg"
+      ],
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Оформить зарубежную карту"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Заявка онлайн, без очередей.",
+        "Зарубежная карта онлайн. Пополнение по СБП. Условия на сайте.",
+        "Выпуск зарубежной карты. Оформление заявки онлайн."
+      ],
+      "sitelinks": [
+        { "title": "Оформить онлайн", "description": "Заявка на сайте" },
+        { "title": "Условия", "description": "Актуальные на лендинге" },
+        { "title": "Как это работает", "description": "Коротко о шагах" },
+        { "title": "Поддержка", "description": "Помощь по заявке" }
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ],
+      "forbidden": [
+        "обход санкций/ограничений",
+        "гарантии одобрения",
+        "P2P/вывод",
+        "gambling/adult/crypto",
+        "бренды Apple Pay / Google Pay / Booking"
+      ]
+    }
+  ],
+  "limits": {
+    "title_max": 56,
+    "text_max": 81
+  },
+  "notes": [
+    "Товарный формат: ZERO text на картинке; Title/Text только в полях Директа.",
+    "В Title/Text обязательно «зарубежная карта» / «выпуск зарубежной карты».",
+    "Промокода в оффере нет — в текстах не используем."
+  ]
+}
