@@ -38,9 +38,7 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          # First run may create the Pages site if the token allows it
-          enablement: true
+        # Requires one-time: Settings → Pages → Source = GitHub Actions
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
