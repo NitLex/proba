@@ -1,0 +1,58 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "prompt_token": {
+    "prefix": "0VUfbvtIk",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token)"
+  },
+  "probed_tokens": [
+    {
+      "prefix": "0VUfbvtIk",
+      "run_id": 2,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "prefix": "gw2cLRts",
+      "run_id": 2,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "prefix": "KI2nMT93Ls",
+      "run_id": 2,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "prefix": "Tz6mVa5i",
+      "run_id": 2,
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "local_assets": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.png",
+      "jpg": "generic-agent-0.jpg",
+      "size_png": 1608826,
+      "size_jpg": 103684,
+      "format": "product",
+      "size": "1024x1024"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.png",
+      "jpg": "generic-agent-1.jpg",
+      "size_png": 1574150,
+      "size_jpg": 124101,
+      "format": "product",
+      "size": "1024x1024"
+    }
+  ],
+  "note": "Локальные product-креативы готовы. Нужен актуальный creative_ingest token для run_id=2. Повтор: python3 upload_ingest.py --run-id 2 --token '<TOKEN>' --prefer-jpeg",
+  "uploads": []
+}
