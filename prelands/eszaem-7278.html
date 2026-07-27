@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EsZaem — подбор предложений микрозаймов онлайн</title>
+  <meta
+    name="description"
+    content="Информационный сервис подбора предложений МФО. Не кредитор. 18+. Условия и решение — на сайте партнёра."
+  />
+  <meta name="arbtrack-tracker" content="https://trekerarbitrag.ru" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --ink: #1a1410;
+      --paper: #fff8ef;
+      --sun: #ffd24a;
+      --sun-deep: #e6a800;
+      --berry: #d50000;
+      --muted: rgba(26, 20, 16, 0.66);
+      --line: rgba(26, 20, 16, 0.12);
+      --hero: #fffaf2;
+      --hero-muted: rgba(255, 250, 242, 0.82);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Figtree, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    a { color: var(--berry); }
+
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      color: var(--hero);
+      isolation: isolate;
+      display: grid;
+    }
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(100deg, rgba(24, 16, 10, 0.88) 0%, rgba(24, 16, 10, 0.55) 42%, rgba(24, 16, 10, 0.28) 68%, rgba(24, 16, 10, 0.55) 100%),
+        url('assets/eszaem-hero.jpg') 72% center / cover no-repeat;
+      transform: scale(1.04);
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .hero-blob {
+      position: absolute;
+      width: min(46vw, 420px);
+      height: min(46vw, 420px);
+      left: -8%;
+      bottom: 8%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 210, 74, 0.32), transparent 70%);
+      filter: blur(4px);
+      z-index: -1;
+      pointer-events: none;
+      animation: bob 5.5s ease-in-out infinite;
+    }
+    .hero-frame {
+      width: min(1100px, calc(100% - 2rem));
+      margin: 0 auto;
+      min-height: 100svh;
+      padding: 1.3rem 0 2.3rem;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      animation: rise 0.75s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .brand {
+      font-family: Bricolage Grotesque, system-ui, sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.9rem, 5vw, 2.85rem);
+      letter-spacing: -0.05em;
+      line-height: 0.95;
+    }
+    .brand span { color: var(--sun); }
+    .age {
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--hero-muted);
+      border-bottom: 1px solid rgba(255,250,242,0.35);
+      padding-bottom: 0.15rem;
+    }
+
+    .hero-copy {
+      align-self: end;
+      max-width: 16ch;
+      padding-bottom: 0.35rem;
+    }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin: 0 0 0.85rem;
+      font-size: 0.84rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--sun);
+      animation: rise 0.8s cubic-bezier(.2,.8,.2,1) 0.06s both;
+    }
+    .kicker::before {
+      content: '';
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--sun);
+      box-shadow: 0 0 0 4px rgba(255, 210, 74, 0.25);
+    }
+    .hero-copy h1 {
+      margin: 0 0 1rem;
+      font-family: Bricolage Grotesque, system-ui, sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.35rem, 6.8vw, 4rem);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+      text-wrap: balance;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.12s both;
+    }
+    .hero-copy h1 em {
+      font-style: normal;
+      color: var(--sun);
+    }
+    .lead {
+      margin: 0 0 1.4rem;
+      color: var(--hero-muted);
+      font-size: clamp(1.02rem, 2.1vw, 1.14rem);
+      line-height: 1.5;
+      max-width: 34ch;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.2s both;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.85rem 1.15rem;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.28s both;
+    }
+    .cta {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 3.45rem;
+      padding: 0.95rem 1.35rem;
+      border-radius: 16px;
+      text-decoration: none;
+      color: #1a1410;
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffe27a, var(--sun) 45%, var(--sun-deep));
+      box-shadow: 0 14px 34px rgba(230, 168, 0, 0.35);
+      transition: transform .2s ease, filter .2s ease;
+    }
+    .cta:hover { transform: translateY(-2px); filter: brightness(1.04); }
+    .cta .arrow { transition: transform .2s ease; }
+    .cta:hover .arrow { transform: translateX(3px); }
+    .cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 28%, rgba(255,255,255,0.4), transparent 72%);
+      transform: translateX(-120%);
+      animation: sweep 4.1s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .cta-note {
+      color: var(--hero-muted);
+      font-size: 0.88rem;
+      max-width: 17ch;
+      line-height: 1.35;
+    }
+    .warn {
+      margin-top: 1.3rem;
+      max-width: 40rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid rgba(255,250,242,0.22);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: rgba(255,250,242,0.72);
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.36s both;
+    }
+
+    .below {
+      background:
+        radial-gradient(780px 280px at 100% 0%, rgba(255, 210, 74, 0.22), transparent 55%),
+        radial-gradient(560px 220px at 0% 25%, rgba(213, 0, 0, 0.06), transparent 50%),
+        linear-gradient(180deg, #fff1d8 0%, var(--paper) 38%, #fff6ea 100%);
+      padding: 0 0 3.4rem;
+    }
+    .wrap {
+      width: min(920px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+    .mascot-note {
+      margin-top: -1.15rem;
+      margin-bottom: 2.3rem;
+      padding: 1.05rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 16px 36px rgba(26, 20, 16, 0.06);
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 1rem 1.4rem;
+      animation: rise 0.9s cubic-bezier(.2,.8,.2,1) 0.42s both;
+    }
+    @media (max-width: 760px) {
+      .mascot-note { grid-template-columns: 1fr; }
+      .hero-copy { max-width: 100%; }
+      .hero-media { background-position: 80% center; }
+    }
+    .mascot-note strong {
+      display: block;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .mascot-note span { color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+
+    .section { margin-top: 2.35rem; }
+    .section h2 {
+      margin: 0 0 0.35rem;
+      font-family: Bricolage Grotesque, system-ui, sans-serif;
+      font-size: clamp(1.55rem, 3.2vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .section .sub {
+      margin: 0 0 1.3rem;
+      color: var(--muted);
+      max-width: 44ch;
+      line-height: 1.45;
+    }
+
+    .path {
+      border-left: 2px solid #f0dfb8;
+      margin-left: 0.5rem;
+      padding-left: 1.35rem;
+    }
+    .path article {
+      position: relative;
+      padding: 0.15rem 0 1.35rem;
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .path article:nth-child(1) { animation-delay: .05s; }
+    .path article:nth-child(2) { animation-delay: .12s; }
+    .path article:nth-child(3) { animation-delay: .19s; }
+    .path article:last-child { padding-bottom: 0.1rem; }
+    .path article::before {
+      content: '';
+      position: absolute;
+      left: calc(-1.35rem - 5px);
+      top: 0.45rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--sun-deep);
+      box-shadow: 0 0 0 4px rgba(255, 210, 74, 0.28);
+    }
+    .path .n {
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--sun-deep);
+      margin-bottom: 0.2rem;
+    }
+    .path strong {
+      display: block;
+      font-size: 1.08rem;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.015em;
+    }
+    .path p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+      max-width: 48ch;
+    }
+
+    .ranges {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.15rem 1.35rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid var(--line);
+    }
+    @media (max-width: 760px) {
+      .ranges { grid-template-columns: 1fr; }
+    }
+    .ranges dt {
+      margin: 0 0 0.25rem;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--berry);
+    }
+    .ranges dd {
+      margin: 0;
+      font-family: Bricolage Grotesque, system-ui, sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .ranges .hint {
+      display: block;
+      margin-top: 0.35rem;
+      font-family: Figtree, system-ui, sans-serif;
+      font-size: 0.86rem;
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .legal {
+      margin-top: 2.5rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.76rem;
+      line-height: 1.5;
+      color: rgba(26, 20, 16, 0.62);
+    }
+    .legal strong { color: var(--ink); }
+    .legal p { margin: 0 0 0.65rem; }
+    .legal p:last-child { margin: 0; }
+    .foot {
+      margin-top: 1.05rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.2rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes drift {
+      from { transform: scale(1.04) translate3d(0,0,0); }
+      to { transform: scale(1.08) translate3d(-1%, 0.6%, 0); }
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0); opacity: 0.7; }
+      50% { transform: translateY(-10px); opacity: 1; }
+    }
+    @keyframes sweep {
+      0%, 58% { transform: translateX(-120%); }
+      82%, 100% { transform: translateX(120%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .hero-media, .hero-blob, .cta::before, .top, .kicker, .hero-copy h1, .lead, .cta-row, .warn, .mascot-note, .path article {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-media" aria-hidden="true"></div>
+    <div class="hero-blob" aria-hidden="true"></div>
+
+    <div class="hero-frame">
+      <header class="top">
+        <div class="brand">Es<span>Zaem</span></div>
+        <div class="age">18+</div>
+      </header>
+
+      <div class="hero-copy">
+        <p class="kicker">Сервис подбора · LeadGid #7278</p>
+        <h1>Деньги на карту — <em>подберём</em> варианты МФО</h1>
+        <p class="lead">
+          Информационный сервис EsZaem: сравните предложения партнёров.
+          Решение и точные условия — только на сайте выбранной МФО.
+        </p>
+        <div class="cta-row">
+          <a class="cta" id="go" href="#">Перейти к подбору <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="cta-note">Без обещания одобрения · 18+</span>
+        </div>
+        <div class="warn">
+          Изучите все условия кредита (займа) на сайте в соответствующем разделе.
+          Оценивайте свои финансовые возможности и риски.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="below">
+    <div class="wrap">
+      <div class="mascot-note" aria-label="О сервисе">
+        <div>
+          <strong>Не кредитор — подбор предложений</strong>
+          <span>Сервис не выдаёт займы сам. Заявку рассматривает МФО-партнёр. Это может быть платная услуга подбора — читайте условия на сайте.</span>
+        </div>
+        <div>
+          <strong>Ориентир по сумме</strong>
+          <span>На витрине встречаются варианты до 30 / 60 / 100 тыс. ₽ — зависит от партнёра.</span>
+        </div>
+      </div>
+
+      <section class="section">
+        <h2>Три шага до подборки</h2>
+        <p class="sub">Короткий путь к форме на сайте сервиса — без гарантий выдачи.</p>
+        <div class="path">
+          <article>
+            <div class="n">Шаг 01</div>
+            <strong>Откройте форму</strong>
+            <p>На сайте сервиса укажите контакты и согласие на обработку данных.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 02</div>
+            <strong>Сравните партнёров</strong>
+            <p>Варианты МФО из реестра Банка России. Это не заявка в БКИ сама по себе.</p>
+          </article>
+          <article>
+            <div class="n">Шаг 03</div>
+            <strong>Оформите у МФО</strong>
+            <p>Обычно нужны паспорт РФ 18+ и именная карта — уточняйте у партнёра до договора.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Ориентиры по условиям партнёров</h2>
+        <p class="sub">Диапазоны зависят от конкретной МФО — сверяйте до подписания.</p>
+        <dl class="ranges">
+          <div>
+            <dt>Сумма</dt>
+            <dd>до 100 000 ₽<span class="hint">также встречаются 30 и 60 тыс.</span></dd>
+          </div>
+          <div>
+            <dt>Возраст</dt>
+            <dd>от 18 лет<span class="hint">граждане РФ, карта на ваше имя</span></dd>
+          </div>
+          <div>
+            <dt>ПСК</dt>
+            <dd>0% – 292%<span class="hint">годовых; смотрите до договора</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal" id="terms">
+        <p>
+          <strong>Реклама.</strong>
+          Сервис EsZaem (eszaem.com) не является кредитором, банком или микрофинансовой организацией
+          и не оказывает финансовых услуг самостоятельно. Займы предоставляют МФО-партнёры.
+          Решение о выдаче принимает МФО. Сервис не гарантирует одобрение и не обещает «100%» выдачу.
+        </p>
+        <p>
+          Диапазон полной стоимости кредита (ПСК) у партнёров может составлять от 0% до 292% годовых.
+          Пример: заём 10 000 ₽ на 30 дней по ставке 0,8% в день — переплата 2 400 ₽, к возврату 12 400 ₽.
+          Точные условия устанавливает МФО на своём сайте.
+          Займы — лицам старше 18 лет, гражданам РФ.
+          Неисполнение обязательств может повлечь штрафы и передачу данных в БКИ.
+        </p>
+        <p>
+          Реквизиты, политика обработки данных и условия платной услуги подбора — на сайте сервиса:
+          <a href="https://eszaem.com/" target="_blank" rel="noopener">eszaem.com</a>.
+          Оффер LeadGid #7278 «Рябина — Заявка».
+        </p>
+      </section>
+
+      <div class="foot">
+        <a href="https://eszaem.com/" target="_blank" rel="noopener">Сайт сервиса</a>
+        <span>LeadGid offer #7278</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var clickid = q.get('clickid') || '';
+      var ck = q.get('ck') || '';
+      var meta = document.querySelector('meta[name="arbtrack-tracker"]');
+      var base = ((meta && meta.content) || 'https://trekerarbitrag.ru').replace(/\/$/, '');
+      var href = base + '/to-offer?clickid=' + encodeURIComponent(clickid);
+      if (ck) href += '&ck=' + encodeURIComponent(ck);
+      var go = document.getElementById('go');
+      go.href = href;
+      if (!clickid) {
+        go.href = 'https://eszaem.com/';
+        go.setAttribute('rel', 'noopener');
+        go.setAttribute('target', '_blank');
+      }
+    })();
+  </script>
+</body>
+</html>
