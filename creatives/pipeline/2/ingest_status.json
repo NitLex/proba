@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "uploads": [
+    {
+      "variant": "generic-agent-0",
+      "angle_id": "generic",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "variant": "generic-agent-1",
+      "angle_id": "generic",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ]
+}
