@@ -1,0 +1,33 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "token_source": "step prompt",
+  "token_prefix": "5XhiP0RD…",
+  "prefer_jpeg": true,
+  "attempted_at": "2026-07-27T19:40:00Z",
+  "error": "HTTP 403 Неверный ingest token — race: creative_ingest.hash на run не совпадает с токеном из промпта",
+  "retry": "python3 upload_ingest.py --run-id 2 --token '<FRESH_TOKEN_FROM_run.context.creative_ingest>' --prefer-jpeg",
+  "assets_ready": [
+    "generic-agent-0.png",
+    "generic-agent-0.jpg",
+    "generic-agent-1.png",
+    "generic-agent-1.jpg"
+  ],
+  "results": [
+    {
+      "file": "generic-agent-0.jpg",
+      "bytes": 139222,
+      "mime": "image/jpeg",
+      "http_status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "file": "generic-agent-1.jpg",
+      "bytes": 106370,
+      "mime": "image/jpeg",
+      "http_status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ]
+}

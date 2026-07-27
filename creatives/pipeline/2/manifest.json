@@ -1,0 +1,65 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "engine": "agent",
+  "image_provider": "cursor-agent-GenerateImage",
+  "offer": {
+    "name": "Pipeline Live Offer",
+    "vertical_key": "unknown",
+    "brief": "Один герой-объект, сильный свет, минимум шума",
+    "promo_code": ""
+  },
+  "creatives": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 0,
+      "file": "generic-agent-0.png",
+      "file_jpg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Матовая blank charcoal-карта, cinematic rim light, чистый still-life — стоп-скролл «премиум карта»",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Зарубежная карта Pipeline Live"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Оформление заявки онлайн.",
+        "Зарубежная карта. Заявка на сайте, без шаблонных обещаний.",
+        "Зарубежная карта онлайн. Условия — на лендинге."
+      ]
+    },
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variant": 1,
+      "file": "generic-agent-1.png",
+      "file_jpg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Вертикальная blank navy-карта на сланце, тёплый rim light — desire «зарубежная карта» без логотипов",
+      "titles": [
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — заявка онлайн",
+        "Зарубежная карта Pipeline Live"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты. Оформление заявки онлайн.",
+        "Зарубежная карта. Заявка на сайте, без шаблонных обещаний.",
+        "Зарубежная карта онлайн. Условия — на лендинге."
+      ]
+    }
+  ],
+  "qa": {
+    "square_1024": true,
+    "no_text_on_image": true,
+    "no_payment_brand_logos": true,
+    "titles_max_56": true,
+    "texts_max_81": true,
+    "required_phrase": "зарубежная карта / выпуск зарубежной карты",
+    "variants_per_angle": 2
+  }
+}
