@@ -34,3 +34,5 @@ python3 upload_ingest.py --run-id 2 --token '<TOKEN>' --prefer-jpeg
 ```
 
 JPEG по одному варианту — чтобы не ловить nginx 413 на больших PNG.
+
+Статус попытки: `ingest_status.json`. Токен из промпта шага (`qznD4RCq…`) и токены параллельных creative-агентов дают **HTTP 403** (`Неверный ingest token`) — `creative_ingest.hash` на run_id=2 не совпадает с токенами в промптах (race при параллельном spawn). Нужен свежий token из `run.context.creative_ingest` / респавн шага.
