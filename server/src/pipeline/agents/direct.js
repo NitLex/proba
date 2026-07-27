@@ -352,7 +352,8 @@ async function applyDraft(plan) {
   const groupBodies = (plan.ad_groups || []).slice(0, 5).map((g) => ({
     Name: String(g.name || 'Group').slice(0, 255),
     CampaignId: campaignId,
-    RegionIds: plan.region_ids || [225],
+    // [] is truthy in JS — never use `plan.region_ids || [225]`
+    RegionIds: Array.isArray(plan.region_ids) && plan.region_ids.length ? plan.region_ids : [225],
   }));
 
   let adGroupIds = [];
@@ -374,12 +375,19 @@ async function applyDraft(plan) {
       });
     }
     if (!adGroupIds.length && addGroups?.error) {
+      // Drop orphan draft so retries don't spam the Direct account
+      const cleanup = await directApiRetry('campaigns', {
+        method: 'delete',
+        params: { SelectionCriteria: { Ids: [campaignId] } },
+      });
+      log.push({ step: 'campaigns.delete_orphan', result: cleanup });
       return {
         ok: false,
-        campaign_id: campaignId,
+        campaign_id: null,
         ad_group_ids: [],
         log,
         error: addGroups.error,
+        orphan_campaign_deleted: campaignId,
       };
     }
   }
@@ -480,6 +488,36 @@ export async function runDirect({ offer, context, apply = false }) {
   const apiReady = Boolean(process.env.YANDEX_DIRECT_TOKEN && process.env.YANDEX_DIRECT_LOGIN);
   const awaitingAgent = Boolean(context.creatives?.awaiting_agent_images);
   const hasImages = (context.creatives?.generated_images || []).some((g) => g.ok && g.path);
+  const regionIds = Array.isArray(plan.region_ids)
+    ? plan.region_ids.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+    : [];
+
+  // Hard stop: empty RegionIds used to create orphan DRAFT campaigns in a retry loop
+  if (apply && apiReady && !regionIds.length) {
+    const details =
+      'Нет RegionIds (geo оффера пустой). Укажи гео (например RU / UZ / KZ) перед созданием кампании в Директе — иначе API падает и плодит черновики.';
+    return {
+      summary: `Директ: ${details}`,
+      ready_message: null,
+      failed: true,
+      direct: {
+        plan: { ...plan, region_ids: [] },
+        applied: false,
+        apply: null,
+        campaign_id: null,
+        error: details,
+      },
+      context_patch: {
+        direct: {
+          plan: { ...plan, region_ids: [] },
+          applied: false,
+          campaign_id: null,
+          error: details,
+        },
+      },
+    };
+  }
+  plan.region_ids = regionIds.length ? regionIds : plan.region_ids;
 
   // Agent mode without images yet: don't create incomplete Direct ads
   if (apply && apiReady && awaitingAgent && !hasImages) {

@@ -175,6 +175,11 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   const payoutModel = extractPayoutModel(offer);
   const brand = extractBrand(name);
   const network = detectAffiliateNetwork(offer.url || '', offer.network || '');
+  const nonResidentOffer = /нерезидент|non[-\s]?resident|foreigner|иностранц/i.test(textBlob);
+  // "Займы нерезидентам" ≠ geo=RU: don't invent RU just because Wordstat is RU-centric
+  if (!geos.length && nonResidentOffer) {
+    // leave geos empty — operator must set geo explicitly
+  }
   const regionIds = regionIdsForGeos(geos);
   const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
   const nonRu = geos.some((g) => g !== 'RU');
@@ -188,10 +193,13 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   const productNames = products.map((p) => p.name || p).filter(Boolean);
 
   const evidence = [];
-  if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
   if (payoutModel) evidence.push(`payout_model: ${payoutModel}`);
   if (productNames.length) evidence.push(`products: ${productNames.join('; ')}`);
   if (brand) evidence.push(`brand: ${brand}`);
+  if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
+  if (nonResidentOffer && !geos.length) {
+    evidence.push('geo_required: offer targets non-residents — set geo explicitly');
+  }
   if (offer.currency) evidence.push(`currency: ${offer.currency}`);
   if (offer.payout != null) evidence.push(`payout: ${offer.payout} ${offer.currency || ''}`.trim());
   if (offer.epc != null) evidence.push(`epc: ${offer.epc}`);
@@ -207,7 +215,15 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     currency: offer.currency || null,
     payout: offer.payout ?? null,
     epc: offer.epc ?? null,
-    ru_traffic_fit: ruOnly ? 'fit' : nonRu ? 'mismatch_rsya_ru' : 'unknown',
+    non_resident_offer: nonResidentOffer,
+    geo_required: Boolean(nonResidentOffer && !geos.length),
+    ru_traffic_fit: ruOnly
+      ? 'fit'
+      : nonRu
+        ? 'mismatch_rsya_ru'
+        : nonResidentOffer
+          ? 'geo_required'
+          : 'unknown',
     evidence,
   };
 }
@@ -244,7 +260,8 @@ export function seedsFromOfferFacts(offer = {}, facts = {}) {
   if (geos.includes('PL')) seeds.push('pożyczka online', 'kredyt online');
   if (geos.includes('CZ')) seeds.push('půjčka online');
   if (geos.includes('RO')) seeds.push('credit online');
-  if (geos.includes('RU') || !geos.length) {
+  // Only inject RU loan seeds when geo is explicitly RU — never for empty/non-resident
+  if (geos.includes('RU')) {
     if (/займ|кредит|loan|mfo|мфо/i.test(`${offer.name} ${products.join(' ')}`)) {
       seeds.push('займ онлайн', 'кредит онлайн');
     }

@@ -380,6 +380,11 @@ export async function runAnalyst({ offer }) {
       ...(geo
         ? []
         : ['Гео не извлечено из оффера — не подставляй РФ автоматически']),
+      ...(facts.geo_required
+        ? [
+            'Оффер про нерезидентов: обязательно укажи geo вручную (UZ/KZ/…), иначе Директ получит пустые RegionIds и начнёт плодить черновики',
+          ]
+        : []),
       'Модерация: только утверждения из фактов оффера, без чужих шаблонов',
       'Посадочная/клик должен открываться для ботов рекламной сети',
       'Сверять EPC сети vs CPC каждые 2–3 дня',
@@ -400,8 +405,8 @@ export async function runAnalyst({ offer }) {
     payout_model: facts.payout_model || null,
     products: facts.products || [],
     source:
-      facts.ru_traffic_fit === 'mismatch_rsya_ru'
-        ? 'Review traffic source (geo ≠ RU)'
+      facts.ru_traffic_fit === 'mismatch_rsya_ru' || facts.geo_required
+        ? 'Review traffic source / set geo first'
         : offer.source || offer.traffic_source || primarySource?.source || 'Yandex Direct РСЯ',
     funnel: offer.funnel || primarySource?.funnel || 'direct',
     angles,
