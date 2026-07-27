@@ -1,0 +1,24 @@
+{
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "run_id": 2,
+  "token_used": "57uoA_cGHYC62k3TndZ6cxPQ",
+  "ok": false,
+  "note": "Orchestrator rejected ingest token (HTTP 403 Неверный ingest token). Creatives ready locally; re-run upload_ingest.py when token is refreshed.",
+  "results": [
+    {
+      "file": "generic-agent-0",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "file": "generic-agent-1",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "file": "generic-agent-2",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ]
+}
