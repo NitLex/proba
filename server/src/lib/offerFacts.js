@@ -40,7 +40,37 @@ export const GEO_REGION_IDS = {
   GR: [],
 };
 
+/**
+ * FinMi-class LeadGid geo:
+ * все регионы РФ, кроме Северного Кавказа, ЛНР, ДНР, Запорожской, Херсонской
+ * и других бывших украинских регионов (Крым и Севастополь — в показах).
+ *
+ * Direct: positive = include, negative = exclude (AdGroups.RegionIds).
+ * 225 = Россия, 977 = Республика Крым (Севастополь 959 внутри),
+ * -102444 = СКФО, -205xx = области Украины (кроме Крыма).
+ */
+export const RU_EXCEPT_CAUCASUS_AND_EX_UA_REGION_IDS = [
+  225,
+  977,
+  -102444,
+  // Украинские области / «новые территории» (Крым 977 не минусуем)
+  -20530, -20531, -20533, -20534, -20535, -20536, -20537, -20538, -20539, -20540,
+  -20541, -20542, -20543, -20544, -20545, -20546, -20547, -20548, -20549, -20551, -20552,
+];
+
 const ISO2 = Object.keys(GEO_REGION_IDS);
+
+/** Offer copy that requires RF minus Caucasus / ex-UA (except Crimea). */
+export function wantsRuExceptCaucasusExUa(text = '') {
+  const t = String(text || '');
+  const w = '[A-Za-zА-Яа-яЁё]*';
+  const hasCaucasus = new RegExp(`северн${w}\\s*кавказ|скфо`, 'i').test(t);
+  const hasExUa = new RegExp(
+    `лнр|днр|запорож|херсон|бывш${w}\\s*республик${w}\\s*украин|кроме\\s*крыма|севастопол`,
+    'i',
+  ).test(t);
+  return hasCaucasus && hasExUa;
+}
 
 const AFFILIATE_HOSTS = [
   { re: /leadgid\.(ru|eu|com)|go\.leadgid/i, network: 'LeadGid' },
@@ -198,7 +228,27 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     geos = ['RU'];
   }
 
-  const regionIds = regionIdsForGeos(geos);
+  // Explicit offer geo policy (FinMi etc.) overrides bare [225]
+  const geoPolicyText = [
+    textBlob,
+    offer.geo_notes,
+    offer.geo_policy,
+    offer.targeting_geo,
+    enrich?.leadgid?.geo,
+    enrich?.leadgid?.description,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const ruExceptCaucasusExUa =
+    wantsRuExceptCaucasusExUa(geoPolicyText) ||
+    // FinMi non-resident МФО: standard LeadGid geo clause when notes empty
+    (nonResidentAudience && looksRuMfo && /finmi|финкомпас/i.test(`${name} ${brand}`));
+
+  let regionIds = regionIdsForGeos(geos);
+  if (ruExceptCaucasusExUa && geos.length && geos.every((g) => g === 'RU')) {
+    regionIds = [...RU_EXCEPT_CAUCASUS_AND_EX_UA_REGION_IDS];
+  }
+
   const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
   const nonRu = geos.some((g) => g !== 'RU');
 
@@ -213,6 +263,11 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   if (looksRuMfo && geos.length === 1 && geos[0] === 'RU') {
     evidence.push('geo_default: RU from RUB+МФО/займ (нерезидентам ≠ foreign GEO)');
   }
+  if (ruExceptCaucasusExUa) {
+    evidence.push(
+      'geo_policy: RF+Crimea except Northern Caucasus, LNR/DNR/Zaporizhzhia/Kherson and other ex-UA regions',
+    );
+  }
   if (offer.currency) evidence.push(`currency: ${offer.currency}`);
   if (offer.payout != null) evidence.push(`payout: ${offer.payout} ${offer.currency || ''}`.trim());
   if (offer.epc != null) evidence.push(`epc: ${offer.epc}`);
@@ -222,6 +277,7 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     geos,
     geo: geos.join(',') || null,
     region_ids: regionIds,
+    geo_policy: ruExceptCaucasusExUa ? 'ru_except_caucasus_ex_ua' : null,
     payout_model: payoutModel,
     network: network || offer.network || null,
     products: productNames,

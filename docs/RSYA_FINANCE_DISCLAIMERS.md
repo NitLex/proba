@@ -26,3 +26,9 @@
 
 Креатив с плашкой: `creatives/pipeline/7/references/01-hero-svoy-chelovek-disclaimer.jpg`  
 AdImageHash: `V2gsBlLE6ZaiJBf-DyRaTg` · DisplayUrlPath: `zaym-online` (не `vypusk-karty`).
+
+### Гео (требование оффера)
+
+Все регионы РФ, **кроме** Северного Кавказа, ЛНР, ДНР, Запорожской, Херсонской и прочих бывших украинских регионов; **Крым и Севастополь в показах**.
+
+Direct `RegionIds`: `225`, `977`, `-102444`, минус области `20530–20552` (кроме Крыма). Константа: `RU_EXCEPT_CAUCASUS_AND_EX_UA_REGION_IDS` в `offerFacts.js`.

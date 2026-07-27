@@ -6,6 +6,8 @@ import {
   extractPayoutModel,
   buildOfferFacts,
   seedsFromOfferFacts,
+  wantsRuExceptCaucasusExUa,
+  RU_EXCEPT_CAUCASUS_AND_EX_UA_REGION_IDS,
 } from '../src/lib/offerFacts.js';
 import { detectVerticalKey } from '../src/pipeline/knowledge/global-market.js';
 
@@ -85,10 +87,42 @@ test('buildOfferFacts: FinMi non-residents is RU traffic geo (audience ≠ geo)'
   });
   assert.equal(facts.geo, 'RU');
   assert.deepEqual(facts.geos, ['RU']);
-  assert.deepEqual(facts.region_ids, [225]);
   assert.equal(facts.non_resident_audience, true);
   assert.equal(facts.geo_required, false);
   assert.equal(facts.ru_traffic_fit, 'fit');
+  assert.equal(facts.geo_policy, 'ru_except_caucasus_ex_ua');
+  assert.ok(facts.region_ids.includes(225));
+  assert.ok(facts.region_ids.includes(977));
+  assert.ok(facts.region_ids.includes(-102444));
+  assert.ok(facts.region_ids.includes(-20536)); // ДНР / Донецк
+  assert.ok(facts.region_ids.includes(-20540)); // ЛНР / Луганск
+  assert.ok(facts.region_ids.includes(-20539)); // Запорожье
+  assert.ok(facts.region_ids.includes(-20542)); // Херсон
+  assert.ok(!facts.region_ids.includes(-977));
   const seeds = seedsFromOfferFacts({ name: facts.brand || 'FinMi' }, facts);
   assert.ok(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'));
+});
+
+test('wantsRuExceptCaucasusExUa detects offer geo clause', () => {
+  assert.equal(
+    wantsRuExceptCaucasusExUa(
+      'все регионы РФ, кроме Северного Кавказа, ЛНР, ДНР, Запорожской, Херсонской области и других бывших республик Украины (кроме Крыма и Севастополя)',
+    ),
+    true,
+  );
+  assert.equal(wantsRuExceptCaucasusExUa('только Москва'), false);
+  assert.ok(RU_EXCEPT_CAUCASUS_AND_EX_UA_REGION_IDS.includes(-102444));
+});
+
+test('buildOfferFacts ignores stale empty facts on offer object', () => {
+  const facts = buildOfferFacts({
+    name: 'FinMi - Выдача займа нерезидентам',
+    currency: 'RUB',
+    products: [{ name: 'МФО' }],
+    geo: null,
+    facts: { geos: [], geo: null, region_ids: [], brand: 'stale' },
+  });
+  assert.deepEqual(facts.geos, ['RU']);
+  assert.ok(facts.region_ids.includes(225));
+  assert.notEqual(facts.brand, 'stale');
 });
