@@ -92,3 +92,17 @@ test('buildOfferFacts: FinMi non-residents is RU traffic geo (audience ≠ geo)'
   const seeds = seedsFromOfferFacts({ name: facts.brand || 'FinMi' }, facts);
   assert.ok(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'));
 });
+
+test('buildOfferFacts ignores stale empty facts on offer object', () => {
+  // Retry used to keep offer.facts with geos:[]; rebuild must not read that field.
+  const facts = buildOfferFacts({
+    name: 'FinMi - Выдача займа нерезидентам',
+    currency: 'RUB',
+    products: [{ name: 'МФО' }],
+    geo: null,
+    facts: { geos: [], geo: null, region_ids: [], brand: 'stale' },
+  });
+  assert.deepEqual(facts.geos, ['RU']);
+  assert.deepEqual(facts.region_ids, [225]);
+  assert.notEqual(facts.brand, 'stale');
+});
