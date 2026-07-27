@@ -3,6 +3,7 @@ import { useAuth } from '../auth';
 
 const links = [
   { to: '/', label: 'Дашборд', end: true, surface: 'tracker' },
+  { to: '/bundles', label: 'Связки', surface: 'tracker' },
   { to: '/campaigns', label: 'Кампании', surface: 'tracker' },
   { to: '/offers', label: 'Офферы', surface: 'tracker' },
   { to: '/landings', label: 'Лендинги', surface: 'tracker' },

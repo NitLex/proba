@@ -185,6 +185,29 @@ export function initSchema() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS bundles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      vertical TEXT NOT NULL DEFAULT '',
+      geo TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT '',
+      funnel TEXT NOT NULL DEFAULT 'preland',
+      payout_model TEXT NOT NULL DEFAULT 'CPA',
+      bid_hint TEXT DEFAULT '',
+      heat TEXT NOT NULL DEFAULT 'warm',
+      difficulty TEXT NOT NULL DEFAULT 'medium',
+      rating INTEGER NOT NULL DEFAULT 3,
+      where_to_pour TEXT DEFAULT '',
+      creatives TEXT DEFAULT '',
+      landing_notes TEXT DEFAULT '',
+      offer_notes TEXT DEFAULT '',
+      risks TEXT DEFAULT '',
+      checklist TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active',
+      notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_clicks_campaign ON clicks(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_clicks_created ON clicks(created_at);
     CREATE INDEX IF NOT EXISTS idx_clicks_clickid ON clicks(clickid);
@@ -198,6 +221,9 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_campaign_offers_campaign ON campaign_offers(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_paths_campaign ON campaign_paths(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_rules_campaign ON campaign_rules(campaign_id);
+    CREATE INDEX IF NOT EXISTS idx_bundles_vertical ON bundles(vertical);
+    CREATE INDEX IF NOT EXISTS idx_bundles_geo ON bundles(geo);
+    CREATE INDEX IF NOT EXISTS idx_bundles_source ON bundles(source);
 
     CREATE TABLE IF NOT EXISTS site_visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

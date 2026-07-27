@@ -12,6 +12,7 @@ import authRouter from './routes/auth.js';
 import settingsRouter from './routes/settings.js';
 import analyticsRouter, { recordSiteVisit } from './routes/analytics.js';
 import pipelineRouter from './routes/pipeline.js';
+import bundlesRouter from './routes/bundles.js';
 import { crudRouter } from './routes/crud.js';
 import { requireAuth } from './middleware/auth.js';
 import { prelandFilePath, PRELAND_DIR } from './lib/preland.js';
@@ -138,6 +139,7 @@ export function createApp() {
   app.use('/api/stats', statsRouter);
   app.use('/api/settings', settingsRouter);
   app.use('/api/pipeline', pipelineRouter);
+  app.use('/api/bundles', bundlesRouter);
 
   const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
   if (fs.existsSync(clientDist)) {

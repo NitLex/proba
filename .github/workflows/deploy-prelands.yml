@@ -2,7 +2,7 @@ name: Deploy prelands to GitHub Pages
 
 on:
   push:
-    branches: [main, cursor/preland-pages-47f8]
+    branches: [main]
     paths:
       - 'prelands/**'
       - '.github/workflows/deploy-prelands.yml'

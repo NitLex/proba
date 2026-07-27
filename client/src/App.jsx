@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Pipeline from './pages/Pipeline';
+import Bundles from './pages/Bundles';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -74,6 +75,14 @@ export default function App() {
             }
           >
             <Route index element={<ModeHome />} />
+            <Route
+              path="bundles"
+              element={
+                <TrackerOnly>
+                  <Bundles />
+                </TrackerOnly>
+              }
+            />
             <Route
               path="campaigns"
               element={
