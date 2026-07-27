@@ -74,3 +74,21 @@ test('buildOfferFacts for Finandos-class offer', () => {
     false,
   );
 });
+
+test('buildOfferFacts: FinMi non-residents does not invent RU geo', () => {
+  const facts = buildOfferFacts({
+    name: 'FinMi - Выдача займа нерезидентам',
+    currency: 'RUB',
+    payout: 1125,
+    products: [{ name: 'МФО' }],
+    geo: null,
+  });
+  assert.equal(facts.geo, null);
+  assert.deepEqual(facts.geos, []);
+  assert.deepEqual(facts.region_ids, []);
+  assert.equal(facts.geo_required, true);
+  assert.equal(facts.non_resident_offer, true);
+  assert.equal(facts.ru_traffic_fit, 'geo_required');
+  const seeds = seedsFromOfferFacts({ name: facts.brand }, facts);
+  assert.equal(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'), false);
+});
