@@ -474,6 +474,28 @@ async function applyDraft(plan) {
   if (adsAdded === 0) warnings.push('Объявления не созданы');
   if (keywordsAdded === 0) warnings.push('Ключевые фразы не созданы');
 
+  if (incomplete && campaignId) {
+    const cleanup = await directApiRetry('campaigns', {
+      method: 'delete',
+      params: { SelectionCriteria: { Ids: [campaignId] } },
+    });
+    log.push({ step: 'campaigns.delete_incomplete', result: cleanup });
+    return {
+      ok: false,
+      campaign_id: null,
+      ad_group_ids: [],
+      ad_format: plan.ad_format,
+      state: 'OFF',
+      moderation_submitted: false,
+      counts: { ad_groups: adGroupIds.length, keywords: keywordsAdded, ads: adsAdded },
+      images: { attempted: imageUploads.length, ok: imageOk, failed: imageFail },
+      warning: warnings.length ? warnings.join(' · ') : null,
+      error: warnings.join(' · ') || 'Кампания создана без объявлений/групп',
+      orphan_campaign_deleted: campaignId,
+      log,
+    };
+  }
+
   return {
     ok: !incomplete,
     campaign_id: campaignId,
