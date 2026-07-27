@@ -35,10 +35,16 @@ jobs:
           test -f _site/.nojekyll || touch _site/.nojekyll
           test -f _site/index.html
           test -f _site/finmfo-7426.html
+          test -f _site/finmi-docs-inostrancam.html
           test -f _site/finzaymo-7331.html
           test -f _site/assets/finzaymo-hero.jpg
           test -f _site/eszaem-7278.html
           test -f _site/assets/eszaem-hero.jpg
+          test -f _site/assets/svoy-chelovek-docs-hero.jpg
+          test -f _site/assets/svoy-chelovek-courier.jpg
+          test -f _site/assets/svoy-chelovek-worker.jpg
+          test -f _site/assets/svoy-chelovek-driver.jpg
+          test -f _site/assets/svoy-chelovek-family.jpg
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
