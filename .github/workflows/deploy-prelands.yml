@@ -1,0 +1,49 @@
+name: Deploy prelands to GitHub Pages
+
+on:
+  push:
+    branches: [main, cursor/preland-pages-47f8]
+    paths:
+      - 'prelands/**'
+      - '.github/workflows/deploy-prelands.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: preland-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare site root from prelands/
+        run: |
+          mkdir -p _site
+          rsync -a --exclude 'README.md' prelands/ _site/
+          # Keep README out of public root; .nojekyll must be present
+          test -f _site/.nojekyll || touch _site/.nojekyll
+          test -f _site/index.html
+          test -f _site/finmfo-7426.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

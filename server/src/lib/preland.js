@@ -1,6 +1,10 @@
 /**
- * Simple preland HTML generator for card/loan angles (РСЯ quality lever).
- * Served at /preland/:slug — tracker landing URL points here.
+ * Preland HTML for card/loan angles (РСЯ quality lever).
+ *
+ * Hosted on GitHub Pages (not the tracker VPS):
+ *   PRELAND_PUBLIC_URL || https://nitlex.github.io/proba
+ * CTA always points at the tracker:
+ *   ARBTRACK_PUBLIC_URL || https://trekerarbitrag.ru  → /to-offer?clickid=
  *
  * Loan/MFO broker prelands must stay moderation-safe:
  * no approval guarantees, disclose intermediary role, PSK/contacts/18+.
@@ -13,6 +17,17 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PRELAND_DIR = path.resolve(__dirname, '../../../prelands');
 
+const DEFAULT_PAGES_BASE = 'https://nitlex.github.io/proba';
+const DEFAULT_TRACKER_BASE = 'https://trekerarbitrag.ru';
+
+export function prelandPublicBase() {
+  return String(process.env.PRELAND_PUBLIC_URL || DEFAULT_PAGES_BASE).replace(/\/$/, '');
+}
+
+export function prelandTrackerBase() {
+  return String(process.env.ARBTRACK_PUBLIC_URL || DEFAULT_TRACKER_BASE).replace(/\/$/, '');
+}
+
 function escapeHtml(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -21,13 +36,35 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-function templateLoanBroker({ title, brand }) {
+function ctaScript(trackerBase) {
+  const base = escapeHtml(trackerBase || prelandTrackerBase());
+  return `<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  var clickid=q.get('clickid')||'';
+  var ck=q.get('ck')||'';
+  var meta=document.querySelector('meta[name="arbtrack-tracker"]');
+  var base=((meta&&meta.content)||'${base}').replace(/\\/$/,'');
+  var href=base+'/to-offer?clickid='+encodeURIComponent(clickid);
+  if(ck) href+='&ck='+encodeURIComponent(ck);
+  var go=document.getElementById('go');
+  if(go) go.href=href;
+})();
+</script>`;
+}
+
+function trackerMeta(trackerBase) {
+  return `<meta name="arbtrack-tracker" content="${escapeHtml(trackerBase || prelandTrackerBase())}"/>`;
+}
+
+function templateLoanBroker({ title, brand, trackerBase }) {
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${escapeHtml(title)}</title>
+${trackerMeta(trackerBase)}
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,700&display=swap" rel="stylesheet"/>
@@ -52,23 +89,14 @@ a.cta{display:inline-block;padding:.95rem 1.4rem;border-radius:12px;background:v
   <div class="warn">Изучите все условия кредита (займа) на сайте в соответствующем разделе. Оценивайте свои финансовые возможности и риски.</div>
   <p class="fine">Реклама. 18+. Сервис не является кредитором. ПСК и условия — у МФО-партнёра.</p>
 </main>
-<script>
-(function(){
-  var q=new URLSearchParams(location.search);
-  var clickid=q.get('clickid')||'';
-  var ck=q.get('ck')||'';
-  var href=location.origin+'/to-offer?clickid='+encodeURIComponent(clickid);
-  if(ck) href+='&ck='+encodeURIComponent(ck);
-  document.getElementById('go').href=href;
-})();
-</script>
+${ctaScript(trackerBase)}
 </body>
 </html>`;
 }
 
-function templateHtml({ title, headline, sub, cta, brand, verticalKey }) {
+function templateHtml({ title, headline, sub, cta, brand, verticalKey, trackerBase }) {
   if (verticalKey === 'fintech_loans') {
-    return templateLoanBroker({ title, brand });
+    return templateLoanBroker({ title, brand, trackerBase });
   }
   const bg = 'linear-gradient(160deg, #0b1c2c 0%, #163a5f 45%, #0a1624 100%)';
   const accent = '#4da3ff';
@@ -78,6 +106,7 @@ function templateHtml({ title, headline, sub, cta, brand, verticalKey }) {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${escapeHtml(title)}</title>
+${trackerMeta(trackerBase)}
 <style>
   :root { --accent: ${accent}; }
   * { box-sizing: border-box; }
@@ -106,16 +135,7 @@ function templateHtml({ title, headline, sub, cta, brand, verticalKey }) {
     <a class="cta" id="go" href="#">${escapeHtml(cta)}</a>
     <p class="fine">Реклама. Условия на сайте партнёра.</p>
   </main>
-<script>
-(function () {
-  var q = new URLSearchParams(location.search);
-  var clickid = q.get('clickid') || '';
-  var ck = q.get('ck') || '';
-  var href = location.origin + '/to-offer?clickid=' + encodeURIComponent(clickid);
-  if (ck) href += '&ck=' + encodeURIComponent(ck);
-  document.getElementById('go').href = href;
-})();
-</script>
+${ctaScript(trackerBase)}
 </body>
 </html>`;
 }
@@ -141,7 +161,7 @@ function copyForVertical(verticalKey, offer = {}, angle = {}) {
 }
 
 /**
- * Write preland HTML and return public path + absolute URL.
+ * Write preland HTML (repo/prelands) and return GitHub Pages URL.
  * Prefer curated HTML for known slugs when present in PRELAND_DIR.
  */
 export function generatePreland({
@@ -150,6 +170,7 @@ export function generatePreland({
   verticalKey = '',
   runId = 'run',
   publicBase = '',
+  trackerBase = '',
   slug: forcedSlug = '',
 } = {}) {
   if (!fs.existsSync(PRELAND_DIR)) fs.mkdirSync(PRELAND_DIR, { recursive: true });
@@ -161,21 +182,24 @@ export function generatePreland({
     .slice(0, 80);
 
   const curated = path.join(PRELAND_DIR, `${slug}.html`);
+  const tracker = String(trackerBase || prelandTrackerBase()).replace(/\/$/, '');
   // Keep handcrafted finmfo (and similar) pages intact if already present
   if (!(forcedSlug && fs.existsSync(curated))) {
     const copy = copyForVertical(verticalKey, offer, angle);
-    const html = templateHtml({ ...copy, verticalKey });
+    const html = templateHtml({ ...copy, verticalKey, trackerBase: tracker });
     fs.writeFileSync(path.join(PRELAND_DIR, `${slug}.html`), html, 'utf8');
   }
 
-  const base = String(publicBase || '').replace(/\/$/, '');
-  const publicPath = `/preland/${slug}`;
+  const base = String(publicBase || prelandPublicBase()).replace(/\/$/, '');
+  const publicPath = `/${slug}.html`;
   return {
     ok: true,
     slug,
     file: path.join(PRELAND_DIR, `${slug}.html`),
     path: publicPath,
-    url: base ? `${base}${publicPath}` : publicPath,
+    url: `${base}${publicPath}`,
+    tracker_base: tracker,
+    host: 'github_pages',
     angle_id: angle.id || 'main',
     vertical_key: verticalKey,
   };
@@ -188,4 +212,4 @@ export function prelandFilePath(slug) {
   return fs.existsSync(file) ? file : null;
 }
 
-export { PRELAND_DIR };
+export { PRELAND_DIR, DEFAULT_PAGES_BASE, DEFAULT_TRACKER_BASE };

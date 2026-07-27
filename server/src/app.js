@@ -79,7 +79,7 @@ export function createApp() {
     app.use(trackRouter);
     app.use(postbackRouter);
 
-    // Generated prelands (public HTML) + curated assets (hero images)
+    // Optional local fallback for prelands (primary host is GitHub Pages)
     app.use('/preland-assets', express.static(path.join(PRELAND_DIR, 'assets'), { maxAge: '7d' }));
     app.get('/preland/:slug', (req, res) => {
       const file = prelandFilePath(req.params.slug);

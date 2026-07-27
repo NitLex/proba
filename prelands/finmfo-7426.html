@@ -8,6 +8,7 @@
     name="description"
     content="Информационный сервис подбора предложений МФО. Не кредитор. 18+. Условия и решение — на сайте партнёра."
   />
+  <meta name="arbtrack-tracker" content="https://trekerarbitrag.ru" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -55,7 +56,7 @@
       background:
         linear-gradient(115deg, rgba(8, 28, 20, 0.78) 0%, rgba(8, 28, 20, 0.35) 48%, rgba(8, 28, 20, 0.72) 100%),
         linear-gradient(180deg, rgba(8, 22, 16, 0.2) 0%, rgba(8, 22, 16, 0.88) 100%),
-        url('/preland-assets/finmfo-hero.jpg') center / cover no-repeat;
+        url('assets/finmfo-hero.jpg') center / cover no-repeat;
       transform: scale(1.05);
       animation: ken 22s ease-in-out infinite alternate;
     }
@@ -481,7 +482,9 @@
       var q = new URLSearchParams(location.search);
       var clickid = q.get('clickid') || '';
       var ck = q.get('ck') || '';
-      var href = location.origin + '/to-offer?clickid=' + encodeURIComponent(clickid);
+      var meta = document.querySelector('meta[name="arbtrack-tracker"]');
+      var base = ((meta && meta.content) || 'https://trekerarbitrag.ru').replace(/\/$/, '');
+      var href = base + '/to-offer?clickid=' + encodeURIComponent(clickid);
       if (ck) href += '&ck=' + encodeURIComponent(ck);
       var go = document.getElementById('go');
       go.href = href;

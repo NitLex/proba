@@ -95,20 +95,25 @@ test('antifraud scores empty UA and frequency', () => {
   assert.equal(review.action, 'allow');
 });
 
-test('preland generator writes html', () => {
+test('preland generator writes html for GitHub Pages', () => {
   const out = generatePreland({
     offer: { name: 'ТестКарта' },
     angle: { id: 'travel', title: 'Поездки' },
     verticalKey: 'fintech_cards',
     runId: `test-${Date.now()}`,
-    publicBase: 'https://example.test',
+    publicBase: 'https://nitlex.github.io/proba',
+    trackerBase: 'https://trekerarbitrag.ru',
   });
   assert.equal(out.ok, true);
+  assert.equal(out.host, 'github_pages');
   assert.ok(fs.existsSync(out.file));
   assert.ok(prelandFilePath(out.slug));
+  assert.match(out.url, /^https:\/\/nitlex\.github\.io\/proba\/.+\.html$/);
   const html = fs.readFileSync(out.file, 'utf8');
   assert.match(html, /зарубежн/i);
-  assert.match(html, /to-offer/);
+  assert.match(html, /arbtrack-tracker/);
+  assert.match(html, /trekerarbitrag\.ru/);
+  assert.match(html, /to-offer\?clickid=/);
   fs.unlinkSync(out.file);
 });
 

@@ -3,15 +3,19 @@
 Источник оффера: LeadGid `7426` «Finmfo.tech - Заявка» (CPA заявка 150 ₽, продукт «Кредитные сервисы»).  
 Лендинг оффера: https://finmfo.tech/
 
-## Файл
+## Файл и хостинг
 
-`prelands/finmfo-7426.html`  
-Hero: `prelands/assets/finmfo-hero.jpg` → **https://trekerarbitrag.ru/preland-assets/finmfo-hero.jpg**  
-Прод: **https://trekerarbitrag.ru/preland/finmfo-7426**
+`prelands/finmfo-7426.html` + `prelands/assets/finmfo-hero.jpg`  
+**Хост: GitHub Pages** (не трекер / VPS)
 
-Поток: `/click/<key>` → преленд `?clickid=&ck=` → CTA → `/to-offer?clickid=` → LeadGid с `aff_sub`.
+- Преленд: **https://nitlex.github.io/proba/finmfo-7426.html**
+- Hero: **https://nitlex.github.io/proba/assets/finmfo-hero.jpg**
 
-Оформление: full-bleed фото-hero, крупный бренд, jade CTA, timeline без карточек; legal-блок без изменений по смыслу.
+Поток: `/click/<key>` (трекер) → преленд на Pages `?clickid=&ck=` → CTA → `https://trekerarbitrag.ru/to-offer?clickid=` → LeadGid с `aff_sub`.
+
+В карточке лендинга кампании на трекере указывай URL Pages, не `/preland/…` на trekerarbitrag.ru.
+
+Оформление: full-bleed фото-hero, крупный бренд, jade CTA, timeline; legal-блок без изменений по смыслу.
 
 ## Что смягчили относительно основного сайта (для Директа)
 

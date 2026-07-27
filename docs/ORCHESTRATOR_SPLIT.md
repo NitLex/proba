@@ -81,6 +81,7 @@ cd /var/www/orkestr && bash update-orchestrator.sh
 ## Что блокируется
 
 - На оркестраторе: `/click`, `/postback`, `/to-offer`, `/preland/*` → 404 + ссылка на трекер
+- Преленды для Директа хостим на **GitHub Pages** (`prelands/` → `https://nitlex.github.io/proba/`), CTA → трекер `/to-offer`
 - На трекере (`APP_MODE=tracker`): `/api/pipeline/*` → 404 + ссылка на оркестратор
 - UI: на оркестраторе видны только Оркестратор + Профиль; на трекере вкладка Оркестратор скрыта
 

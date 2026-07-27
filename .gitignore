@@ -16,3 +16,4 @@ prelands/*
 !prelands/assets/
 !prelands/assets/**
 !prelands/README.md
+!prelands/.nojekyll

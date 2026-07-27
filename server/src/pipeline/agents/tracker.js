@@ -6,7 +6,7 @@ import {
   ensureOfferTrackingUrl,
 } from '../../lib/leadgidPostback.js';
 import { makeCampaignKey } from '../../lib/tracking.js';
-import { generatePreland } from '../../lib/preland.js';
+import { generatePreland, prelandPublicBase, prelandTrackerBase } from '../../lib/preland.js';
 import {
   remoteApi,
   remoteBase,
@@ -244,12 +244,33 @@ async function upsertOfferRemote(token, offer) {
   });
 }
 
-async function createCampaignRemote(token, { name, sourceId, offerId, cpc, notes, currency }) {
+async function upsertLandingRemote(token, { name, url, notes }) {
+  const list = await remoteApi(token, 'GET', '/api/landings');
+  const existing = (list || []).find((l) => l.url === url || l.name === name);
+  if (existing) {
+    if (existing.url !== url) {
+      return remoteApi(token, 'PUT', `/api/landings/${existing.id}`, {
+        ...existing,
+        name,
+        url,
+        notes: notes || existing.notes || '',
+      });
+    }
+    return existing;
+  }
+  return remoteApi(token, 'POST', '/api/landings', {
+    name,
+    url,
+    notes: notes || 'pipeline preland · GitHub Pages',
+  });
+}
+
+async function createCampaignRemote(token, { name, sourceId, offerId, landingId, cpc, notes, currency }) {
   const body = {
     name,
     traffic_source_id: sourceId,
     offer_id: offerId,
-    landing_id: null,
+    landing_id: landingId || null,
     cost_model: 'cpc',
     cost_value: cpc,
     currency: currency || 'RUB',
@@ -325,14 +346,16 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
   let landing = null;
   let preland = null;
 
-  if (wantPreland && !useRemote) {
+  // HTML lives in repo/prelands and is published via GitHub Pages (not tracker VPS).
+  if (wantPreland) {
     const angle = (playbook.angles || [])[0] || { id: 'main', title: 'Основной' };
     preland = generatePreland({
       offer,
       angle,
       verticalKey: verticalKey || 'fintech_cards',
       runId: context.run_id || `offer-${Date.now()}`,
-      publicBase: base,
+      publicBase: prelandPublicBase(),
+      trackerBase: prelandTrackerBase(),
     });
   }
 
@@ -340,10 +363,18 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
     const token = await remoteLogin();
     source = await upsertSourceRemote(token, sourceName);
     offerRow = await upsertOfferRemote(token, offer);
+    if (preland?.url) {
+      landing = await upsertLandingRemote(token, {
+        name: `Preland · ${offer.name || 'offer'}`,
+        url: preland.url,
+        notes: `pipeline preland ${preland.slug} · github pages`,
+      });
+    }
     campaign = await createCampaignRemote(token, {
       name: campaignName,
       sourceId: source.id,
       offerId: offerRow.id,
+      landingId: landing?.id || null,
       cpc,
       currency,
       notes: `pipeline:${offer.network_offer_id || offer.offer_id || ''}\n${(playbook.angles || []).map((a) => a.id).join(',')}`,
@@ -365,7 +396,7 @@ export async function runTracker({ offer, context, dryRun, ownerUserId }) {
         name: `Preland · ${offer.name || 'offer'}`,
         url: preland.url,
         userId,
-        notes: `pipeline preland ${preland.slug}`,
+        notes: `pipeline preland ${preland.slug} · github pages`,
       });
     }
     campaign = createCampaignLocal({
