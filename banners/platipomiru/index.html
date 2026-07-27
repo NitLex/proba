@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Плати по миру — баннеры (все размеры)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="gallery">
+  <h1>Плати по миру — рекламные баннеры</h1>
+  <p>Cyberpunk fintech · platipomiru.com · промокод LG2026</p>
+  <p style="margin-top:0.5rem;font-size:0.85rem;color:#666">
+    Откройте <code>export.html</code> для экспорта PNG или запустите <code>node export.mjs</code>
+  </p>
+
+  <div class="gallery-grid" id="gallery"></div>
+
+  <template id="banner-tpl">
+    <article class="banner" data-layout="">
+      <div class="banner__bg"></div>
+      <div class="banner__grid"></div>
+      <div class="banner__glow banner__glow--cyan"></div>
+      <div class="banner__glow banner__glow--purple"></div>
+      <div class="banner__content">
+        <span class="banner__chip">Плати по миру</span>
+        <h2 class="banner__title">Оплачивайте любимые игры</h2>
+        <p class="banner__subtitle">Виртуальная карта для зарубежных игровых сервисов</p>
+        <ul class="banner__bullets">
+          <li>оформление онлайн</li>
+          <li>пополнение рублями через СБП</li>
+          <li>подходит для оплаты цифровых покупок</li>
+          <li>быстрое получение карты</li>
+        </ul>
+        <div class="banner__row">
+          <div class="banner__promo">
+            <span class="banner__promo-code">LG2026</span>
+            <span class="banner__promo-bonus">500 ₽ на открытие карты</span>
+          </div>
+          <a class="banner__cta" href="https://platipomiru.com" target="_blank" rel="noopener">Получить карту</a>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const SIZES = [
+      { w: 1000, h: 120, layout: 'hz-ultra' },
+      { w: 1080, h: 450, layout: 'billboard' },
+      { w: 1280, h: 256, layout: 'hz-ultra' },
+      { w: 160, h: 600, layout: 'vert' },
+      { w: 1706, h: 184, layout: 'hz-ultra' },
+      { w: 240, h: 400, layout: 'vert' },
+      { w: 240, h: 600, layout: 'vert' },
+      { w: 300, h: 250, layout: 'mrect' },
+      { w: 300, h: 300, layout: 'square' },
+      { w: 300, h: 500, layout: 'vert' },
+      { w: 300, h: 600, layout: 'vert' },
+      { w: 320, h: 100, layout: 'hz-std' },
+      { w: 320, h: 480, layout: 'mport' },
+      { w: 320, h: 50, layout: 'hz-std' },
+      { w: 336, h: 280, layout: 'mrect' },
+      { w: 480, h: 320, layout: 'mland' },
+      { w: 728, h: 90, layout: 'hz-std' },
+      { w: 940, h: 1524, layout: 'mport' },
+      { w: 970, h: 250, layout: 'billboard' },
+    ];
+
+    const tpl = document.getElementById('banner-tpl');
+    const gallery = document.getElementById('gallery');
+
+    for (const s of SIZES) {
+      const wrap = document.createElement('div');
+      wrap.className = 'gallery-item';
+      const h3 = document.createElement('h3');
+      h3.textContent = `${s.w}×${s.h}`;
+      wrap.appendChild(h3);
+
+      const node = tpl.content.cloneNode(true);
+      const banner = node.querySelector('.banner');
+      banner.classList.add(`banner--${s.layout}`);
+      banner.style.width = `${s.w}px`;
+      banner.style.height = `${s.h}px`;
+      banner.dataset.size = `${s.w}x${s.h}`;
+      wrap.appendChild(node);
+      gallery.appendChild(wrap);
+    }
+  </script>
+</body>
+</html>

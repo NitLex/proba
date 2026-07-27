@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { applyMacros, parseCost, detectBot, makeClickId } from '../src/lib/tracking.js';
+import { applyMacros, parseCost, detectBot, isAdReviewBot, makeClickId } from '../src/lib/tracking.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testDb = path.join(__dirname, 'test-arbtrack.db');
@@ -25,6 +25,8 @@ describe('tracking helpers', () => {
   it('detects bots', () => {
     assert.equal(detectBot('Googlebot/2.1'), 1);
     assert.equal(detectBot('Mozilla/5.0 Chrome'), 0);
+    assert.equal(isAdReviewBot('Mozilla/5.0 (compatible; YandexBot/3.0)'), true);
+    assert.equal(isAdReviewBot('curl/8.0'), false);
   });
 
   it('generates click ids', () => {
@@ -38,26 +40,38 @@ describe('tracking helpers', () => {
 describe('api integration', () => {
   let base;
   let server;
+  let token;
 
   before(async () => {
     process.env.DB_PATH = testDb;
+    process.env.JWT_SECRET = 'test-secret';
     for (const f of [testDb, `${testDb}-wal`, `${testDb}-shm`]) {
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
 
     const { db } = await import('../src/db.js');
+    const { hashPassword } = await import('../src/lib/auth.js');
+    const user = db
+      .prepare(
+        `INSERT INTO users (username, password_hash, email, telegram, is_admin) VALUES (?, ?, ?, ?, ?)`
+      )
+      .run('tester', hashPassword('secret1'), 'tester@test.local', '@tester', 1);
+    const userId = Number(user.lastInsertRowid);
+
     const src = db
-      .prepare(`INSERT INTO traffic_sources (name, cost_param, token1) VALUES ('Test', 'cost', 'sub1')`)
-      .run();
+      .prepare(
+        `INSERT INTO traffic_sources (user_id, name, cost_param, token1) VALUES (?, 'Test', 'cost', 'sub1')`
+      )
+      .run(userId);
     const offer = db
       .prepare(
-        `INSERT INTO offers (name, url, payout) VALUES ('O1', 'https://offer.test/?id={clickid}', 10)`
+        `INSERT INTO offers (user_id, name, url, payout) VALUES (?, 'O1', 'https://offer.test/?id={clickid}', 10)`
       )
-      .run();
+      .run(userId);
     db.prepare(
-      `INSERT INTO campaigns (name, key, traffic_source_id, offer_id, cost_model, cost_value, status)
-       VALUES ('C1', 'testkey1', ?, ?, 'cpc', 0.1, 'active')`
-    ).run(Number(src.lastInsertRowid), Number(offer.lastInsertRowid));
+      `INSERT INTO campaigns (user_id, name, key, traffic_source_id, offer_id, cost_model, cost_value, status)
+       VALUES (?, 'C1', 'testkey1', ?, ?, 'cpc', 0.1, 'active')`
+    ).run(userId, Number(src.lastInsertRowid), Number(offer.lastInsertRowid));
 
     const { createApp } = await import('../src/app.js');
     const app = createApp();
@@ -66,6 +80,14 @@ describe('api integration', () => {
     });
     const { port } = server.address();
     base = `http://127.0.0.1:${port}`;
+
+    const login = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'tester', password: 'secret1' }),
+    });
+    const body = await login.json();
+    token = body.token;
   });
 
   after(() => {
@@ -77,6 +99,48 @@ describe('api integration', () => {
     assert.equal(res.status, 200);
     const json = await res.json();
     assert.equal(json.ok, true);
+  });
+
+  it('rejects protected api without token', async () => {
+    const res = await fetch(`${base}/api/stats/overview`);
+    assert.equal(res.status, 401);
+  });
+
+  it('registers a new user', async () => {
+    const res = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'newbie',
+        password: 'pass123',
+        email: 'newbie@example.com',
+        telegram: '@newbie_user',
+      }),
+    });
+    assert.equal(res.status, 201);
+    const body = await res.json();
+    assert.ok(body.token);
+    assert.equal(body.user.username, 'newbie');
+    assert.equal(body.user.email, 'newbie@example.com');
+    assert.equal(body.user.telegram, '@newbie_user');
+  });
+
+  it('updates profile', async () => {
+    const res = await fetch(`${base}/api/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        email: 'tester@example.com',
+        telegram: 'tester_tg',
+      }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.user.email, 'tester@example.com');
+    assert.equal(body.user.telegram, '@tester_tg');
   });
 
   it('tracks click and accepts postback', async () => {
@@ -96,15 +160,82 @@ describe('api integration', () => {
     assert.equal(body.ok, true);
     assert.equal(body.payout, 10);
 
-    const overview = await (await fetch(`${base}/api/stats/overview`)).json();
+    const overview = await (
+      await fetch(`${base}/api/stats/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json();
     assert.ok(overview.clicks >= 1);
     assert.ok(overview.revenue >= 10);
+  });
+
+  it('LeadGid postback test with fake clickid returns 200', async () => {
+    const pb = await fetch(
+      `${base}/postback?clickid=aff_sub_value&payout=100.1&status=approved&txid=leadgid-test`,
+    );
+    assert.equal(pb.status, 200);
+    const body = await pb.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.unmatched, true);
+  });
+
+  it('demo user cannot access orchestrator API', async () => {
+    const { db } = await import('../src/db.js');
+    const { hashPassword } = await import('../src/lib/auth.js');
+    db.prepare(
+      `INSERT OR IGNORE INTO users (username, password_hash, email, telegram, is_admin)
+       VALUES ('demo', ?, 'demo@arbtrack.local', '@arbtrack_demo', 1)`,
+    ).run(hashPassword('demo123'));
+    // ensure password is demo123 even if row existed
+    db.prepare(`UPDATE users SET password_hash = ? WHERE username = 'demo'`).run(
+      hashPassword('demo123'),
+    );
+
+    const login = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'demo', password: 'demo123' }),
+    });
+    assert.equal(login.status, 200);
+    const { token: demoToken, user } = await login.json();
+    assert.equal(user.is_demo, true);
+
+    const res = await fetch(`${base}/api/pipeline/roles`, {
+      headers: { Authorization: `Bearer ${demoToken}` },
+    });
+    assert.equal(res.status, 403);
+    const body = await res.json();
+    assert.match(String(body.error || ''), /демо|зарегистрир/i);
+  });
+
+  it('records site visit and shows admin stats', async () => {
+    const visit = await fetch(`${base}/api/analytics/visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_key: 'visitor_test_key_01', path: '/login' }),
+    });
+    assert.equal(visit.status, 200);
+    const v = await visit.json();
+    assert.equal(v.ok, true);
+
+    const stats = await fetch(`${base}/api/analytics/site`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(stats.status, 200);
+    const body = await stats.json();
+    assert.ok(body.visits_total >= 1);
+    assert.ok(body.uniques_total >= 1);
+    assert.ok(body.registrations >= 1);
+    assert.ok(Array.isArray(body.recent_users));
   });
 
   it('bundles crud + launch campaign', async () => {
     const created = await fetch(`${base}/api/bundles`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         name: 'Test FB Nutra DE',
         vertical: 'Nutra',
@@ -125,12 +256,19 @@ describe('api integration', () => {
     const bundle = await created.json();
     assert.equal(bundle.name, 'Test FB Nutra DE');
 
-    const list = await (await fetch(`${base}/api/bundles?vertical=Nutra&heat=hot`)).json();
+    const list = await (
+      await fetch(`${base}/api/bundles?vertical=Nutra&heat=hot`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json();
     assert.ok(list.some((b) => b.id === bundle.id));
 
     const launch = await fetch(`${base}/api/bundles/${bundle.id}/launch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ payout: 42, cost_value: 0.33 }),
     });
     assert.equal(launch.status, 201);
@@ -140,7 +278,11 @@ describe('api integration', () => {
     assert.ok(launched.offer_id);
     assert.ok(launched.landing_id);
 
-    const camp = await (await fetch(`${base}/api/campaigns/${launched.campaign.id}`)).json();
+    const camp = await (
+      await fetch(`${base}/api/campaigns/${launched.campaign.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json();
     assert.match(camp.name, /Facebook Ads/);
     assert.equal(camp.cost_value, 0.33);
   });

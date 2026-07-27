@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { api, money } from '../api';
+import { api, money, downloadCsv } from '../api';
 
 export default function Logs() {
   const [clicks, setClicks] = useState([]);
   const [conversions, setConversions] = useState([]);
   const [tab, setTab] = useState('clicks');
+  const [err, setErr] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -15,6 +16,17 @@ export default function Logs() {
       setConversions(v);
     });
   }, []);
+
+  async function exportCsv() {
+    try {
+      await downloadCsv(
+        `/api/stats/export/${tab === 'clicks' ? 'clicks' : 'conversions'}`,
+        `${tab}.csv`
+      );
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
 
   return (
     <div>
@@ -38,8 +50,13 @@ export default function Logs() {
           >
             Конверсии
           </button>
+          <button className="btn ghost sm" type="button" onClick={exportCsv}>
+            CSV
+          </button>
         </div>
       </div>
+
+      {err && <p className="neg">{err}</p>}
 
       <div className="panel">
         <div className="table-wrap">
@@ -66,7 +83,7 @@ export default function Logs() {
                     <td>{c.source_name || '—'}</td>
                     <td>{c.country || '—'}</td>
                     <td>{c.device}</td>
-                    <td>{money(c.cost)}</td>
+                    <td>{money(c.cost, c.currency || 'RUB')}</td>
                     <td className="mono">
                       {[c.token1, c.token2, c.token3].filter(Boolean).join(' · ') || '—'}
                     </td>
@@ -97,7 +114,7 @@ export default function Logs() {
                     <td>
                       <span className={`badge ${c.status}`}>{c.status}</span>
                     </td>
-                    <td>{money(c.payout, c.currency || 'USD')}</td>
+                    <td>{money(c.payout, c.currency || 'RUB')}</td>
                     <td className="mono">{c.txid || '—'}</td>
                   </tr>
                 ))}

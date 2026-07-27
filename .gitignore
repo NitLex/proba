@@ -8,3 +8,12 @@ client/dist/
 .DS_Store
 *.log
 .env
+SECRETS.env
+creatives/pipeline/
+# Generated pipeline prelands are local; curated HTML + assets are tracked
+prelands/*
+!prelands/*.html
+!prelands/assets/
+!prelands/assets/**
+!prelands/README.md
+!prelands/.nojekyll

@@ -1,9 +1,29 @@
 const BASE = '';
+const TOKEN_KEY = 'arbtrack_token';
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+export function setAuthToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request(path, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+  const token = getAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
+    headers,
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -12,6 +32,9 @@ async function request(path, options = {}) {
       msg = j.error || msg;
     } catch {
       /* ignore */
+    }
+    if (res.status === 401 && !path.startsWith('/api/auth/login') && !path.startsWith('/api/auth/register')) {
+      clearAuthToken();
     }
     throw new Error(msg);
   }
@@ -24,15 +47,26 @@ export const api = {
   post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
   put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
   del: (path) => request(path, { method: 'DELETE' }),
+  /** JSON body may include large base64 — same as post, kept for clarity */
+  postJson: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
 };
 
-export function money(n, currency = 'USD') {
+export function money(n, currency = 'RUB') {
   if (n == null || Number.isNaN(Number(n))) return '—';
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(n));
+  const code = String(currency || 'RUB').toUpperCase();
+  const amount = Number(n);
+  try {
+    if (code === 'USDT') {
+      return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(amount)} USDT`;
+    }
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${code}`;
+  }
 }
 
 export function pct(n) {
@@ -52,4 +86,30 @@ export function todayMinus(days) {
 
 export function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+export async function downloadCsv(path, filename) {
+  const token = getAuthToken();
+  const res = await fetch(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let msg = res.statusText;
+    try {
+      const j = await res.json();
+      msg = j.error || msg;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'export.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

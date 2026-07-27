@@ -1,35 +1,77 @@
 import { db } from './db.js';
 import { makeCampaignKey } from './lib/tracking.js';
+import { hashPassword } from './lib/auth.js';
 
-const count = db.prepare('SELECT COUNT(*) AS c FROM campaigns').get().c;
+const DEMO_USER = 'demo';
+const DEMO_PASS = 'demo123';
+
+function ensureDemoUser() {
+  let user = db.prepare(`SELECT * FROM users WHERE username = ?`).get(DEMO_USER);
+  if (!user) {
+    const info = db
+      .prepare(
+        `INSERT INTO users (username, password_hash, email, telegram, is_admin) VALUES (?, ?, ?, ?, 1)`
+      )
+      .run(DEMO_USER, hashPassword(DEMO_PASS), 'demo@arbtrack.local', '@arbtrack_demo');
+    user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(Number(info.lastInsertRowid));
+  } else {
+    db.prepare(`UPDATE users SET is_admin = 1 WHERE username = ?`).run(DEMO_USER);
+    // backfill profile for older demo users
+    if (!user.email) {
+      db.prepare(`UPDATE users SET email = ? WHERE id = ? AND (email IS NULL OR email = '')`).run(
+        'demo@arbtrack.local',
+        user.id
+      );
+    }
+    if (!user.telegram) {
+      db.prepare(
+        `UPDATE users SET telegram = ? WHERE id = ? AND (telegram IS NULL OR telegram = '')`
+      ).run('@arbtrack_demo', user.id);
+    }
+    user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
+  }
+
+  // attach orphan rows from pre-auth installs
+  db.prepare(`UPDATE traffic_sources SET user_id = ? WHERE user_id IS NULL`).run(user.id);
+  db.prepare(`UPDATE offers SET user_id = ? WHERE user_id IS NULL`).run(user.id);
+  db.prepare(`UPDATE landings SET user_id = ? WHERE user_id IS NULL`).run(user.id);
+  db.prepare(`UPDATE campaigns SET user_id = ? WHERE user_id IS NULL`).run(user.id);
+
+  return user;
+}
+
+const user = ensureDemoUser();
+const count = db.prepare('SELECT COUNT(*) AS c FROM campaigns WHERE user_id = ?').get(user.id).c;
 if (count > 0) {
   console.log('Database already seeded, skipping campaigns.');
+  console.log(`Login: ${DEMO_USER} / ${DEMO_PASS}`);
   seedBundles();
   process.exit(0);
 }
 
 const insertSource = db.prepare(`
-  INSERT INTO traffic_sources (name, postback_url, cost_param, currency, token1, token2, token3, notes)
-  VALUES (@name, @postback_url, @cost_param, @currency, @token1, @token2, @token3, @notes)
+  INSERT INTO traffic_sources (user_id, name, postback_url, cost_param, currency, token1, token2, token3, notes)
+  VALUES (@user_id, @name, @postback_url, @cost_param, @currency, @token1, @token2, @token3, @notes)
 `);
 
 const insertOffer = db.prepare(`
-  INSERT INTO offers (name, url, payout, currency, geo, network, status, notes)
-  VALUES (@name, @url, @payout, @currency, @geo, @network, @status, @notes)
+  INSERT INTO offers (user_id, name, url, payout, currency, geo, network, status, notes)
+  VALUES (@user_id, @name, @url, @payout, @currency, @geo, @network, @status, @notes)
 `);
 
 const insertLanding = db.prepare(`
-  INSERT INTO landings (name, url, notes)
-  VALUES (@name, @url, @notes)
+  INSERT INTO landings (user_id, name, url, notes)
+  VALUES (@user_id, @name, @url, @notes)
 `);
 
 const insertCampaign = db.prepare(`
-  INSERT INTO campaigns (name, key, traffic_source_id, offer_id, landing_id, cost_model, cost_value, status, notes)
-  VALUES (@name, @key, @traffic_source_id, @offer_id, @landing_id, @cost_model, @cost_value, @status, @notes)
+  INSERT INTO campaigns (user_id, name, key, traffic_source_id, offer_id, landing_id, cost_model, cost_value, status, notes)
+  VALUES (@user_id, @name, @key, @traffic_source_id, @offer_id, @landing_id, @cost_model, @cost_value, @status, @notes)
 `);
 
 const tx = db.transaction(() => {
   const fb = insertSource.run({
+    user_id: user.id,
     name: 'Facebook Ads',
     postback_url: '',
     cost_param: 'cost',
@@ -41,6 +83,7 @@ const tx = db.transaction(() => {
   });
 
   const gg = insertSource.run({
+    user_id: user.id,
     name: 'Google UAC',
     postback_url: '',
     cost_param: 'cost',
@@ -52,6 +95,7 @@ const tx = db.transaction(() => {
   });
 
   const offer1 = insertOffer.run({
+    user_id: user.id,
     name: 'Nutra Slim DE',
     url: 'https://example-aff.net/click?offer=1&sub1={clickid}&sub2={campaign_id}&geo={country}',
     payout: 45,
@@ -63,6 +107,7 @@ const tx = db.transaction(() => {
   });
 
   const offer2 = insertOffer.run({
+    user_id: user.id,
     name: 'Finance Loan PL',
     url: 'https://example-aff.net/click?offer=2&click_id={clickid}&source={campaign_name}',
     payout: 28,
@@ -74,6 +119,7 @@ const tx = db.transaction(() => {
   });
 
   const land1 = insertLanding.run({
+    user_id: user.id,
     name: 'Slim Preland DE',
     url: 'https://example-landings.test/slim-de/?cid={clickid}',
     notes: 'Use /to-offer?clickid={clickid} on CTA',
@@ -83,6 +129,7 @@ const tx = db.transaction(() => {
   const key2 = makeCampaignKey();
 
   insertCampaign.run({
+    user_id: user.id,
     name: 'FB → Slim DE',
     key: key1,
     traffic_source_id: Number(fb.lastInsertRowid),
@@ -95,6 +142,7 @@ const tx = db.transaction(() => {
   });
 
   insertCampaign.run({
+    user_id: user.id,
     name: 'UAC → Loan PL direct',
     key: key2,
     traffic_source_id: Number(gg.lastInsertRowid),
@@ -106,7 +154,6 @@ const tx = db.transaction(() => {
     notes: 'Direct-to-offer campaign',
   });
 
-  // Sample clicks + conversions for dashboard demo
   const insertClick = db.prepare(`
     INSERT INTO clicks (
       clickid, campaign_id, offer_id, landing_id, traffic_source_id,
@@ -181,6 +228,7 @@ const tx = db.transaction(() => {
 
 const { key1, key2 } = tx();
 console.log('Seeded ArbTrack demo data.');
+console.log(`Login: ${DEMO_USER} / ${DEMO_PASS}`);
 console.log(`Campaign 1 click URL: /click/${key1}`);
 console.log(`Campaign 2 click URL: /click/${key2}`);
 console.log('Postback example: /postback?clickid=CLICKID&payout=45&status=sale');

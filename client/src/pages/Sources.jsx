@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { Modal } from '../components/ui';
+import { Modal, CurrencySelect, LabelWithHint } from '../components/ui';
 
 const empty = {
   name: '',
   postback_url: '',
   cost_param: 'cost',
-  currency: 'USD',
+  currency: 'RUB',
   token1: '',
   token2: '',
   token3: '',
@@ -122,16 +122,29 @@ export default function Sources() {
                 />
               </label>
               <label className="lbl">
-                Cost param
+                <LabelWithHint hint="Имя query-параметра со стоимостью клика из рекламы, например cost или cpc.">
+                  Cost param
+                </LabelWithHint>
                 <input
                   className="input mono"
                   value={form.cost_param}
                   onChange={(e) => setForm({ ...form, cost_param: e.target.value })}
                 />
               </label>
+              <label className="lbl">
+                <LabelWithHint hint="Валюта стоимости трафика из этого источника.">
+                  Валюта
+                </LabelWithHint>
+                <CurrencySelect
+                  value={form.currency || 'RUB'}
+                  onChange={(currency) => setForm({ ...form, currency })}
+                />
+              </label>
               {['token1', 'token2', 'token3', 'token4', 'token5'].map((t) => (
                 <label className="lbl" key={t}>
-                  {t} (query name)
+                  <LabelWithHint hint="Имя параметра из URL рекламы, которое сохранится в этот токен (utm_campaign, ad_id…).">
+                    {t} (query name)
+                  </LabelWithHint>
                   <input
                     className="input mono"
                     value={form[t]}

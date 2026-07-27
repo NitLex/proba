@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { Modal } from '../components/ui';
+import { Modal, LabelWithHint } from '../components/ui';
 
 const empty = { name: '', url: '', notes: '' };
 
@@ -113,7 +113,9 @@ export default function Landings() {
                 />
               </label>
               <label className="lbl full">
-                URL
+                <LabelWithHint hint="Адрес вашей прокладки. На кнопке CTA ведите на /to-offer?clickid=… — трекер сам добавит clickid при редиректе.">
+                  URL
+                </LabelWithHint>
                 <input
                   className="input mono"
                   required
