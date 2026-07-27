@@ -1,0 +1,42 @@
+{
+  "ok": false,
+  "run_id": 1,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "prompt_token": {
+    "prefix": "OPgvNQY5",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token)"
+  },
+  "uploads": [
+    {
+      "mode": "batch_jpeg",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "travel",
+      "mime": "image/png",
+      "file": "travel-agent-0.png",
+      "status": 403,
+      "size": 1450768,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "services",
+      "mime": "image/png",
+      "file": "services-agent-0.png",
+      "status": 403,
+      "size": 1327267,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "local_assets": {
+    "travel": ["travel-agent-0.png", "travel-agent-0.jpg"],
+    "services": ["services-agent-0.png", "services-agent-0.jpg"],
+    "size": "1024x1024",
+    "format": "product",
+    "engine": "agent"
+  },
+  "note": "Локальные product-креативы готовы. Повтор: python3 upload_ingest.py --run-id 1 --token '<TOKEN>' --prefer-jpeg",
+  "tracker_note": "trekerarbitrag.ru возвращает 404 (APP_MODE=tracker) — ingest только на orkestr.online"
+}

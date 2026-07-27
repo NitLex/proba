@@ -1,0 +1,62 @@
+{
+  "run_id": 1,
+  "ad_format": "product",
+  "engine": "agent",
+  "image_provider": "cursor-agent-GenerateImage",
+  "offer": {
+    "name": "Тестовая карта",
+    "vertical_key": "unknown",
+    "brief": "путешествия и зарубежные сервисы",
+    "promo_code": ""
+  },
+  "creatives": [
+    {
+      "angle_id": "travel",
+      "angle_title": "Поездки",
+      "file": "travel-agent-0.png",
+      "file_jpg": "travel-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Матовая navy-карта на паспорте и чемодане, lounge sunrise — стоп-скролл «выезд»",
+      "titles": [
+        "Зарубежная карта для поездок",
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — в поездку"
+      ],
+      "texts": [
+        "Зарубежная карта для поездок. Заявка онлайн, без лишних обещаний.",
+        "Выпуск зарубежной карты. Оформление заявки на сайте.",
+        "Зарубежная карта к поездке. Условия — на лендинге."
+      ]
+    },
+    {
+      "angle_id": "services",
+      "angle_title": "Подписки и сервисы",
+      "file": "services-agent-0.png",
+      "file_jpg": "services-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "image_has_text": false,
+      "hook": "Чёрная карта + смартфон с размытыми иконками подписок — desire digital lifestyle",
+      "titles": [
+        "Зарубежная карта для сервисов",
+        "Выпуск зарубежной карты онлайн",
+        "Зарубежная карта — подписки"
+      ],
+      "texts": [
+        "Зарубежная карта для подписок. Заявка онлайн без шаблонных обещаний.",
+        "Выпуск зарубежной карты. Оформление заявки на сайте.",
+        "Зарубежная карта для сервисов. Условия — на лендинге."
+      ]
+    }
+  ],
+  "qa": {
+    "square_1024": true,
+    "no_text_on_image": true,
+    "no_payment_brand_logos": true,
+    "titles_max_56": true,
+    "texts_max_81": true,
+    "required_phrase": "зарубежная карта / выпуск зарубежной карты"
+  }
+}
