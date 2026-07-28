@@ -433,32 +433,8 @@ async function applyDraft(plan) {
         {
           Name: plan.name.slice(0, 255),
           StartDate: moscowDateISO(),
-<<<<<<< HEAD
           TextCampaign: textCampaign,
-          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 20) },
-=======
-          TextCampaign: {
-            BiddingStrategy: {
-              Search: { BiddingStrategyType: 'SERVING_OFF' },
-              Network: {
-                BiddingStrategyType: 'WB_MAXIMUM_CLICKS',
-                WbMaximumClicks: {
-                  WeeklySpendLimit: weeklyMicros,
-                  BidCeiling: cpcMicros,
-                },
-              },
-            },
-            Settings: [
-              { Option: 'ENABLE_SITE_MONITORING', Value: 'YES' },
-              { Option: 'ENABLE_COMPANY_INFO', Value: 'NO' },
-              { Option: 'ENABLE_AREA_OF_INTEREST_TARGETING', Value: 'NO' },
-              { Option: 'ALTERNATIVE_TEXTS_ENABLED', Value: 'NO' },
-              { Option: 'ADD_METRICA_TAG', Value: 'NO' },
-            ],
-            TrackingParams: plan.tracking_params,
-          },
           NegativeKeywords: { Items: (plan.negatives || []).slice(0, 60) },
->>>>>>> e33db6d (Filter Wordstat office/PDF junk from loan keywords.)
           TimeZone: 'Europe/Moscow',
         },
       ],
