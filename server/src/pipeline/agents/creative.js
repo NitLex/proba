@@ -25,6 +25,7 @@ import {
   normalizeOfferReferences,
   referencesAsGeneratedImages,
   createIngestToken,
+  mergeIngestMeta,
   mergeGeneratedImages,
 } from '../../lib/creativeAssets.js';
 import { orchestratorPublicUrl, trackerPublicUrl } from '../../lib/appMode.js';
@@ -244,11 +245,9 @@ function adCopy(angle, offer, promo, verticalKey) {
   const code = promo?.code || offer.promo_code || '';
   if (verticalKey === 'fintech_loans') return loanAdCopy(angle, offer);
   if (verticalKey === 'marketplace_rental') return marketplaceAdCopy(angle, offer, promo);
-  if (verticalKey === 'unknown' || verticalKey !== 'fintech_cards') {
-    return offerFactAdCopy(angle, offer);
-  }
 
-  // Foreign / prepaid cards — ONLY fintech_cards
+  // Foreign / prepaid cards: fintech_cards, unknown, and any other non-loan/marketplace vertical.
+  // Must match callouts + Direct moderation wording («зарубежная карта»).
   const promoBit = code ? `Промокод ${code}` : 'Оформление онлайн';
   const map = {
     travel: {
@@ -285,10 +284,15 @@ function adCopy(angle, offer, promo, verticalKey) {
       ],
     },
     generic: {
-      titles: ['Выпуск зарубежной карты', 'Зарубежная карта онлайн'],
+      titles: [
+        'Выпуск зарубежной карты',
+        'Зарубежная карта онлайн',
+        'Зарубежная карта — заявка',
+      ],
       texts: [
         `Выпуск зарубежной карты онлайн. ${promoBit}. Пополнение по СБП.`,
         `Зарубежная карта: быстрый старт. ${promoBit}.`,
+        `Выпуск зарубежной карты. Оформление заявки онлайн.`,
       ],
     },
   };
@@ -600,9 +604,27 @@ export async function runCreative({ offer, context }) {
     ];
   }
   const checklist = creativeModerationChecklist({ verticalKey });
-  const ingest = agentMode ? createIngestToken() : null;
   // Ingest lives on the orchestrator host (orkestr.online when split).
   const publicBase = orchestratorPublicUrl() || trackerPublicUrl();
+  const ingestUrl = `${String(publicBase || '').replace(/\/$/, '')}/api/pipeline/ingest-creatives`;
+
+  // Reuse creative_ingest token while still awaiting agent images — parallel
+  // Cursor spawns were rotating the hash and invalidating prompt tokens (HTTP 403).
+  let ingest = null;
+  if (agentMode) {
+    const existing = context?.creative_ingest || null;
+    const hasAgentImg = (context?.creatives?.generated_images || []).some(
+      (g) => g?.ok && (g.from_agent || g.provider === 'agent'),
+    );
+    if (existing?.token && existing?.hash && !hasAgentImg) {
+      ingest = mergeIngestMeta(existing, { token: existing.token, hash: existing.hash, reused: true }, {
+        url: ingestUrl,
+        runId,
+      });
+    } else {
+      ingest = mergeIngestMeta(existing, createIngestToken(), { url: ingestUrl, runId });
+    }
+  }
 
   const summaryParts = [
     `Роль: ${verticalBrief.role}`,
@@ -673,9 +695,13 @@ export async function runCreative({ offer, context }) {
       reference_batch_id: batchId || null,
       creative_ingest: ingest
         ? {
+            // Keep plaintext token so retries / re-spawns reuse the same secret
+            token: ingest.token,
             hash: ingest.hash,
-            url: `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
+            hashes: ingest.hashes || [ingest.hash],
+            url: ingest.url || `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
             run_id: runId,
+            reused: Boolean(ingest.reused),
           }
         : null,
       creatives: {

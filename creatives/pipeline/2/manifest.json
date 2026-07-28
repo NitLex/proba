@@ -1,0 +1,56 @@
+{
+  "run_id": 2,
+  "ad_format": "product",
+  "image_has_text": false,
+  "engine": "agent",
+  "provider": "cursor-agent",
+  "size": "1024x1024",
+  "angles": [
+    {
+      "angle_id": "generic",
+      "angle_title": "Основной угол",
+      "variants": [
+        {
+          "file": "generic-agent-0.png",
+          "jpeg": "generic-agent-0.jpg",
+          "hook": "white blank card on teal still-life with foliage shadows"
+        },
+        {
+          "file": "generic-agent-1.png",
+          "jpeg": "generic-agent-1.jpg",
+          "hook": "matte charcoal blank card, EMV chip, cinematic dual-tone light"
+        }
+      ],
+      "titles": [
+        "Выпуск зарубежной карты",
+        "Зарубежная карта онлайн",
+        "Зарубежная карта — заявка"
+      ],
+      "texts": [
+        "Выпуск зарубежной карты онлайн. Оформление онлайн. Пополнение по СБП.",
+        "Зарубежная карта: быстрый старт. Оформление онлайн.",
+        "Выпуск зарубежной карты. Оформление заявки онлайн."
+      ],
+      "callouts": [
+        "Выпуск зарубежной карты",
+        "Пополнение по СБП",
+        "Оформление онлайн",
+        "Без очередей"
+      ],
+      "sitelinks": [
+        { "title": "Оформить онлайн", "description": "Заявка на сайте" },
+        { "title": "Условия", "description": "Актуальные на лендинге" },
+        { "title": "Как это работает", "description": "Коротко о шагах" },
+        { "title": "Поддержка", "description": "Помощь по заявке" }
+      ]
+    }
+  ],
+  "bans": [
+    "Visa/Mastercard/Apple Pay/Google Pay logos",
+    "guarantees of approval",
+    "sanction bypass claims",
+    "QR with readable data",
+    "watermarks",
+    "text on image"
+  ]
+}

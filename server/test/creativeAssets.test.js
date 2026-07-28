@@ -10,6 +10,7 @@ import {
   attachCreativesToRun,
   createIngestToken,
   verifyIngestToken,
+  mergeIngestMeta,
   mergeGeneratedImages,
 } from '../src/lib/creativeAssets.js';
 
@@ -41,6 +42,31 @@ test('ingest token verifies', () => {
   const { token, hash } = createIngestToken();
   assert.equal(verifyIngestToken(token, hash), true);
   assert.equal(verifyIngestToken('nope', hash), false);
+});
+
+test('verifyIngestToken accepts historical hashes list', () => {
+  const a = createIngestToken();
+  const b = createIngestToken();
+  const meta = mergeIngestMeta(
+    { token: a.token, hash: a.hash, hashes: [a.hash] },
+    b,
+    { url: 'https://orkestr.online/api/pipeline/ingest-creatives', runId: 2 },
+  );
+  assert.equal(verifyIngestToken(a.token, meta.hashes), true);
+  assert.equal(verifyIngestToken(b.token, meta.hashes), true);
+  assert.equal(verifyIngestToken('nope', meta.hashes), false);
+});
+
+test('mergeIngestMeta reuses token while awaiting images', () => {
+  const first = createIngestToken();
+  const reused = mergeIngestMeta(
+    { token: first.token, hash: first.hash, hashes: [first.hash] },
+    { token: first.token, hash: first.hash, reused: true },
+    { runId: 2 },
+  );
+  assert.equal(reused.token, first.token);
+  assert.equal(reused.hash, first.hash);
+  assert.equal(reused.hashes.length, 1);
 });
 
 test('attachCreativesToRun + merge prefers agent over reference', () => {

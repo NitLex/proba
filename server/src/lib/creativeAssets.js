@@ -180,17 +180,50 @@ export function referencesAsGeneratedImages(references = [], angles = []) {
 export function createIngestToken() {
   const token = nanoid(24);
   const hash = crypto.createHash('sha256').update(token).digest('hex');
-  return { token, hash };
+  return { token, hash, hashes: [hash] };
 }
 
-export function verifyIngestToken(token, hash) {
-  if (!token || !hash) return false;
+/**
+ * Verify ingest token against one hash or a list of historical hashes.
+ * Parallel creative spawns used to rotate creative_ingest.hash and invalidate
+ * older agent prompts — keep accepting any hash issued for the run.
+ */
+export function verifyIngestToken(token, hashOrHashes) {
+  if (!token || hashOrHashes == null || hashOrHashes === '') return false;
   const got = crypto.createHash('sha256').update(String(token)).digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(String(hash)));
-  } catch {
-    return false;
+  const list = Array.isArray(hashOrHashes) ? hashOrHashes : [hashOrHashes];
+  for (const h of list) {
+    if (!h) continue;
+    const expect = String(h).toLowerCase();
+    // Equal-length hex compare (timing-safe when lengths match)
+    if (got.length === expect.length) {
+      try {
+        if (crypto.timingSafeEqual(Buffer.from(got), Buffer.from(expect))) return true;
+      } catch {
+        /* length mismatch mid-flight */
+      }
+    }
+    // Legacy mis-store: plaintext token kept as "hash"
+    if (String(h) === String(token)) return true;
   }
+  return false;
+}
+
+/** Merge previous ingest meta with a fresh or reused token. */
+export function mergeIngestMeta(existing, next, { url, runId } = {}) {
+  const hashes = [
+    ...new Set(
+      [...(existing?.hashes || []), existing?.hash, next?.hash].filter(Boolean).map(String),
+    ),
+  ];
+  return {
+    token: next?.token || existing?.token || null,
+    hash: next?.hash || existing?.hash || null,
+    hashes,
+    url: url || existing?.url || null,
+    run_id: runId ?? existing?.run_id ?? null,
+    reused: Boolean(next?.reused || (existing?.token && next?.token && existing.token === next.token)),
+  };
 }
 
 /**

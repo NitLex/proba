@@ -1,0 +1,51 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "prompt_token": {
+    "prefix": "ekdaOWxL",
+    "status": "invalid_403",
+    "note": "Токен из промпта шага отклонён оркестратором (Неверный ingest token)"
+  },
+  "sibling_tokens_tried": [
+    { "prefix": "S35JmtsV", "branch": "cursor/ppm-creative-2e18", "status": "invalid_403" },
+    { "prefix": "6Ab9OO-1", "branch": "cursor/ppm-creative-88c3", "status": "invalid_403" },
+    { "prefix": "6wQRz8NF", "branch": "cursor/ppm-creative-965e", "status": "invalid_403" },
+    { "prefix": "t-DTilhy", "branch": "cursor/ppm-creative-2e18", "status": "invalid_403" }
+  ],
+  "uploads": [
+    {
+      "angle_id": "generic",
+      "mime": "image/jpeg",
+      "file": "generic-agent-0.jpg",
+      "status": 403,
+      "size": 76519,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "generic",
+      "mime": "image/jpeg",
+      "file": "generic-agent-1.jpg",
+      "status": 403,
+      "size": 177820,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "local_assets": {
+    "generic": [
+      "generic-agent-0.png",
+      "generic-agent-0.jpg",
+      "generic-agent-1.png",
+      "generic-agent-1.jpg"
+    ],
+    "size": "1024x1024",
+    "format": "product",
+    "engine": "agent"
+  },
+  "code_fixes": [
+    "adCopy: unknown vertical → card Title/Text with «зарубежная карта»",
+    "ingest: optional briefs patch for Title/Text",
+    "creative_ingest: reuse token + accept historical hashes (parallel spawn race)"
+  ],
+  "note": "Локальные product-креативы готовы (GenerateImage). Параллельные spawn'ы шага creative крутят creative_ingest.hash — токены из промптов дают HTTP 403. После деплоя фикса: python3 upload_ingest.py --run-id 2 --token '<TOKEN>' --prefer-jpeg --one-by-one"
+}
