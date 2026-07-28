@@ -477,7 +477,10 @@ export async function runCreative({ offer, context }) {
   const imageHasText = genFormat === 'graphic';
   const adFormat = resolveAdFormat({ requested: requestedFormat, imageHasText });
   const systemRole = creativeAgentSystemPrompt(verticalKey);
-  const agentMode = imgCfg.provider === 'agent' || imgCfg.provider === 'reference';
+  const uploadMode =
+    String(offer.creative_mode || context.creative_mode || '').toLowerCase() === 'upload';
+  const agentMode =
+    !uploadMode && (imgCfg.provider === 'agent' || imgCfg.provider === 'reference');
 
   let references = normalizeOfferReferences(offer);
   const batchId = offer.reference_batch_id || context.reference_batch_id || '';
@@ -584,10 +587,38 @@ export async function runCreative({ offer, context }) {
   generated = mergeGeneratedImages(generated, fromRefs);
 
   const okImages = generated.filter((g) => g.ok);
+  if (uploadMode && okImages.length === 0) {
+    return {
+      summary: 'Нужны загруженные креативы (jpg/png/webp) перед запуском',
+      failed: true,
+      error: 'Загрузите хотя бы одно изображение во вкладке «Креативы»',
+      creatives: {
+        ad_format: adFormat,
+        briefs: creatives,
+        reference_images: references,
+        generated_images: generated,
+        awaiting_agent_images: false,
+        creative_mode: 'upload',
+      },
+      context_patch: {
+        creative_mode: 'upload',
+        spawn_creative_agent: false,
+        creatives: {
+          ad_format: adFormat,
+          briefs: creatives,
+          reference_images: references,
+          generated_images: generated,
+          awaiting_agent_images: false,
+          creative_mode: 'upload',
+        },
+      },
+    };
+  }
+
   const awaitingAgent = agentMode && fromRefs.length === 0;
   const qa = validateCreatives(creatives, {
     verticalKey,
-    requireImages: !agentMode,
+    requireImages: uploadMode || !agentMode,
     generatedImages: generated,
   });
   if (agentMode && okImages.length === 0) {
@@ -608,12 +639,15 @@ export async function runCreative({ offer, context }) {
     `Роль: ${verticalBrief.role}`,
     `Формат: ${formatLabel(adFormat)} (TextAd + картинка)`,
     `брифы: ${creatives.length}`,
-    references.length ? `референсы: ${references.length}` : null,
-    imgCfg.provider === 'agent'
+    uploadMode ? 'креативы: загрузка оператором' : null,
+    references.length ? `референсы/файлы: ${references.length}` : null,
+    imgCfg.provider === 'agent' && !uploadMode
       ? `agent: ${okImages.length} img${awaitingAgent ? ' · ждём GenerateImage' : ''}`
-      : imgCfg.configured
+      : imgCfg.configured && !uploadMode
         ? `${imgCfg.provider}: ${okImages.length}/${generated.length}`
-        : 'генерация выкл',
+        : uploadMode
+          ? `upload: ${okImages.length} img`
+          : 'генерация выкл',
     qa.ok ? 'QA креативов ok' : `QA: ${qa.errors.length} ошибок`,
   ].filter(Boolean);
 
@@ -621,7 +655,9 @@ export async function runCreative({ offer, context }) {
     /зарубежная карта|займы:|маркетплейс:|запрещённая формулировка/.test(e.text),
   );
   const noImages =
-    !agentMode && Boolean(imgCfg.configured) && okImages.length === 0 && imgCfg.provider !== 'none';
+    uploadMode
+      ? okImages.length === 0
+      : !agentMode && Boolean(imgCfg.configured) && okImages.length === 0 && imgCfg.provider !== 'none';
 
   return {
     summary: summaryParts.join(' · '),
@@ -639,10 +675,12 @@ export async function runCreative({ offer, context }) {
       qa,
       checklist,
       creative_role: systemRole,
-      generator_hint:
-        'По умолчанию креативы рисует Cursor-агент (GenerateImage) по брифу и референсам.',
+      generator_hint: uploadMode
+        ? 'Креативы загружает оператор перед запуском (агент генерации отключён).'
+        : 'По умолчанию креативы рисует Cursor-агент (GenerateImage) по брифу и референсам.',
       direct_textad_min_size: '450x450 (лучше 1080x1080)',
       rotation_rule: '2–3 креатива на угол; через 3–5 дней пауза худшего через аналитика трафика',
+      creative_mode: uploadMode ? 'upload' : 'generate',
       ingest: ingest
         ? {
             url: `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
@@ -650,25 +688,28 @@ export async function runCreative({ offer, context }) {
           }
         : null,
     },
-    failed: hardVerticalFail || noImages,
-    cursor_prompt: agentCursorPrompt({
-      systemRole,
-      adFormat,
-      formatLabelText: formatLabel(adFormat),
-      verticalKey,
-      verticalHint: verticalCursorHint(verticalKey),
-      imgCfg,
-      offer,
-      promo,
-      creatives,
-      references,
-      okImages,
-      qa,
-      runId,
-      ingestToken: ingest?.token,
-      publicBase,
-    }),
+    failed: hardVerticalFail || noImages || (uploadMode && okImages.length === 0),
+    cursor_prompt: agentMode
+      ? agentCursorPrompt({
+          systemRole,
+          adFormat,
+          formatLabelText: formatLabel(adFormat),
+          verticalKey,
+          verticalHint: verticalCursorHint(verticalKey),
+          imgCfg,
+          offer,
+          promo,
+          creatives,
+          references,
+          okImages,
+          qa,
+          runId,
+          ingestToken: ingest?.token,
+          publicBase,
+        })
+      : '',
     context_patch: {
+      creative_mode: uploadMode ? 'upload' : 'generate',
       reference_images: references,
       reference_batch_id: batchId || null,
       creative_ingest: ingest
@@ -688,6 +729,7 @@ export async function runCreative({ offer, context }) {
         generated_images: generated,
         image_provider: imgCfg,
         awaiting_agent_images: awaitingAgent,
+        creative_mode: uploadMode ? 'upload' : 'generate',
         qa,
         checklist,
         creative_role: systemRole,

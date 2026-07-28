@@ -47,7 +47,8 @@ export default function Pipeline() {
   const [showExtra, setShowExtra] = useState(false);
   const [dryRun, setDryRun] = useState(false);
   const [applyDirect, setApplyDirect] = useState(true);
-  const [spawnCursor, setSpawnCursor] = useState(true);
+  const [spawnCursor, setSpawnCursor] = useState(false);
+  const [creativeMode, setCreativeMode] = useState('upload');
   const [referenceFiles, setReferenceFiles] = useState([]);
   const [referenceBatchId, setReferenceBatchId] = useState('');
   const [active, setActive] = useState(null);
@@ -185,6 +186,11 @@ export default function Pipeline() {
     setBusy(true);
     setMsg('');
     try {
+      if (creativeMode === 'upload' && !referenceFiles.length && !referenceBatchId) {
+        setMsg('Загрузите хотя бы один креатив (jpg/png/webp) во вкладке «Креативы»');
+        setBusy(false);
+        return;
+      }
       const batchId = await uploadReferencesIfNeeded();
       const body = {
         ...form,
@@ -193,7 +199,8 @@ export default function Pipeline() {
         daily_budget: form.daily_budget === '' ? undefined : Number(form.daily_budget),
         dry_run: dryRun,
         apply_direct: applyDirect,
-        spawn_cursor_agents: spawnCursor,
+        creative_mode: creativeMode,
+        spawn_cursor_agents: creativeMode === 'upload' ? false : spawnCursor,
         reference_batch_id: batchId,
       };
       const run = await api.post('/api/pipeline/runs', body);
@@ -686,33 +693,83 @@ export default function Pipeline() {
                 <option value="graphic">Графическое — надписи оффера на баннере</option>
               </select>
             </label>
-            <p className="hint full" style={{ marginTop: '-0.35rem' }}>
-              Картинки рисует креатив-агент Cursor (не YandexART). Можно приложить референсы.
-            </p>
 
-            <label className="lbl full">
-              Референсы для креатива (jpg/png/webp, до 8 шт.)
-              <input
-                className="field"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={(e) => {
-                  const list = Array.from(e.target.files || []);
-                  setReferenceFiles(list);
-                  setReferenceBatchId('');
+            <div className="full" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`btn ${creativeMode === 'upload' ? '' : 'ghost'} sm`}
+                onClick={() => {
+                  setCreativeMode('upload');
+                  setSpawnCursor(false);
                 }}
-              />
-            </label>
-            {referenceFiles.length ? (
-              <p className="hint full" style={{ marginTop: '-0.35rem' }}>
-                Выбрано: {referenceFiles.map((f) => f.name).join(', ')}
-                {referenceBatchId ? ` · batch ${referenceBatchId}` : ''}
-              </p>
+              >
+                Креативы (загрузка)
+              </button>
+              <button
+                type="button"
+                className={`btn ${creativeMode === 'generate' ? '' : 'ghost'} sm`}
+                onClick={() => setCreativeMode('generate')}
+              >
+                Генерация агентом (опционально)
+              </button>
+            </div>
+
+            {creativeMode === 'upload' ? (
+              <>
+                <label className="lbl full">
+                  Загрузите креативы перед запуском (jpg/png/webp, до 8 шт.) *
+                  <input
+                    className="field"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    required={!referenceBatchId}
+                    onChange={(e) => {
+                      const list = Array.from(e.target.files || []);
+                      setReferenceFiles(list);
+                      setReferenceBatchId('');
+                    }}
+                  />
+                </label>
+                {referenceFiles.length ? (
+                  <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                    Выбрано: {referenceFiles.map((f) => f.name).join(', ')}
+                    {referenceBatchId ? ` · batch ${referenceBatchId}` : ''}
+                  </p>
+                ) : (
+                  <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                    Эти файлы уйдут в Директ как картинки объявлений. Агент генерации не запускается.
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="hint full" style={{ marginTop: '-0.35rem' }}>
-                Опционально: стиль/продукт/прошлые баннеры — агент опирается на них при генерации.
-              </p>
+              <>
+                <p className="hint full" style={{ marginTop: '-0.35rem' }}>
+                  Картинки рисует креатив-агент Cursor. Можно приложить референсы стиля.
+                </p>
+                <label className="lbl full">
+                  Референсы (jpg/png/webp, до 8 шт.)
+                  <input
+                    className="field"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(e) => {
+                      const list = Array.from(e.target.files || []);
+                      setReferenceFiles(list);
+                      setReferenceBatchId('');
+                    }}
+                  />
+                </label>
+                <label className="chk full">
+                  <input
+                    type="checkbox"
+                    checked={spawnCursor}
+                    onChange={(e) => setSpawnCursor(e.target.checked)}
+                  />
+                  Запустить креатив-агента Cursor после пайплайна
+                </label>
+              </>
             )}
 
             <div className="full">
@@ -824,14 +881,6 @@ export default function Pipeline() {
                 onChange={(e) => setApplyDirect(e.target.checked)}
               />
               Создать черновик в Директе (OFF, без модерации)
-            </label>
-            <label className="chk full">
-              <input
-                type="checkbox"
-                checked={spawnCursor}
-                onChange={(e) => setSpawnCursor(e.target.checked)}
-              />
-              Запустить креатив-агента Cursor (GenerateImage по брифу и референсам)
             </label>
             <div className="full">
               <button className="btn" disabled={busy} type="submit">
