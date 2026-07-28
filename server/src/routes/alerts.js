@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import { alertThresholds, runOpsAlerts } from '../lib/opsAlerts.js';
-import { sendTelegramMessage, telegramBotToken } from '../lib/telegram.js';
+import {
+  discoverChatIdFromUpdates,
+  sendTelegramMessage,
+  telegramBotToken,
+} from '../lib/telegram.js';
 import { db } from '../db.js';
 import { getSetting, setSetting } from '../db.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { publicUser } from '../lib/auth.js';
 
 const router = Router();
+
+const USER_SELECT = `id, username, email, telegram, telegram_chat_id, alerts_enabled, is_admin, created_at`;
 
 router.get('/status', (req, res) => {
   const row = db
@@ -21,25 +28,60 @@ router.get('/status', (req, res) => {
   });
 });
 
+router.post('/discover-chat', async (req, res) => {
+  if (!telegramBotToken()) {
+    return res.status(400).json({ error: 'TELEGRAM_BOT_TOKEN не настроен на сервере' });
+  }
+  const preferred =
+    req.body?.username ||
+    req.user.telegram ||
+    '';
+  const found = await discoverChatIdFromUpdates(preferred);
+  if (!found.ok) {
+    return res.status(400).json({ error: found.error || 'Не удалось найти chat_id' });
+  }
+
+  const save = req.body?.save !== false;
+  if (save) {
+    db.prepare(`UPDATE users SET telegram_chat_id = ? WHERE id = ?`).run(
+      found.chat_id,
+      req.user.id,
+    );
+  }
+  const user = db.prepare(`SELECT ${USER_SELECT} FROM users WHERE id = ?`).get(req.user.id);
+  res.json({
+    ok: true,
+    chat_id: found.chat_id,
+    match: found.match,
+    saved: save,
+    user: publicUser(user),
+  });
+});
+
 router.post('/test', async (req, res) => {
-  const row = db
-    .prepare(`SELECT telegram_chat_id, alerts_enabled FROM users WHERE id = ?`)
-    .get(req.user.id);
-  if (!row?.telegram_chat_id) {
-    return res.status(400).json({
-      error: 'Укажите Telegram chat_id в профиле (напишите боту /start и возьмите id).',
-    });
+  try {
+    const row = db
+      .prepare(`SELECT telegram_chat_id, alerts_enabled FROM users WHERE id = ?`)
+      .get(req.user.id);
+    if (!row?.telegram_chat_id) {
+      return res.status(400).json({
+        error:
+          'Укажите Telegram chat_id в профиле (напишите боту /start, затем «Найти chat_id»).',
+      });
+    }
+    const r = await sendTelegramMessage(
+      row.telegram_chat_id,
+      `ArbTrack: тест уведомлений для @${req.user.username || 'user'}. Алерты ${
+        row.alerts_enabled ? 'включены' : 'выключены'
+      }.`,
+    );
+    if (!r.ok) {
+      return res.status(400).json({ error: r.error || r.reason || 'Не удалось отправить' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Ошибка отправки' });
   }
-  const r = await sendTelegramMessage(
-    row.telegram_chat_id,
-    `ArbTrack: тест уведомлений для @${req.user.username || 'user'}. Алерты ${
-      row.alerts_enabled ? 'включены' : 'выключены'
-    }.`,
-  );
-  if (!r.ok) {
-    return res.status(400).json({ error: r.error || r.reason || 'Не удалось отправить' });
-  }
-  res.json({ ok: true });
 });
 
 router.post('/run', requireAdmin, async (req, res) => {

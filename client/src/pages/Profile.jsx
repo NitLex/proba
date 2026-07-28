@@ -86,6 +86,31 @@ export default function Profile() {
     }
   }
 
+  async function onDiscoverChat() {
+    setTestErr('');
+    setTestMsg('');
+    try {
+      const r = await api.post('/api/alerts/discover-chat', {
+        username: telegram.trim(),
+        save: true,
+      });
+      if (r.chat_id) setChatId(String(r.chat_id));
+      if (r.user) {
+        await updateProfile({
+          email: email.trim(),
+          telegram: telegram.trim(),
+          telegram_chat_id: String(r.chat_id || chatId),
+          alerts_enabled: alertsOn,
+        }).catch(() => {});
+      }
+      setTestMsg(`chat_id найден: ${r.chat_id}`);
+      const st = await api.get('/api/alerts/status');
+      setAlertStatus(st);
+    } catch (err) {
+      setTestErr(err.message);
+    }
+  }
+
   async function onTestAlert() {
     setTestErr('');
     setTestMsg('');
@@ -207,14 +232,20 @@ export default function Profile() {
               </label>
             </div>
             <p className="hint">
-              Бот: {alertStatus?.bot_configured ? 'настроен на сервере' : 'не настроен (TELEGRAM_BOT_TOKEN)'}
-              . Напишите боту /start, узнайте chat_id (@userinfobot) и сохраните здесь.
+              Бот:{' '}
+              {alertStatus?.bot_configured
+                ? 'настроен (@info_trekerbot)'
+                : 'не настроен (TELEGRAM_BOT_TOKEN)'}
+              . Напишите боту /start, затем нажмите «Найти chat_id».
             </p>
             {error && <p className="neg">{error}</p>}
             {msg && <p className="pos">{msg}</p>}
             <div className="toolbar" style={{ marginTop: '0.75rem' }}>
               <button className="btn" type="submit" disabled={busy}>
                 Сохранить
+              </button>
+              <button className="btn ghost" type="button" onClick={onDiscoverChat}>
+                Найти chat_id
               </button>
               <button className="btn ghost" type="button" onClick={onTestAlert}>
                 Тест в Telegram
