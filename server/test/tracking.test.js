@@ -160,6 +160,19 @@ describe('api integration', () => {
     assert.equal(body.ok, true);
     assert.equal(body.payout, 10);
 
+    const { db } = await import('../src/db.js');
+    const clickRow = db.prepare(`SELECT path_id, rule_id FROM clicks WHERE clickid = ?`).get(clickid);
+    assert.ok(clickRow);
+    // default path should be assigned when campaign has paths
+    assert.ok(clickRow.path_id == null || Number(clickRow.path_id) > 0);
+
+    const byPath = await (
+      await fetch(`${base}/api/stats/by-path`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json();
+    assert.ok(Array.isArray(byPath));
+
     const overview = await (
       await fetch(`${base}/api/stats/overview`, {
         headers: { Authorization: `Bearer ${token}` },

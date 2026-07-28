@@ -12,7 +12,7 @@ export function requireAuth(req, res, next) {
     const payload = verifyToken(token);
     const user = db
       .prepare(
-        `SELECT id, username, email, telegram, is_admin, created_at FROM users WHERE id = ?`
+        `SELECT id, username, email, telegram, telegram_chat_id, alerts_enabled, is_admin, created_at FROM users WHERE id = ?`,
       )
       .get(Number(payload.sub));
     if (!user) return res.status(401).json({ error: 'Пользователь не найден' });

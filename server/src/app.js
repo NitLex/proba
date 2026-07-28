@@ -10,6 +10,7 @@ import campaignsRouter from './routes/campaigns.js';
 import statsRouter from './routes/stats.js';
 import authRouter from './routes/auth.js';
 import settingsRouter from './routes/settings.js';
+import alertsRouter from './routes/alerts.js';
 import analyticsRouter, { recordSiteVisit } from './routes/analytics.js';
 import pipelineRouter from './routes/pipeline.js';
 import bundlesRouter from './routes/bundles.js';
@@ -138,6 +139,7 @@ export function createApp() {
   );
   app.use('/api/stats', statsRouter);
   app.use('/api/settings', settingsRouter);
+  app.use('/api/alerts', alertsRouter);
   app.use('/api/pipeline', pipelineRouter);
   app.use('/api/bundles', bundlesRouter);
 

@@ -214,10 +214,6 @@ export function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_conversions_clickid ON conversions(clickid);
     CREATE INDEX IF NOT EXISTS idx_conversions_created ON conversions(created_at);
     CREATE INDEX IF NOT EXISTS idx_campaigns_key ON campaigns(key);
-    CREATE INDEX IF NOT EXISTS idx_campaigns_user ON campaigns(user_id);
-    CREATE INDEX IF NOT EXISTS idx_offers_user ON offers(user_id);
-    CREATE INDEX IF NOT EXISTS idx_sources_user ON traffic_sources(user_id);
-    CREATE INDEX IF NOT EXISTS idx_landings_user ON landings(user_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_offers_campaign ON campaign_offers(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_paths_campaign ON campaign_paths(campaign_id);
     CREATE INDEX IF NOT EXISTS idx_campaign_rules_campaign ON campaign_rules(campaign_id);
@@ -242,6 +238,14 @@ export function initSchema() {
   ensureColumn('offers', 'user_id', 'INTEGER');
   ensureColumn('landings', 'user_id', 'INTEGER');
   ensureColumn('campaigns', 'user_id', 'INTEGER');
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_campaigns_user ON campaigns(user_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_offers_user ON offers(user_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_sources_user ON traffic_sources(user_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_landings_user ON landings(user_id)`);
+  } catch {
+    /* ignore */
+  }
   ensureColumn('campaigns', 'unique_hours', 'INTEGER NOT NULL DEFAULT 24');
   ensureColumn('campaigns', 'block_bots', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('campaigns', 'currency', "TEXT NOT NULL DEFAULT 'USD'");
@@ -255,10 +259,25 @@ export function initSchema() {
   }
   ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('users', 'telegram', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('users', 'telegram_chat_id', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('users', 'alerts_enabled', 'INTEGER NOT NULL DEFAULT 1');
   ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('clicks', 'path_id', 'INTEGER');
+  ensureColumn('clicks', 'rule_id', 'INTEGER');
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_clicks_path ON clicks(path_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_clicks_rule ON clicks(rule_id)`);
+  } catch {
+    /* ignore */
+  }
 
   ensureSetting('registration_enabled', '1');
   ensureSetting('invite_code', '');
+  ensureSetting('alert_min_clicks', '50');
+  ensureSetting('alert_roi_threshold', '-30');
+  ensureSetting('alert_campaign_min_clicks', '40');
+  ensureSetting('alert_cooldown_hours', '6');
+  ensureSetting('alert_window_hours', '24');
 
   // migrate legacy single offer_id into campaign_offers
   db.prepare(

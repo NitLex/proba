@@ -16,7 +16,7 @@ import { appMeta } from '../lib/appMode.js';
 const router = Router();
 
 const USER_RE = /^[a-zA-Z0-9_]{3,32}$/;
-const USER_SELECT = `id, username, email, telegram, is_admin, created_at`;
+const USER_SELECT = `id, username, email, telegram, telegram_chat_id, alerts_enabled, is_admin, created_at`;
 
 router.get('/registration-status', (_req, res) => {
   const enabled = getSetting('registration_enabled', '1') === '1';
@@ -110,6 +110,9 @@ router.get('/me', requireAuth, (req, res) => {
 router.put('/profile', requireAuth, (req, res) => {
   const email = normalizeEmail(req.body.email);
   const telegram = normalizeTelegram(req.body.telegram);
+  const chatId = String(req.body.telegram_chat_id || '').trim();
+  const alertsEnabled =
+    req.body.alerts_enabled === undefined ? 1 : req.body.alerts_enabled ? 1 : 0;
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: 'Укажите корректный email' });
@@ -117,6 +120,11 @@ router.put('/profile', requireAuth, (req, res) => {
   if (!isValidTelegram(telegram)) {
     return res.status(400).json({
       error: 'Telegram: @username (5–32 символа, латиница/цифры/_)',
+    });
+  }
+  if (chatId && !/^-?\d{5,20}$/.test(chatId)) {
+    return res.status(400).json({
+      error: 'Telegram chat_id: только цифры (можно с минусом для группы)',
     });
   }
 
@@ -127,11 +135,9 @@ router.put('/profile', requireAuth, (req, res) => {
     return res.status(409).json({ error: 'Этот email уже занят' });
   }
 
-  db.prepare(`UPDATE users SET email = ?, telegram = ? WHERE id = ?`).run(
-    email,
-    telegram,
-    req.user.id
-  );
+  db.prepare(
+    `UPDATE users SET email = ?, telegram = ?, telegram_chat_id = ?, alerts_enabled = ? WHERE id = ?`,
+  ).run(email, telegram, chatId, alertsEnabled, req.user.id);
 
   const user = db
     .prepare(`SELECT ${USER_SELECT} FROM users WHERE id = ?`)
