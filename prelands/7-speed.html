@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FinMi - Выдача займа нерезидентам — подбор микрозаймов</title>
+<meta name="arbtrack-tracker" content="https://trekerarbitrag.ru"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,700&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#07140f;--ink:#f3f7f4;--muted:#a8bdb2;--accent:#d7b56d;--line:rgba(243,247,244,.12)}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Manrope,system-ui,sans-serif;color:var(--ink);background:radial-gradient(900px 420px at 15% -10%,rgba(215,181,109,.16),transparent 55%),linear-gradient(165deg,#07140f,#0d2a1f 55%,#081811);display:flex;justify-content:center;padding:1.5rem}
+.wrap{max-width:420px;width:100%}
+.brand{font-weight:800;letter-spacing:-.03em;margin-bottom:1.4rem}.brand span{color:var(--accent)}
+h1{font-family:"Source Serif 4",Georgia,serif;font-size:clamp(1.7rem,5vw,2.2rem);line-height:1.15;margin:0 0 .75rem}
+p{margin:0 0 1.2rem;color:var(--muted);line-height:1.45}
+a.cta{display:inline-block;padding:.95rem 1.4rem;border-radius:12px;background:var(--accent);color:#1a1408;font-weight:800;text-decoration:none}
+.warn{margin-top:1rem;padding:.8rem .9rem;border:1px solid rgba(215,181,109,.35);border-radius:12px;font-size:.8rem;color:#f0e2c0;line-height:1.4}
+.fine{margin-top:1.2rem;font-size:.72rem;color:#8aa396;line-height:1.45}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">FinMi - Выдача займа нерезидентам<span>.</span></div>
+  <h1>Подбор предложений микрозаймов онлайн</h1>
+  <p>Информационный сервис. Решение о выдаче и точные условия — на сайте МФО-партнёра. Без гарантии одобрения.</p>
+  <a class="cta" id="go" href="#">Перейти к подбору →</a>
+  <div class="warn">Изучите все условия кредита (займа) на сайте в соответствующем разделе. Оценивайте свои финансовые возможности и риски.</div>
+  <p class="fine">Реклама. 18+. Сервис не является кредитором. Займы предоставляет ООО МКК «Финкомпас». ПСК и условия — у МФО-партнёра.</p>
+</main>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  var clickid=q.get('clickid')||'';
+  var ck=q.get('ck')||'';
+  var meta=document.querySelector('meta[name="arbtrack-tracker"]');
+  var base=((meta&&meta.content)||'https://trekerarbitrag.ru').replace(/\/$/,'');
+  var href=base+'/to-offer?clickid='+encodeURIComponent(clickid);
+  if(ck) href+='&ck='+encodeURIComponent(ck);
+  var go=document.getElementById('go');
+  if(go) go.href=href;
+})();
+</script>
+</body>
+</html>

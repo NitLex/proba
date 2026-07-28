@@ -171,6 +171,7 @@ export const DIRECT_CREATIVE_RULES = {
     'Картинка соответствует тексту и посадочной, качественная, непрозрачный фон.',
     'Текст на изображении подчиняется тем же правилам, что текст объявления (контакты на баннере допустимы).',
     'Логотипы/текст на картинке желательно ≤ ~20% площади (кроме упаковки/скриншота/графического объявления).',
+    'Займы/МФО (графика): нижняя плашка ≥10% площади — ОПФ юрлица + предупреждение про условия займа (age-alerts).',
     'Запрещены элементы UI Яндекса, шок-контент, запрещённые тематики, вводящие в заблуждение кнопки (play/close).',
     'Не рекомендуются контрастные рамки.',
   ],
@@ -223,9 +224,24 @@ export const DIRECT_FINANCE_DOCS = {
     },
     {
       title: 'Займы / МФО',
-      url: 'https://yandex.ru/support/direct/ru/moderation/categories/finance-loan',
+      url: 'https://yandex.ru/support/direct/ru/moderation/categories/finance-credit-mfi',
     },
   ],
+  /** РСЯ / graphic creatives for loans & MFO (age-alerts + finance-credit-mfi). */
+  loan_rsya_disclaimers: {
+    sources: [
+      'https://yandex.ru/support/direct/ru/moderation/age-alerts',
+      'https://yandex.ru/support/direct/ru/moderation/categories/finance-credit-mfi',
+    ],
+    text_ads: 'В TextAd Директ сам добавляет предупреждение с ОПФ юрлица из документов.',
+    graphic_required: [
+      'Наименование юрлица с ОПФ (например ООО МКК «Финкомпас») — читаемо одновременно с контентом.',
+      'Предупреждение: «Изучите все условия кредита (займа) на сайте в соответствующем разделе. Оценивайте свои финансовые возможности и риски».',
+      'Предупреждение занимает ≥10% площади баннера/видео (лучше нижняя плашка ~15–20%).',
+      '18+ — рекомендуется для МФО.',
+    ],
+    docs: 'Свидетельство о внесении в реестр МФО (или членстве в СРО КПК) — по запросу модерации.',
+  },
   affiliate_note:
     'Для affiliate-оффера карты/платежей часто просят документы рекламодателя/оффера. Держи пакет под рукой до модерации; оркестратор сам документы в Директ не загружает.',
 };
@@ -356,14 +372,25 @@ export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } 
       docs: DIRECT_FINANCE_DOCS.payment_systems.url,
     },
     {
+      id: 'loan_rsya_disclaimer',
+      text: loan
+        ? 'Графика/баннер: ОПФ юрлица + предупреждение про условия займа ≥10% площади (TextAd — Директ добавит сам)'
+        : 'Финансовые дисклеймеры — по тематике оффера (age-alerts)',
+      required: loan && String(plan.ad_format || '').toLowerCase() === 'graphic',
+      docs: DIRECT_FINANCE_DOCS.loan_rsya_disclaimers?.sources?.[0] ||
+        'https://yandex.ru/support/direct/ru/moderation/age-alerts',
+    },
+    {
       id: 'docs_if_needed',
       text: loan
-        ? 'Займы: готовь документы по тематике «Займы» в Директе, если запросят'
+        ? 'Займы: готовь свидетельство из реестра МФО, если запросят'
         : foreignCard
           ? 'Если без «зарубежной карты» — лицензия ЦБ; с явной формулировкой документы часто не нужны'
           : 'Если модерация запросит документы по тематике — загрузи по разделу special-categories',
       required: false,
-      docs: DIRECT_FINANCE_DOCS.payment_systems.url,
+      docs: loan
+        ? 'https://yandex.ru/support/direct/ru/moderation/categories/finance-credit-mfi'
+        : DIRECT_FINANCE_DOCS.payment_systems.url,
     },
     {
       id: 'moderate_and_start',
