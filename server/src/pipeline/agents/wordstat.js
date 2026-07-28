@@ -5,7 +5,12 @@
  */
 
 import { expandSeeds, wordstatConfig } from '../../lib/wordstat.js';
-import { mergeNegatives, junkLexiconForVertical } from '../../lib/junkLexicon.js';
+import {
+  filterOfficeDocumentJunk,
+  isOfficeDocumentJunk,
+  junkLexiconForVertical,
+  mergeNegatives,
+} from '../../lib/junkLexicon.js';
 import { seedsFromOfferFacts } from '../../lib/offerFacts.js';
 
 function seedsFromAngles(angles = [], verticalKey = '', offer = {}, playbook = {}) {
@@ -62,7 +67,14 @@ function assignGroup(phrase, angles) {
   const p = phrase.toLowerCase();
   const has = (id) => angles.some((a) => a.id === id);
   if (has('speed') && /быстр|минут|срочно|онлайн/.test(p)) return 'speed';
-  if (has('passport') && /паспорт|документ/.test(p)) return 'passport';
+  // Passport angle: only loan-intent docs, not bare «документ» (PDF/Word Wordstat bleed)
+  if (
+    has('passport') &&
+    (/паспорт/.test(p) ||
+      /минимум\s+документ|мало\s+документ|без\s+документ|документы?\s+для\s+(?:займ|кредит)/.test(p))
+  ) {
+    return 'passport';
+  }
   if (has('amount') && /сумм|до \d|на карту|наличн/.test(p)) return 'amount';
   if (has('sbp') && /сбп|выпуск карт|открыть карт|пополнен/.test(p)) return 'sbp';
   if (has('services') && /сервис|подписк|доллар|spotify|steam|chatgpt|онлайн.?оплат/.test(p)) {
@@ -130,18 +142,34 @@ export async function runWordstat({ offer, context }) {
     }));
   }
 
+  // Strip PDF/Word/office Wordstat bleed (esp. around loan hook «минимум документов»)
+  const scrub =
+    verticalKey === 'fintech_loans' || keywords.some((k) => /документ|пдф|pdf|ворд|word/i.test(k.phrase))
+      ? filterOfficeDocumentJunk(keywords)
+      : { kept: keywords, dropped: [] };
+  keywords = scrub.kept;
+  const droppedJunk = scrub.dropped;
+
   let byGroup = {};
   for (const kw of keywords) {
     byGroup[kw.group] = byGroup[kw.group] || [];
     byGroup[kw.group].push(kw.phrase);
   }
-  byGroup = ensureGroupsHaveKeywords(byGroup, angles, keywords);
+  // Don't refill empty groups with office junk from the pool
+  byGroup = ensureGroupsHaveKeywords(
+    byGroup,
+    angles,
+    keywords.filter((k) => !isOfficeDocumentJunk(k.phrase)),
+  );
+  for (const id of Object.keys(byGroup)) {
+    byGroup[id] = byGroup[id].filter((p) => !isOfficeDocumentJunk(p));
+  }
 
   const liveErrors = live?.errors || [];
 
   return {
     summary: cfg.configured
-      ? `Wordstat live (${mode}): ${keywords.length} фраз, ошибок ${liveErrors.length}, seeds ${seeds.length}`
+      ? `Wordstat live (${mode}): ${keywords.length} фраз (−${droppedJunk.length} office-junk), ошибок ${liveErrors.length}, seeds ${seeds.length}`
       : `Семантика heuristic: ${keywords.length} фраз (нет YANDEX_CLOUD_API_KEY + FOLDER_ID)`,
     semantics: {
       mode,
@@ -158,10 +186,12 @@ export async function runWordstat({ offer, context }) {
       groups: byGroup,
       negatives,
       junk_lexicon: lexicon,
+      dropped_office_junk: droppedJunk.slice(0, 40),
       autotargeting: 'suspended_on_start',
       seeds,
       vertical_key: verticalKey,
-      note: 'Кластеры строго по углам; автоминуса дети/игры/скачать/вакансии + junk lexicon вертикали',
+      note:
+        'Кластеры по углам; минус дети/игры/скачать + junk lexicon; office/PDF Wordstat-мусор выкинут из плюс-фраз',
     },
     cursor_prompt: [
       'Ты агент семантики (Wordstat) для Яндекс.Директ РСЯ.',
@@ -170,8 +200,9 @@ export async function runWordstat({ offer, context }) {
       `Углы: ${JSON.stringify(angles)}`,
       `Топ ключей: ${JSON.stringify(keywords.slice(0, 40))}`,
       `Минус-слова: ${JSON.stringify(negatives)}`,
+      `Выкинутый office-junk: ${JSON.stringify(droppedJunk.slice(0, 20))}`,
       `Junk lexicon: ${lexicon.note}`,
-      'Дополни кластеры по углам оффера, убери мусор. Не минусуй ядро вертикали.',
+      'Дополни кластеры по углам оффера, убери мусор. Не минусуй ядро вертикали (займ/паспорт/минимум документов).',
     ].join('\n'),
     context_patch: {
       semantics: {
@@ -180,6 +211,7 @@ export async function runWordstat({ offer, context }) {
         groups: byGroup,
         negatives,
         junk_lexicon: lexicon,
+        dropped_office_junk: droppedJunk.slice(0, 40),
       },
     },
   };

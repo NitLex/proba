@@ -14,6 +14,7 @@ import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import { buildAdLinkFields } from '../../lib/adHref.js';
 import { directApiRetry } from '../../lib/directApi.js';
 import { normalizeGeoList, regionIdsForGeos } from '../../lib/offerFacts.js';
+import { isOfficeDocumentJunk } from '../../lib/junkLexicon.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -166,7 +167,14 @@ export function keywordsForAngle(angle, semantics = {}, playbook = {}) {
     const pool = (semantics.keywords || []).map((k) => k.phrase).filter(Boolean);
     kws = [...hooks, ...(ANGLE_KEYWORD_FALLBACK[id] || ANGLE_KEYWORD_FALLBACK.generic), ...pool.slice(0, 8)];
   }
-  return [...new Set(kws.map((p) => String(p).trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      kws
+        .map((p) => String(p).trim())
+        .filter(Boolean)
+        .filter((p) => !isOfficeDocumentJunk(p)),
+    ),
+  ];
 }
 
 function countAddOk(res) {
@@ -380,7 +388,7 @@ async function applyDraft(plan) {
             ],
             TrackingParams: plan.tracking_params,
           },
-          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 20) },
+          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 60) },
           TimeZone: 'Europe/Moscow',
         },
       ],
