@@ -94,16 +94,15 @@ export default function Profile() {
         username: telegram.trim(),
         save: true,
       });
-      if (r.chat_id) setChatId(String(r.chat_id));
-      if (r.user) {
-        await updateProfile({
-          email: email.trim(),
-          telegram: telegram.trim(),
-          telegram_chat_id: String(r.chat_id || chatId),
-          alerts_enabled: alertsOn,
-        }).catch(() => {});
-      }
-      setTestMsg(`chat_id найден: ${r.chat_id}`);
+      const id = String(r.chat_id || '');
+      if (id) setChatId(id);
+      await updateProfile({
+        email: email.trim(),
+        telegram: telegram.trim(),
+        telegram_chat_id: id || chatId.trim(),
+        alerts_enabled: alertsOn,
+      });
+      setTestMsg(`chat_id найден и сохранён: ${id}`);
       const st = await api.get('/api/alerts/status');
       setAlertStatus(st);
     } catch (err) {
