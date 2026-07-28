@@ -14,6 +14,7 @@ import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import { buildAdLinkFields } from '../../lib/adHref.js';
 import { directApiRetry } from '../../lib/directApi.js';
 import { normalizeGeoList, regionIdsForGeos } from '../../lib/offerFacts.js';
+import { isOfficeDocumentJunk } from '../../lib/junkLexicon.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -25,6 +26,44 @@ import {
   DIRECT_RSYA_PLAYBOOK,
   getDirectKnowledgeBrief,
 } from '../knowledge/direct-handbook.js';
+import {
+  buildMetrikaOperatorPlan,
+  metrikaDirectCampaignFields,
+} from '../knowledge/metrika-playbook.js';
+
+/** Counter + goal IDs from offer / playbook / env. */
+export function resolveMetrikaConfig({ offer = {}, playbook = {} } = {}) {
+  const pick = (...vals) => {
+    for (const v of vals) {
+      if (v == null || v === '') continue;
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
+  };
+  return buildMetrikaOperatorPlan({
+    counterId: pick(
+      offer.metrika_counter_id,
+      offer.facts?.metrika_counter_id,
+      playbook.metrika_counter_id,
+      process.env.YANDEX_METRIKA_COUNTER_ID,
+    ),
+    softGoalId: pick(
+      offer.metrika_soft_goal_id,
+      offer.facts?.metrika_soft_goal_id,
+      playbook.metrika_soft_goal_id,
+      process.env.YANDEX_METRIKA_SOFT_GOAL_ID,
+    ),
+    hardGoalId: pick(
+      offer.metrika_hard_goal_id,
+      offer.facts?.metrika_hard_goal_id,
+      playbook.metrika_hard_goal_id,
+      process.env.YANDEX_METRIKA_HARD_GOAL_ID,
+    ),
+    offer,
+    playbook,
+  });
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
@@ -166,7 +205,14 @@ export function keywordsForAngle(angle, semantics = {}, playbook = {}) {
     const pool = (semantics.keywords || []).map((k) => k.phrase).filter(Boolean);
     kws = [...hooks, ...(ANGLE_KEYWORD_FALLBACK[id] || ANGLE_KEYWORD_FALLBACK.generic), ...pool.slice(0, 8)];
   }
-  return [...new Set(kws.map((p) => String(p).trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      kws
+        .map((p) => String(p).trim())
+        .filter(Boolean)
+        .filter((p) => !isOfficeDocumentJunk(p)),
+    ),
+  ];
 }
 
 function countAddOk(res) {
@@ -195,6 +241,8 @@ function buildPlan({ offer, context }) {
 
   const handbookNegatives = DIRECT_RSYA_PLAYBOOK.negatives_seed || [];
   const negatives = [...new Set([...(semantics.negatives || []), ...handbookNegatives])];
+  const metrika = resolveMetrikaConfig({ offer, playbook });
+  const metrikaApi = metrikaDirectCampaignFields(metrika);
 
   return {
     name: `РСЯ | ${offer.name || 'Offer'} | ${formatLabel(campaignFormat)} | ${(playbook.angles || []).map((a) => a.id).join('+') || 'test'}`,
@@ -229,6 +277,7 @@ function buildPlan({ offer, context }) {
     },
     geo: playbook.geo || offer.facts?.geo || offer.geo || null,
     region_ids: resolveDirectRegionIds({ playbook, offer }),
+    metrika,
     tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
     href: defaultLink.href,
     display_domain: defaultLink.display_domain,
@@ -236,6 +285,7 @@ function buildPlan({ offer, context }) {
     tracker_click_url: trackerClick,
     settings: {
       ...DIRECT_RSYA_PLAYBOOK.settings_defaults,
+      ADD_METRICA_TAG: metrikaApi.SettingsPatch?.[0]?.Value || 'NO',
       neuro_ads: 'OFF',
       direct_helps_auto: 'OFF',
     },
@@ -352,6 +402,29 @@ async function applyDraft(plan) {
   const log = [];
   const weeklyMicros = Math.round(plan.strategy.weekly_spend_limit_rub * 1_000_000);
   const cpcMicros = Math.round(plan.strategy.bid_ceiling_rub * 1_000_000);
+  const metrikaApi = metrikaDirectCampaignFields(plan.metrika || {});
+  const textCampaign = {
+    BiddingStrategy: {
+      Search: { BiddingStrategyType: 'SERVING_OFF' },
+      Network: {
+        BiddingStrategyType: 'WB_MAXIMUM_CLICKS',
+        WbMaximumClicks: {
+          WeeklySpendLimit: weeklyMicros,
+          BidCeiling: cpcMicros,
+        },
+      },
+    },
+    Settings: [
+      { Option: 'ENABLE_SITE_MONITORING', Value: 'YES' },
+      { Option: 'ENABLE_COMPANY_INFO', Value: 'NO' },
+      { Option: 'ENABLE_AREA_OF_INTEREST_TARGETING', Value: 'NO' },
+      { Option: 'ALTERNATIVE_TEXTS_ENABLED', Value: 'NO' },
+      ...(metrikaApi.SettingsPatch || [{ Option: 'ADD_METRICA_TAG', Value: 'NO' }]),
+    ],
+    TrackingParams: plan.tracking_params,
+  };
+  if (metrikaApi.CounterIds) textCampaign.CounterIds = metrikaApi.CounterIds;
+  if (metrikaApi.PriorityGoals) textCampaign.PriorityGoals = metrikaApi.PriorityGoals;
 
   const addCampaign = await directApiRetry('campaigns', {
     method: 'add',
@@ -360,27 +433,8 @@ async function applyDraft(plan) {
         {
           Name: plan.name.slice(0, 255),
           StartDate: moscowDateISO(),
-          TextCampaign: {
-            BiddingStrategy: {
-              Search: { BiddingStrategyType: 'SERVING_OFF' },
-              Network: {
-                BiddingStrategyType: 'WB_MAXIMUM_CLICKS',
-                WbMaximumClicks: {
-                  WeeklySpendLimit: weeklyMicros,
-                  BidCeiling: cpcMicros,
-                },
-              },
-            },
-            Settings: [
-              { Option: 'ENABLE_SITE_MONITORING', Value: 'YES' },
-              { Option: 'ENABLE_COMPANY_INFO', Value: 'NO' },
-              { Option: 'ENABLE_AREA_OF_INTEREST_TARGETING', Value: 'NO' },
-              { Option: 'ALTERNATIVE_TEXTS_ENABLED', Value: 'NO' },
-              { Option: 'ADD_METRICA_TAG', Value: 'NO' },
-            ],
-            TrackingParams: plan.tracking_params,
-          },
-          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 20) },
+          TextCampaign: textCampaign,
+          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 60) },
           TimeZone: 'Europe/Moscow',
         },
       ],
@@ -637,6 +691,7 @@ export async function runDirect({ offer, context, apply = false }) {
       offer,
       playbook: context.playbook,
       tracker: context.tracker,
+      metrika: plan.metrika,
     });
     const applySummary = {
       ok: false,
@@ -646,6 +701,7 @@ export async function runDirect({ offer, context, apply = false }) {
       images: applyResult?.images || null,
       warning: applyResult?.warning || null,
       error: details.slice(0, 400),
+      metrika_counter_id: plan.metrika?.counter_id || null,
     };
     // Return structured failure (do not throw bare) so UI keeps apply log / campaign id
     return {
@@ -656,6 +712,7 @@ export async function runDirect({ offer, context, apply = false }) {
         plan,
         knowledge,
         operator_checklist,
+        metrika: plan.metrika,
         api_ready: apiReady,
         applied: false,
         draft_only: true,
@@ -680,6 +737,7 @@ export async function runDirect({ offer, context, apply = false }) {
           plan,
           knowledge,
           operator_checklist,
+          metrika: plan.metrika,
           api_ready: apiReady,
           applied: false,
           campaign_id: applyResult?.campaign_id || null,
@@ -705,6 +763,7 @@ export async function runDirect({ offer, context, apply = false }) {
     offer,
     playbook: context.playbook,
     tracker: context.tracker,
+    metrika: plan.metrika,
   });
 
   // Keep context lean: full apply log stays in step output only
@@ -717,6 +776,7 @@ export async function runDirect({ offer, context, apply = false }) {
         images: applyResult.images,
         warning: applyResult.warning,
         error: applyResult.error || null,
+        metrika_counter_id: plan.metrika?.counter_id || null,
       }
     : null;
 
@@ -727,6 +787,7 @@ export async function runDirect({ offer, context, apply = false }) {
       plan,
       knowledge,
       operator_checklist,
+      metrika: plan.metrika,
       api_ready: apiReady,
       applied,
       draft_only: true,
@@ -754,6 +815,7 @@ export async function runDirect({ offer, context, apply = false }) {
         plan,
         knowledge,
         operator_checklist,
+        metrika: plan.metrika,
         api_ready: apiReady,
         applied,
         campaign_id: applyResult?.campaign_id || null,

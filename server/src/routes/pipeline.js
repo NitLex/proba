@@ -110,6 +110,7 @@ router.get('/runs/:id', (req, res) => {
  * {
  *   url, name?, payout?, geo?, vertical?, network?, source?, epc?, promo_code?,
  *   daily_budget?, notes?, funnel?, currency?, network_offer_id?,
+ *   metrika_counter_id?, metrika_soft_goal_id?, metrika_hard_goal_id?,
  *   reference_batch_id?, ad_format?,
  *   dry_run?: bool, apply_direct?: bool (default true if Direct token),
  *   async?: bool, title?: string,
@@ -254,6 +255,12 @@ router.post('/runs/:id/apply-direct', async (req, res, next) => {
     if (req.body?.geo_rules != null && String(req.body.geo_rules).trim()) {
       offer.geo_rules = String(req.body.geo_rules).trim();
     }
+    for (const key of ['metrika_counter_id', 'metrika_soft_goal_id', 'metrika_hard_goal_id']) {
+      if (req.body?.[key] != null && String(req.body[key]).trim() !== '') {
+        const n = Number(req.body[key]);
+        if (Number.isFinite(n) && n > 0) offer[key] = n;
+      }
+    }
     // Recompute facts so РФ→RU→225 + «кроме …» exclusions even on old runs
     const { buildOfferFacts } = await import('../lib/offerFacts.js');
     offer.facts = buildOfferFacts(offer, run.context?.enrich || {});
@@ -264,6 +271,9 @@ router.post('/runs/:id/apply-direct', async (req, res, next) => {
       geos: offer.facts.geos || [],
       region_ids: offer.facts.region_ids || [],
       geo_rules: offer.geo_rules || offer.facts.geo_rules || '',
+      metrika_counter_id: offer.metrika_counter_id || run.context?.playbook?.metrika_counter_id,
+      metrika_soft_goal_id: offer.metrika_soft_goal_id || run.context?.playbook?.metrika_soft_goal_id,
+      metrika_hard_goal_id: offer.metrika_hard_goal_id || run.context?.playbook?.metrika_hard_goal_id,
     };
 
     const existingCampaignId =

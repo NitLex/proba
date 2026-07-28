@@ -20,6 +20,9 @@ const emptyOffer = {
   notes: '',
   ad_format: 'auto',
   display_domain: '',
+  metrika_counter_id: '',
+  metrika_soft_goal_id: '',
+  metrika_hard_goal_id: '',
 };
 
 const STATUS_CLASS = {
@@ -201,6 +204,12 @@ export default function Pipeline() {
         payout: form.payout === '' ? undefined : Number(form.payout),
         epc: form.epc === '' ? undefined : Number(form.epc),
         daily_budget: form.daily_budget === '' ? undefined : Number(form.daily_budget),
+        metrika_counter_id:
+          form.metrika_counter_id === '' ? undefined : Number(form.metrika_counter_id),
+        metrika_soft_goal_id:
+          form.metrika_soft_goal_id === '' ? undefined : Number(form.metrika_soft_goal_id),
+        metrika_hard_goal_id:
+          form.metrika_hard_goal_id === '' ? undefined : Number(form.metrika_hard_goal_id),
         dry_run: dryRun,
         apply_direct: applyDirect,
         creative_mode: creativeMode,
@@ -866,6 +875,41 @@ export default function Pipeline() {
                   оффера в кабинете — система сделает РФ (225) и минус-регионы в Директе автоматически.
                 </p>
                 <label className="lbl">
+                  Метрика · счётчик
+                  <input
+                    className="field"
+                    value={form.metrika_counter_id}
+                    onChange={(e) => setForm({ ...form, metrika_counter_id: e.target.value })}
+                    placeholder="12345678"
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="lbl">
+                  Метрика · soft goal
+                  <input
+                    className="field"
+                    value={form.metrika_soft_goal_id}
+                    onChange={(e) => setForm({ ...form, metrika_soft_goal_id: e.target.value })}
+                    placeholder="lead / thank-you"
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="lbl">
+                  Метрика · hard goal
+                  <input
+                    className="field"
+                    value={form.metrika_hard_goal_id}
+                    onChange={(e) => setForm({ ...form, metrika_hard_goal_id: e.target.value })}
+                    placeholder="approved / sale"
+                    inputMode="numeric"
+                  />
+                </label>
+                <p className="hint full" style={{ marginTop: '-0.55rem' }}>
+                  Счётчик привяжется к кампании (CounterIds + ADD_METRICA_TAG). Оплата за конверсии —
+                  только после ≥40 soft или ≥25 hard / нед. Можно задать дефолт в{' '}
+                  <code>YANDEX_METRIKA_COUNTER_ID</code>.
+                </p>
+                <label className="lbl">
                   Вертикаль
                   <input
                     className="field"
@@ -1083,9 +1127,45 @@ export default function Pipeline() {
                 Директ apply: групп {active.context.direct.apply_summary.counts?.ad_groups ?? 0}
                 {' · '}объявл. {active.context.direct.apply_summary.counts?.ads ?? 0}
                 {' · '}ключей {active.context.direct.apply_summary.counts?.keywords ?? 0}
+                {active.context.direct.apply_summary.metrika_counter_id
+                  ? ` · Метрика #${active.context.direct.apply_summary.metrika_counter_id}`
+                  : ''}
                 {active.context.direct.apply_summary.warning
                   ? ` · ⚠ ${active.context.direct.apply_summary.warning}`
                   : ''}
+              </div>
+            ) : null}
+            {(active.context?.direct?.operator_checklist || []).length ? (
+              <div className="subpanel" style={{ marginTop: '0.75rem' }}>
+                <strong>Чеклист оператора</strong>
+                {active.context.direct.metrika?.strategy_gate ? (
+                  <p className="hint" style={{ margin: '0.35rem 0 0.55rem' }}>
+                    Стратегия: {active.context.direct.metrika.strategy_gate.label}
+                    {' · '}
+                    {active.context.direct.metrika.start_strategy || 'WB_MAXIMUM_CLICKS'}
+                    {active.context.direct.metrika.counter_id
+                      ? ` · счётчик ${active.context.direct.metrika.counter_id}`
+                      : ' · счётчик не указан'}
+                  </p>
+                ) : null}
+                <ul style={{ margin: '0.45rem 0 0', paddingLeft: '1.1rem' }}>
+                  {active.context.direct.operator_checklist.map((item) => (
+                    <li key={item.id} style={{ marginBottom: '0.35rem' }}>
+                      {item.required ? '● ' : '○ '}
+                      {item.text}
+                      {item.copy ? (
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          style={{ marginLeft: 8 }}
+                          onClick={() => copyField(`chk-${item.id}`, item.copy)}
+                        >
+                          {copiedKey === `chk-${item.id}` ? 'Скопировано' : 'Copy'}
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {active.context?.qa ? (

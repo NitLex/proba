@@ -76,8 +76,11 @@ test('direct knowledge brief and system prompt mention help root', () => {
   assert.ok(brief.bid_modifiers);
   assert.ok(brief.excluded_placements);
   assert.ok(brief.finance_docs);
+  assert.ok(brief.metrika?.length >= 1);
+  assert.ok(brief.rsya?.recommended_strategy?.after_stats);
   const prompt = directAgentSystemPrompt();
   assert.match(prompt, /yandex\.ru\/support\/direct/);
   assert.match(prompt, /ads\.moderate/);
   assert.match(prompt, /площад/i);
+  assert.match(prompt, /Метрик/i);
 });
