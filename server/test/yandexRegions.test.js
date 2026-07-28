@@ -21,12 +21,21 @@ test('parseGeoRulesText Nova Credit exclusions', () => {
   assert.deepEqual(r.geos, ['RU']);
   assert.ok(r.include_ids.includes(225));
   assert.ok(r.exclude_ids.includes(11010)); // Дагестан
-  assert.ok(r.exclude_ids.includes(977)); // Крым
-  assert.ok(r.exclude_ids.includes(959)); // Севастополь
+  assert.ok(r.exclude_ids.includes(977)); // Крым (parsed)
+  assert.ok(r.exclude_ids.includes(959)); // Севастополь (parsed)
   assert.ok(r.exclude_ids.includes(10645)); // Белгородская
   assert.ok(r.region_ids.includes(225));
-  assert.ok(r.region_ids.includes(-977));
-  assert.ok(r.region_ids.every((id) => id === 225 || id < 0));
+  assert.ok(r.region_ids.includes(-11010));
+});
+
+test('buildDirectRegionIds drops Crimea/Sevastopol minus under RU 225', () => {
+  const r = buildDirectRegionIds({ geos: ['RU'], geoRulesText: NOVA_GEO });
+  assert.ok(r.region_ids.includes(225));
+  assert.ok(r.region_ids.includes(-11010));
+  assert.equal(r.region_ids.includes(-977), false);
+  assert.equal(r.region_ids.includes(-959), false);
+  assert.ok(r.skipped_not_under_ru.includes(977));
+  assert.ok(r.skipped_not_under_ru.includes(959));
 });
 
 test('buildOfferFacts applies geo_rules exclusions', () => {
@@ -39,7 +48,8 @@ test('buildOfferFacts applies geo_rules exclusions', () => {
   });
   assert.equal(facts.geo, 'RU');
   assert.ok(facts.region_ids.includes(225));
-  assert.ok(facts.region_ids.includes(-977));
+  assert.ok(facts.region_ids.includes(-11010));
+  assert.equal(facts.region_ids.includes(-977), false); // Крым не минусуем под 225
   assert.ok(facts.exclude_region_ids.includes(11024)); // Чечня
   assert.ok(facts.evidence.some((e) => /leadgid_note/i.test(e)));
 });
@@ -51,5 +61,7 @@ test('buildDirectRegionIds exclusions imply RU when only кроме-list given',
   });
   assert.deepEqual(r.geos, ['RU']);
   assert.ok(r.region_ids.includes(225));
-  assert.ok(r.region_ids.includes(-977));
+  // Крым/Севастополь не минусуются под 225 — таргет только РФ уже их отсекает
+  assert.equal(r.region_ids.includes(-977), false);
+  assert.deepEqual(r.region_ids, [225]);
 });

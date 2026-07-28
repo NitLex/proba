@@ -247,15 +247,14 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     geos = extractGeosFromText(textBlob);
   }
 
-  const geoRulesText = [
-    offer.geo_rules,
-    // LeadGid cabinet paste often lands in notes
-    offer.notes,
-    offer.description,
-    offer.network_description,
-  ]
+  const geoRulesCandidates = [offer.geo_rules, offer.notes, offer.description, offer.network_description]
     .filter(Boolean)
-    .join('\n');
+    .map(String);
+  // Only treat text as geo_rules if it looks like a GEO block (иначе notes = требования к заёмщику)
+  const geoRulesText =
+    geoRulesCandidates.find((t) => /кроме|исключ|гео\s*:/i.test(t)) ||
+    offer.geo_rules ||
+    '';
 
   const payoutModel = extractPayoutModel(offer);
   const brand = extractBrand(name);
@@ -300,6 +299,11 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
   if (geoBuilt.exclude_ids.length) {
     evidence.push(`geo_exclusions: ${geoBuilt.exclude_ids.join(',')}`);
+  }
+  if (geoBuilt.skipped_not_under_ru?.length) {
+    evidence.push(
+      `geo_skip_crimea_sevastopol: ${geoBuilt.skipped_not_under_ru.join(',')} (не дети 225 — таргет только РФ)`,
+    );
   }
   if (geoBuilt.unmatched.length) {
     evidence.push(`geo_unmatched: ${geoBuilt.unmatched.slice(0, 8).join('; ')}`);

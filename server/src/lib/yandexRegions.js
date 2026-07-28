@@ -131,6 +131,16 @@ export function parseGeoRulesText(text = '') {
   };
 }
 
+/**
+ * Regions that are NOT children of RU (225) in Yandex Direct.
+ * Minus-excluding them under 225 → error 5120.
+ * Targeting only 225 already skips Crimea/Sevastopol.
+ */
+export const NOT_UNDER_RU_225 = new Set([
+  977, // Республика Крым (parent 0)
+  959, // Севастополь (parent 977)
+]);
+
 /** Merge include geos + optional exclusion parse into final Direct RegionIds. */
 export function buildDirectRegionIds({ geos = [], geoRulesText = '', extraExcludeIds = [] } = {}) {
   const fromRules = parseGeoRulesText(geoRulesText);
@@ -142,12 +152,21 @@ export function buildDirectRegionIds({ geos = [], geoRulesText = '', extraExclud
     include = [225];
     if (!geoList.includes('RU')) geoList.push('RU');
   }
-  const exclude = [
+  let exclude = [
     ...new Set([...(fromRules.exclude_ids || []), ...(extraExcludeIds || []).map(Number)]),
   ].filter((n) => Number.isFinite(n) && n > 0);
 
-  // Drop exclude ids that aren't under an include (Direct rejects orphan minus-regions)
-  // For RU (225) almost all RF subjects are valid minus-regions.
+  const skippedTopLevel = [];
+  if (include.length === 1 && include[0] === 225) {
+    exclude = exclude.filter((id) => {
+      if (NOT_UNDER_RU_225.has(id)) {
+        skippedTopLevel.push(id);
+        return false;
+      }
+      return true;
+    });
+  }
+
   const regionIds = [...include, ...exclude.map((id) => -id)];
   return {
     geos: geoList.length ? geoList : include.includes(225) ? ['RU'] : [],
@@ -155,6 +174,10 @@ export function buildDirectRegionIds({ geos = [], geoRulesText = '', extraExclud
     exclude_ids: exclude,
     region_ids: regionIds,
     unmatched: fromRules.unmatched,
+    skipped_not_under_ru: skippedTopLevel,
     raw: fromRules.raw,
+    note: skippedTopLevel.length
+      ? 'Крым/Севастополь не входят в регион 225 — их не минусуем; достаточно таргета РФ без Крыма'
+      : null,
   };
 }
