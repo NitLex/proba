@@ -9,7 +9,10 @@ client/dist/
 *.log
 .env
 SECRETS.env
-creatives/pipeline/
+creatives/pipeline/*
+!creatives/pipeline/2/
+!creatives/pipeline/2/**
+
 # Generated pipeline prelands are local; curated HTML + assets are tracked
 prelands/*
 !prelands/*.html
