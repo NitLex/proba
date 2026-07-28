@@ -9,7 +9,7 @@ const links = [
   { to: '/landings', label: 'Лендинги', surface: 'tracker' },
   { to: '/sources', label: 'Источники', surface: 'tracker' },
   { to: '/stats', label: 'Статистика', surface: 'tracker' },
-  { to: '/logs', label: 'Клики / конверсии', surface: 'tracker' },
+  { to: '/logs', label: 'Логи', surface: 'tracker' },
   { to: '/pipeline', label: 'Оркестратор', registeredOnly: true, surface: 'orchestrator' },
   { to: '/profile', label: 'Личный кабинет', surface: 'both' },
 ];
