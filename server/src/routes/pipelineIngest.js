@@ -39,6 +39,14 @@ export async function ingestCreativesHandler(req, res) {
   updateRun(runId, {
     context: {
       ...(run.context || {}),
+      creative_ingest: run.context?.creative_ingest
+        ? {
+            ...run.context.creative_ingest,
+            // One-time: drop plaintext after successful upload
+            token: undefined,
+            consumed_at: new Date().toISOString(),
+          }
+        : run.context?.creative_ingest,
       creatives: {
         ...prev,
         generated_images: merged,

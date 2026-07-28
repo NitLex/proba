@@ -4,7 +4,7 @@
 
 | Угол | Файл | Хук |
 |------|------|-----|
-| `travel` | `travel-agent-0.png` (+ `.jpg`) | Navy blank-карта на паспорте / boarding pass / чемодане, sunrise lounge |
+| `travel` | `travel-agent-0.png` (+ `.jpg`) | Navy blank-карта на паспорте / boarding pass / чемодане, lounge sunrise |
 | `services` | `services-agent-0.png` (+ `.jpg`) | Чёрная blank-карта + смартфон с abstract app-blur |
 
 Движок: Cursor GenerateImage (`agent`), без YandexART/GPT Image.
@@ -16,3 +16,5 @@
 ```bash
 python3 upload_ingest.py --token '<INGEST_TOKEN>' --prefer-jpeg
 ```
+
+Токен из шага пайплайна может устареть (HTTP 403) из‑за параллельных creative-spawn'ов, которые раньше ротировали `creative_ingest.hash`. Нужен актуальный token для `run_id=1`. JPEG по одному углу — чтобы не ловить nginx 413 на больших PNG.

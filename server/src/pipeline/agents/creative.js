@@ -25,6 +25,7 @@ import {
   normalizeOfferReferences,
   referencesAsGeneratedImages,
   createIngestToken,
+  verifyIngestToken,
   mergeGeneratedImages,
 } from '../../lib/creativeAssets.js';
 import { orchestratorPublicUrl, trackerPublicUrl } from '../../lib/appMode.js';
@@ -600,7 +601,18 @@ export async function runCreative({ offer, context }) {
     ];
   }
   const checklist = creativeModerationChecklist({ verticalKey });
-  const ingest = agentMode ? createIngestToken() : null;
+  // Reuse existing one-time ingest token while agents are still uploading.
+  // Parallel/re-entrant creative steps used to rotate creative_ingest.hash and
+  // invalidate tokens already baked into Cursor agent prompts (HTTP 403).
+  let ingest = null;
+  if (agentMode) {
+    const prev = context?.creative_ingest;
+    if (prev?.token && prev?.hash && verifyIngestToken(prev.token, prev.hash)) {
+      ingest = { token: prev.token, hash: prev.hash };
+    } else {
+      ingest = createIngestToken();
+    }
+  }
   // Ingest lives on the orchestrator host (orkestr.online when split).
   const publicBase = orchestratorPublicUrl() || trackerPublicUrl();
 
@@ -673,6 +685,9 @@ export async function runCreative({ offer, context }) {
       reference_batch_id: batchId || null,
       creative_ingest: ingest
         ? {
+            // Keep plaintext token until agent ingest succeeds — otherwise
+            // re-entrant creative steps rotate the hash and Cursor agents 403.
+            token: ingest.token,
             hash: ingest.hash,
             url: `${publicBase.replace(/\/$/, '')}/api/pipeline/ingest-creatives`,
             run_id: runId,
