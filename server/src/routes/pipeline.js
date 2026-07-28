@@ -274,7 +274,10 @@ router.post('/runs/:id/retry', async (req, res, next) => {
     const id = Number(req.params.id);
     const run = getRun(id);
     if (!run) return res.status(404).json({ error: 'Not found' });
-    const newId = startPipeline(run.offer_input, { title: `Retry: ${run.title}` });
+    // Drop cached facts so analyst rebuilds geo/region_ids with current extractors.
+    const offerInput = { ...(run.offer_input || {}) };
+    delete offerInput.facts;
+    const newId = startPipeline(offerInput, { title: `Retry: ${run.title}` });
     const result = await executeRun(newId, {
       dryRun: Boolean(req.body?.dry_run),
       applyDirect: req.body?.apply_direct,

@@ -185,19 +185,29 @@ function buildPlan({ offer, context }) {
       bid_ceiling_rub: cpc,
       weekly_spend_limit_rub: weekly,
     },
-    geo: playbook.geo || offer.geo || offer.facts?.geo || null,
+    geo:
+      playbook.geo ||
+      context.offer_facts?.geo ||
+      offer.facts?.geo ||
+      offer.geo ||
+      null,
     region_ids:
       (Array.isArray(playbook.region_ids) && playbook.region_ids.length
         ? playbook.region_ids
         : null) ||
+      (Array.isArray(context.offer_facts?.region_ids) && context.offer_facts.region_ids.length
+        ? context.offer_facts.region_ids
+        : null) ||
       (Array.isArray(offer.facts?.region_ids) && offer.facts.region_ids.length
         ? offer.facts.region_ids
         : null) ||
-      // Only default Russia when geo is explicitly RU / empty unknown kept as [] + warning in QA
-      (String(playbook.geo || offer.geo || '')
+      // RU when geo says so, or RUB МФО / «нерезидентам» audience (traffic geo still РФ)
+      (String(playbook.geo || context.offer_facts?.geo || offer.facts?.geo || offer.geo || '')
         .toUpperCase()
         .split(/[,\s]+/)
-        .includes('RU')
+        .includes('RU') ||
+      context.offer_facts?.non_resident_audience ||
+      offer.facts?.non_resident_audience
         ? [225]
         : []),
     tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
@@ -463,6 +473,28 @@ async function applyDraft(plan) {
   }
   if (adsAdded === 0) warnings.push('Объявления не созданы');
   if (keywordsAdded === 0) warnings.push('Ключевые фразы не созданы');
+
+  if (incomplete && campaignId) {
+    const cleanup = await directApiRetry('campaigns', {
+      method: 'delete',
+      params: { SelectionCriteria: { Ids: [campaignId] } },
+    });
+    log.push({ step: 'campaigns.delete_incomplete', result: cleanup });
+    return {
+      ok: false,
+      campaign_id: null,
+      ad_group_ids: [],
+      ad_format: plan.ad_format,
+      state: 'OFF',
+      moderation_submitted: false,
+      counts: { ad_groups: adGroupIds.length, keywords: keywordsAdded, ads: adsAdded },
+      images: { attempted: imageUploads.length, ok: imageOk, failed: imageFail },
+      warning: warnings.length ? warnings.join(' · ') : null,
+      error: warnings.join(' · ') || 'Кампания создана без объявлений/групп',
+      orphan_campaign_deleted: campaignId,
+      log,
+    };
+  }
 
   return {
     ok: !incomplete,

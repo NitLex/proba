@@ -57,5 +57,11 @@ export async function directApi(service, body, { retries = 0 } = {}) {
 
 /** Convenience: Direct calls with transient retry (error 1000/506). */
 export async function directApiRetry(service, body, retries = 4) {
+  // campaigns.add is NOT idempotent — a transient 1000 after a successful create
+  // would spawn duplicate DRAFT campaigns on retry.
+  const method = String(body?.method || '').toLowerCase();
+  if (service === 'campaigns' && method === 'add') {
+    return directApi(service, body, { retries: 0 });
+  }
   return directApi(service, body, { retries });
 }

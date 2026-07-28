@@ -294,7 +294,10 @@ function loadInternalHistory(offer) {
 }
 
 export async function runAnalyst({ offer }) {
-  const facts = offer.facts || buildOfferFacts(offer);
+  // Always rebuild: retry/re-run may carry stale offer.facts from an older enrich
+  // (e.g. empty geos before RU-default for «нерезидентам» МФО).
+  const facts = buildOfferFacts(offer);
+  offer.facts = facts;
   const geo = facts.geo || offer.geo || null;
   const dailyBudget = Number(offer.daily_budget || 5000);
   const promo = offer.promo_code || offer.promocode || null;

@@ -71,7 +71,9 @@ export async function executeRun(runId, options = {}) {
     for (let guard = 0; guard < 20; guard++) {
       const steps = getSteps(runId);
       const byAgent = Object.fromEntries(steps.map((s) => [s.agent, s]));
-      const pending = steps.filter((s) => s.status === 'pending' || s.status === 'failed');
+      // Only pending — never auto-retry failed steps in the same executeRun.
+      // Re-running a failed Direct step used to spam orphan DRAFT campaigns.
+      const pending = steps.filter((s) => s.status === 'pending');
       if (!pending.length) break;
 
       const ready = pending.filter((s) => depsSatisfied(s, byAgent));
