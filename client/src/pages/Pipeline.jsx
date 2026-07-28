@@ -10,6 +10,8 @@ const emptyOffer = {
   epc: '',
   // Empty: geo is parsed from offer name/API (do not force RU)
   geo: '',
+  // LeadGid cabinet GEO block (API не отдаёт исключения)
+  geo_rules: '',
   vertical: '',
   network: '',
   source: 'Yandex Direct РСЯ',
@@ -61,6 +63,7 @@ export default function Pipeline() {
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficReports, setTrafficReports] = useState([]);
   const [geoOverride, setGeoOverride] = useState('');
+  const [geoRulesOverride, setGeoRulesOverride] = useState('');
 
   const OUTCOME_LABEL = {
     applied: 'Правки применены в Директе',
@@ -264,6 +267,8 @@ export default function Pipeline() {
       const body = {};
       const geo = (geoOverride || form.geo || '').trim();
       if (geo) body.geo = geo;
+      const rules = (geoRulesOverride || form.geo_rules || '').trim();
+      if (rules) body.geo_rules = rules;
       const res = await api.post(`/api/pipeline/runs/${active.id}/apply-direct`, body);
       setActive(res.run || res);
       if (res.direct?.failed || res.run?.status === 'failed') {
@@ -844,6 +849,22 @@ export default function Pipeline() {
                   Пиши <code>RU</code> или <code>РФ</code> — оба станут регионом 225 в Директе. Для
                   нескольких: <code>RU,KZ</code>. Если пусто — возьмём из LeadGid/названия оффера.
                 </p>
+                <label className="lbl full">
+                  Гео / исключения (из кабинета LeadGid)
+                  <textarea
+                    className="field"
+                    rows={3}
+                    value={form.geo_rules}
+                    onChange={(e) => setForm({ ...form, geo_rules: e.target.value })}
+                    placeholder={
+                      'РФ\nКроме городов и областей: Дагестан, Ингушетия, Крым, Севастополь…'
+                    }
+                  />
+                </label>
+                <p className="hint full" style={{ marginTop: '-0.55rem' }}>
+                  Публичный API LeadGid <strong>не отдаёт</strong> блок ГЕО. Скопируй его из карточки
+                  оффера в кабинете — система сделает РФ (225) и минус-регионы в Директе автоматически.
+                </p>
                 <label className="lbl">
                   Вертикаль
                   <input
@@ -991,6 +1012,19 @@ export default function Pipeline() {
                   : ''}
               </div>
             ) : null}
+            {active.context?.offer_facts?.region_ids?.length ? (
+              <div className="banner">
+                Гео Директа: <code>{(active.context.offer_facts.geos || []).join(', ') || '—'}</code>
+                {' · '}RegionIds{' '}
+                <code className="mono">{active.context.offer_facts.region_ids.join(', ')}</code>
+                {active.context.offer_facts.exclude_region_ids?.length
+                  ? ` · исключено ${active.context.offer_facts.exclude_region_ids.length}`
+                  : ''}
+                {active.context.offer_facts.geo_unmatched?.length
+                  ? ` · не распознано: ${active.context.offer_facts.geo_unmatched.join(', ')}`
+                  : ''}
+              </div>
+            ) : null}
             {active.context?.direct?.ready_message ? (
               <div className="banner ok">{active.context.direct.ready_message}</div>
             ) : null}
@@ -1019,6 +1053,14 @@ export default function Pipeline() {
                     <option value="KZ" />
                     <option value="UZ" />
                   </datalist>
+                  <textarea
+                    className="field"
+                    style={{ minWidth: 280, flex: 1 }}
+                    rows={2}
+                    value={geoRulesOverride}
+                    onChange={(e) => setGeoRulesOverride(e.target.value)}
+                    placeholder="РФ кроме: Дагестан, Крым, Севастополь…"
+                  />
                   <button
                     type="button"
                     className="btn sm"
@@ -1029,8 +1071,8 @@ export default function Pipeline() {
                   </button>
                 </div>
                 <p className="hint" style={{ margin: 0 }}>
-                  Для Nova Credit / МФО РФ обычно хватает <code>RU</code>. Поле можно оставить
-                  пустым — система сама нормализует «РФ» → RU (регион 225).
+                  API LeadGid не присылает исключения — вставь блок ГЕО из кабинета. Пример: РФ +
+                  «кроме Дагестан, Крым…» → RegionIds <code>[225, -11010, -977, …]</code>.
                 </p>
               </div>
             )}

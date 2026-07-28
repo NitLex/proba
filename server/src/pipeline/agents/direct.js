@@ -29,22 +29,35 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
 
-/** Resolve Yandex RegionIds from playbook / offer facts / geo aliases (РФ→RU→225). */
+/** Resolve Yandex RegionIds from playbook / offer facts / geo aliases (РФ→RU→225, минус-регионы). */
 export function resolveDirectRegionIds({ playbook = {}, offer = {} } = {}) {
+  const normalizeIds = (c) => {
+    const arr = Array.isArray(c) ? c : [];
+    const out = [];
+    for (const raw of arr) {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n === 0) continue;
+      // Keep negatives (exclusions). Dedup by absolute value preferring first occurrence.
+      if (!out.some((x) => Math.abs(x) === Math.abs(n))) out.push(n);
+    }
+    return out;
+  };
+
   const candidates = [
     playbook.region_ids,
     offer.facts?.region_ids,
-    regionIdsForGeos(playbook.geos || playbook.geo),
-    regionIdsForGeos(offer.facts?.geos || offer.facts?.geo),
-    regionIdsForGeos(offer.geos || offer.geo),
+    regionIdsForGeos(playbook.geos || playbook.geo, playbook.geo_rules || offer.geo_rules || ''),
+    regionIdsForGeos(
+      offer.facts?.geos || offer.facts?.geo,
+      offer.facts?.geo_rules || offer.geo_rules || '',
+    ),
+    regionIdsForGeos(offer.geos || offer.geo, offer.geo_rules || ''),
   ];
   for (const c of candidates) {
-    const ids = (Array.isArray(c) ? c : [])
-      .map(Number)
-      .filter((n) => Number.isFinite(n) && n > 0);
-    if (ids.length) return [...new Set(ids)];
+    const ids = normalizeIds(c);
+    // Need at least one positive region
+    if (ids.some((n) => n > 0)) return ids;
   }
-  // Last resort: normalized ISO list that maps to Direct regions
   const geos = normalizeGeoList([
     ...(Array.isArray(playbook.geos) ? playbook.geos : []),
     playbook.geo,
@@ -53,7 +66,9 @@ export function resolveDirectRegionIds({ playbook = {}, offer = {} } = {}) {
     ...(Array.isArray(offer.facts?.geos) ? offer.facts.geos : []),
     offer.facts?.geo,
   ]);
-  return regionIdsForGeos(geos);
+  return normalizeIds(
+    regionIdsForGeos(geos, offer.geo_rules || offer.facts?.geo_rules || playbook.geo_rules || ''),
+  );
 }
 /** Direct StartDate must be >= today in Europe/Moscow, not UTC. */
 export function moscowDateISO(d = new Date()) {
@@ -303,6 +318,36 @@ async function listCampaignAdGroupIds(campaignId) {
   return (res?.result?.AdGroups || []).map((g) => g.Id).filter(Boolean);
 }
 
+/** Patch RegionIds on all ad groups of an existing campaign (e.g. apply РФ-кроме exclusions). */
+export async function updateCampaignRegionIds(campaignId, regionIds) {
+  const ids = (Array.isArray(regionIds) ? regionIds : [])
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n !== 0);
+  if (!campaignId || !ids.some((n) => n > 0)) {
+    return { ok: false, error: 'need campaign_id and ≥1 positive RegionId' };
+  }
+  const adGroupIds = await listCampaignAdGroupIds(campaignId);
+  if (!adGroupIds.length) {
+    return { ok: false, error: 'no ad groups', campaign_id: campaignId };
+  }
+  const res = await directApiRetry('adgroups', {
+    method: 'update',
+    params: {
+      AdGroups: adGroupIds.map((Id) => ({ Id, RegionIds: ids })),
+    },
+  });
+  const updated = (res?.result?.UpdateResults || []).filter((r) => r.Id).length;
+  return {
+    ok: !res?.error && updated > 0,
+    campaign_id: campaignId,
+    ad_group_ids: adGroupIds,
+    updated,
+    region_ids: ids,
+    error: res?.error || null,
+    raw: res,
+  };
+}
+
 async function applyDraft(plan) {
   const log = [];
   const weeklyMicros = Math.round(plan.strategy.weekly_spend_limit_rub * 1_000_000);
@@ -503,11 +548,14 @@ export async function runDirect({ offer, context, apply = false }) {
   const awaitingAgent = Boolean(context.creatives?.awaiting_agent_images);
   const hasImages = (context.creatives?.generated_images || []).some((g) => g.ok && g.path);
   const regionIds = Array.isArray(plan.region_ids)
-    ? plan.region_ids.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+    ? plan.region_ids
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n !== 0)
     : [];
+  const hasPositiveRegion = regionIds.some((n) => n > 0);
 
   // Hard stop: empty RegionIds used to create orphan DRAFT campaigns in a retry loop
-  if (apply && apiReady && !regionIds.length) {
+  if (apply && apiReady && !hasPositiveRegion) {
     const rawGeo =
       plan.geo ||
       offer.facts?.geo ||
@@ -538,7 +586,7 @@ export async function runDirect({ offer, context, apply = false }) {
       },
     };
   }
-  plan.region_ids = regionIds.length ? regionIds : plan.region_ids;
+  plan.region_ids = hasPositiveRegion ? regionIds : plan.region_ids;
 
   // Agent mode without images yet: don't create incomplete Direct ads
   if (apply && apiReady && awaitingAgent && !hasImages) {

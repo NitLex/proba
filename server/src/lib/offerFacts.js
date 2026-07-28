@@ -1,3 +1,5 @@
+import { buildDirectRegionIds } from './yandexRegions.js';
+
 /**
  * Offer-first fact extraction: geo, payout model, brand, network, product cues.
  * Used before vertical playbooks so we stop inventing RU/card templates.
@@ -195,14 +197,24 @@ export function isJunkPageText(text = '') {
   return JUNK_PAGE_RE.test(t);
 }
 
-export function regionIdsForGeos(geos = []) {
-  const ids = [];
-  for (const g of normalizeGeoList(geos)) {
+export function regionIdsForGeos(geos = [], geoRulesText = '') {
+  const normalized = normalizeGeoList(geos);
+  const built = buildDirectRegionIds({ geos: normalized, geoRulesText });
+  // Prefer full ISO→Direct map for includes (ES/PL/…); overlay exclusions from geo_rules
+  const include = [];
+  for (const g of normalized.length ? normalized : built.geos) {
     for (const id of GEO_REGION_IDS[g] || []) {
-      if (!ids.includes(id)) ids.push(id);
+      if (Number(id) > 0 && !include.includes(Number(id))) include.push(Number(id));
     }
   }
-  return ids;
+  const includeFinal = include.length ? include : built.include_ids;
+  const exclude = built.exclude_ids || [];
+  if (!includeFinal.length && !exclude.length) return [];
+  if (!includeFinal.length && exclude.length) {
+    // exclusions alone → RU + minus (РСЯ MFO)
+    return [225, ...exclude.map((id) => -Math.abs(id))];
+  }
+  return [...includeFinal, ...exclude.map((id) => -Math.abs(id))];
 }
 
 /**
@@ -215,6 +227,7 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     offer.notes,
     offer.description,
     offer.network_description,
+    offer.geo_rules,
     offer.product_brief?.summary,
     offer.product_brief?.advantages,
     offer.product_brief?.category,
@@ -233,6 +246,16 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   if (!geos.length) {
     geos = extractGeosFromText(textBlob);
   }
+
+  const geoRulesText = [
+    offer.geo_rules,
+    // LeadGid cabinet paste often lands in notes
+    offer.notes,
+    offer.description,
+    offer.network_description,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const payoutModel = extractPayoutModel(offer);
   const brand = extractBrand(name);
@@ -260,7 +283,13 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
     geos = ['RU'];
   }
 
-  const regionIds = regionIdsForGeos(geos);
+  const geoBuilt = buildDirectRegionIds({ geos, geoRulesText });
+  // If exclusions were parsed, prefer those geos (usually RU)
+  if (geoBuilt.exclude_ids.length && geoBuilt.geos.length) {
+    geos = geoBuilt.geos;
+  }
+
+  const regionIds = regionIdsForGeos(geos, geoRulesText);
   const ruOnly = geos.length > 0 && geos.every((g) => g === 'RU');
   const nonRu = geos.some((g) => g !== 'RU');
 
@@ -269,21 +298,34 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
   if (productNames.length) evidence.push(`products: ${productNames.join('; ')}`);
   if (brand) evidence.push(`brand: ${brand}`);
   if (geos.length) evidence.push(`geo_from_name_or_offer: ${geos.join(',')}`);
+  if (geoBuilt.exclude_ids.length) {
+    evidence.push(`geo_exclusions: ${geoBuilt.exclude_ids.join(',')}`);
+  }
+  if (geoBuilt.unmatched.length) {
+    evidence.push(`geo_unmatched: ${geoBuilt.unmatched.slice(0, 8).join('; ')}`);
+  }
   if (nonResidentAudience) {
     evidence.push('audience: non-residents (product angle; traffic geo still RU for РСЯ)');
   }
-  if (looksRuMfo && geos.length === 1 && geos[0] === 'RU') {
+  if (looksRuMfo && geos.length === 1 && geos[0] === 'RU' && !geoBuilt.exclude_ids.length) {
     evidence.push('geo_default: RU from RUB+МФО/займ (нерезидентам ≠ foreign GEO)');
   }
   if (offer.currency) evidence.push(`currency: ${offer.currency}`);
   if (offer.payout != null) evidence.push(`payout: ${offer.payout} ${offer.currency || ''}`.trim());
   if (offer.epc != null) evidence.push(`epc: ${offer.epc}`);
+  evidence.push(
+    'leadgid_note: публичный API LeadGid не отдаёт ГЕО/исключения — берите блок из кабинета в поле «Гео / исключения»',
+  );
 
   return {
     brand,
     geos,
     geo: geos.join(',') || null,
     region_ids: regionIds,
+    exclude_region_ids: geoBuilt.exclude_ids,
+    include_region_ids: geoBuilt.include_ids,
+    geo_unmatched: geoBuilt.unmatched,
+    geo_rules: offer.geo_rules || (geoBuilt.exclude_ids.length ? geoBuilt.raw : '') || null,
     payout_model: payoutModel,
     network: network || offer.network || null,
     products: productNames,

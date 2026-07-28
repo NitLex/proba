@@ -251,7 +251,10 @@ router.post('/runs/:id/apply-direct', async (req, res, next) => {
         .map((x) => x.trim())
         .filter(Boolean);
     }
-    // Recompute facts so РФ→RU→225 even on old runs with stale offer_input.facts
+    if (req.body?.geo_rules != null && String(req.body.geo_rules).trim()) {
+      offer.geo_rules = String(req.body.geo_rules).trim();
+    }
+    // Recompute facts so РФ→RU→225 + «кроме …» exclusions even on old runs
     const { buildOfferFacts } = await import('../lib/offerFacts.js');
     offer.facts = buildOfferFacts(offer, run.context?.enrich || {});
 
@@ -260,7 +263,53 @@ router.post('/runs/:id/apply-direct', async (req, res, next) => {
       geo: offer.facts.geo || offer.geo,
       geos: offer.facts.geos || [],
       region_ids: offer.facts.region_ids || [],
+      geo_rules: offer.geo_rules || offer.facts.geo_rules || '',
     };
+
+    const existingCampaignId =
+      run.context?.direct?.campaign_id || run.context?.direct?.apply_summary?.campaign_id;
+    const regionIds = offer.facts.region_ids || [];
+    const geoOnlyPatch =
+      Boolean(req.body?.geo || req.body?.geo_rules) &&
+      existingCampaignId &&
+      req.body?.recreate !== true;
+
+    if (geoOnlyPatch && regionIds.some((n) => Number(n) > 0)) {
+      const { updateCampaignRegionIds } = await import('../pipeline/agents/direct.js');
+      const upd = await updateCampaignRegionIds(existingCampaignId, regionIds);
+      const context = {
+        ...(run.context || {}),
+        playbook: playbookPatch,
+        offer_facts: offer.facts,
+        direct: {
+          ...(run.context?.direct || {}),
+          plan: {
+            ...(run.context?.direct?.plan || {}),
+            geo: offer.facts.geo,
+            region_ids: regionIds,
+          },
+          region_update: upd,
+          campaign_id: existingCampaignId,
+        },
+      };
+      updateRun(id, {
+        offer_input: offer,
+        context,
+        status: upd.ok ? (run.status === 'failed' ? 'done' : run.status) : run.status,
+        error: upd.ok ? '' : `Гео не обновлено: ${upd.error || 'unknown'}`,
+      });
+      return res.json({
+        run: getRun(id),
+        direct: {
+          summary: upd.ok
+            ? `Гео обновлено в кампании ${existingCampaignId}: RegionIds [${regionIds.join(', ')}]`
+            : `Не удалось обновить гео: ${upd.error || JSON.stringify(upd)}`,
+          failed: !upd.ok,
+          campaign_id: existingCampaignId,
+          region_update: upd,
+        },
+      });
+    }
 
     const result = await runDirect({
       offer,
