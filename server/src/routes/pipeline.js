@@ -241,21 +241,63 @@ router.post('/runs/:id/apply-direct', async (req, res, next) => {
     const id = Number(req.params.id);
     const run = getRun(id);
     if (!run) return res.status(404).json({ error: 'Not found' });
+
+    // Optional manual geo override (e.g. "РФ" / "RU") when auto-parse failed
+    const offer = { ...(run.offer_input || {}) };
+    if (req.body?.geo != null && String(req.body.geo).trim()) {
+      offer.geo = String(req.body.geo).trim();
+      offer.geos = String(req.body.geo)
+        .split(/[,;/|]+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+    }
+    // Recompute facts so РФ→RU→225 even on old runs with stale offer_input.facts
+    const { buildOfferFacts } = await import('../lib/offerFacts.js');
+    offer.facts = buildOfferFacts(offer, run.context?.enrich || {});
+
+    const playbookPatch = {
+      ...(run.context?.playbook || {}),
+      geo: offer.facts.geo || offer.geo,
+      geos: offer.facts.geos || [],
+      region_ids: offer.facts.region_ids || [],
+    };
+
     const result = await runDirect({
-      offer: run.offer_input || {},
-      context: { ...(run.context || {}), run_id: id },
+      offer,
+      context: {
+        ...(run.context || {}),
+        run_id: id,
+        playbook: playbookPatch,
+        offer_facts: offer.facts,
+      },
       apply: true,
     });
     const context = {
       ...(run.context || {}),
       ...(result.context_patch || {}),
+      playbook: playbookPatch,
+      offer_facts: offer.facts,
       direct: result.direct || result.context_patch?.direct || run.context?.direct,
     };
     updateRun(id, {
+      offer_input: offer,
       context,
       status: result.failed ? 'failed' : run.status === 'failed' && !result.failed ? 'done' : run.status,
       error: result.failed ? result.summary : '',
     });
+    // Mark direct step done if apply succeeded
+    if (!result.failed) {
+      const { updateStep } = await import('../pipeline/store.js');
+      const steps = (getRun(id).steps || []).filter((s) => s.agent === 'direct');
+      for (const s of steps) {
+        updateStep(s.id, {
+          status: 'done',
+          error: '',
+          output: { summary: result.summary || 'Direct applied', direct: result.direct },
+          finished_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        });
+      }
+    }
     res.json({ run: getRun(id), direct: result });
   } catch (err) {
     next(err);

@@ -60,6 +60,7 @@ export default function Pipeline() {
   const [applyTraffic, setApplyTraffic] = useState(false);
   const [trafficBusy, setTrafficBusy] = useState(false);
   const [trafficReports, setTrafficReports] = useState([]);
+  const [geoOverride, setGeoOverride] = useState('');
 
   const OUTCOME_LABEL = {
     applied: 'Правки применены в Директе',
@@ -260,9 +261,20 @@ export default function Pipeline() {
     setBusy(true);
     setMsg('');
     try {
-      const res = await api.post(`/api/pipeline/runs/${active.id}/apply-direct`, {});
+      const body = {};
+      const geo = (geoOverride || form.geo || '').trim();
+      if (geo) body.geo = geo;
+      const res = await api.post(`/api/pipeline/runs/${active.id}/apply-direct`, body);
       setActive(res.run || res);
-      setMsg(res.direct?.summary || res.run?.context?.direct?.ready_message || 'Директ обновлён');
+      if (res.direct?.failed || res.run?.status === 'failed') {
+        setMsg(res.direct?.summary || res.run?.error || 'Директ: ошибка');
+      } else {
+        setMsg(
+          res.direct?.summary ||
+            res.run?.context?.direct?.ready_message ||
+            'Директ обновлён',
+        );
+      }
       await loadList();
     } catch (e) {
       setMsg(e.message);
@@ -812,13 +824,26 @@ export default function Pipeline() {
                   />
                 </label>
                 <label className="lbl">
-                  Гео
+                  Гео (для Директа)
                   <input
                     className="field"
                     value={form.geo}
                     onChange={(e) => setForm({ ...form, geo: e.target.value })}
+                    placeholder="RU или РФ"
+                    list="pipeline-geo-suggestions"
                   />
+                  <datalist id="pipeline-geo-suggestions">
+                    <option value="RU" />
+                    <option value="РФ" />
+                    <option value="KZ" />
+                    <option value="UZ" />
+                    <option value="BY" />
+                  </datalist>
                 </label>
+                <p className="hint full" style={{ marginTop: '-0.55rem' }}>
+                  Пиши <code>RU</code> или <code>РФ</code> — оба станут регионом 225 в Директе. Для
+                  нескольких: <code>RU,KZ</code>. Если пусто — возьмём из LeadGid/названия оффера.
+                </p>
                 <label className="lbl">
                   Вертикаль
                   <input
@@ -969,6 +994,46 @@ export default function Pipeline() {
             {active.context?.direct?.ready_message ? (
               <div className="banner ok">{active.context.direct.ready_message}</div>
             ) : null}
+            {(active.status === 'failed' ||
+              active.steps?.some((s) => s.agent === 'direct' && s.status === 'failed') ||
+              /RegionIds|гео/i.test(active.error || '')) && (
+              <div className="banner bad" style={{ display: 'grid', gap: '0.65rem' }}>
+                <div>
+                  <strong>Директ остановился.</strong>{' '}
+                  {active.error ||
+                    active.steps?.find((s) => s.agent === 'direct')?.error ||
+                    'Проверь гео / креативы.'}
+                </div>
+                <div className="toolbar" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <input
+                    className="field"
+                    style={{ maxWidth: 160 }}
+                    value={geoOverride}
+                    onChange={(e) => setGeoOverride(e.target.value)}
+                    placeholder="RU или РФ"
+                    list="pipeline-geo-fix"
+                  />
+                  <datalist id="pipeline-geo-fix">
+                    <option value="RU" />
+                    <option value="РФ" />
+                    <option value="KZ" />
+                    <option value="UZ" />
+                  </datalist>
+                  <button
+                    type="button"
+                    className="btn sm"
+                    disabled={busy}
+                    onClick={applyDirectCreatives}
+                  >
+                    Исправить гео и применить в Директ
+                  </button>
+                </div>
+                <p className="hint" style={{ margin: 0 }}>
+                  Для Nova Credit / МФО РФ обычно хватает <code>RU</code>. Поле можно оставить
+                  пустым — система сама нормализует «РФ» → RU (регион 225).
+                </p>
+              </div>
+            )}
             {active.context?.direct?.apply_summary ? (
               <div
                 className={`banner ${active.context.direct.apply_summary.ok ? 'ok' : 'bad'}`}

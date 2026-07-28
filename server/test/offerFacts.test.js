@@ -75,6 +75,21 @@ test('buildOfferFacts for Finandos-class offer', () => {
   );
 });
 
+test('buildOfferFacts: LeadGid geo РФ normalizes to RU + region 225', () => {
+  const facts = buildOfferFacts({
+    name: 'Nova Credit - Выдача',
+    currency: 'RUB',
+    payout: 6000,
+    products: [{ name: 'МФО' }],
+    geo: 'РФ',
+    geos: ['РФ'],
+  });
+  assert.equal(facts.geo, 'RU');
+  assert.deepEqual(facts.geos, ['RU']);
+  assert.deepEqual(facts.region_ids, [225]);
+  assert.equal(facts.ru_traffic_fit, 'fit');
+});
+
 test('buildOfferFacts: FinMi non-residents is RU traffic geo (audience ≠ geo)', () => {
   const facts = buildOfferFacts({
     name: 'FinMi - Выдача займа нерезидентам',
@@ -91,4 +106,9 @@ test('buildOfferFacts: FinMi non-residents is RU traffic geo (audience ≠ geo)'
   assert.equal(facts.ru_traffic_fit, 'fit');
   const seeds = seedsFromOfferFacts({ name: facts.brand || 'FinMi' }, facts);
   assert.ok(seeds.some((s) => s === 'займ онлайн' || s === 'кредит онлайн'));
+});
+
+test('extractGeosFromText: Cyrillic РФ / Россия', () => {
+  assert.deepEqual(extractGeosFromText('РФ'), ['RU']);
+  assert.ok(extractGeosFromText('Оффер Россия CPA').includes('RU'));
 });

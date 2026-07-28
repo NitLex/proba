@@ -42,6 +42,62 @@ export const GEO_REGION_IDS = {
 
 const ISO2 = Object.keys(GEO_REGION_IDS);
 
+/** Human / LeadGid aliases → ISO2 (Директ RegionIds). */
+const GEO_ALIASES = {
+  РФ: 'RU',
+  РОССИЯ: 'RU',
+  RUSSIA: 'RU',
+  RF: 'RU',
+  RUS: 'RU',
+  'RUSSIAN FEDERATION': 'RU',
+  БЕЛАРУСЬ: 'BY',
+  BELARUS: 'BY',
+  КАЗАХСТАН: 'KZ',
+  KAZAKHSTAN: 'KZ',
+  УЗБЕКИСТАН: 'UZ',
+  UZBEKISTAN: 'UZ',
+  УКРАИНА: 'UA',
+  UKRAINE: 'UA',
+};
+
+/**
+ * Normalize one geo token: "РФ" / "Russia" / "ru" → "RU".
+ * Returns null if unknown / empty.
+ */
+export function normalizeGeoToken(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return null;
+  const compact = s.replace(/\s+/g, ' ');
+  const upper = compact.toUpperCase();
+  if (GEO_ALIASES[upper]) return GEO_ALIASES[upper];
+  if (ISO2.includes(upper)) return upper === 'UK' ? 'GB' : upper;
+  // LeadGid sometimes sends "РФ (Россия)" / "Russia, RU"
+  for (const [alias, code] of Object.entries(GEO_ALIASES)) {
+    if (upper.includes(alias)) return code;
+  }
+  const isoHit = upper.match(/\b([A-Z]{2})\b/);
+  if (isoHit && ISO2.includes(isoHit[1])) {
+    return isoHit[1] === 'UK' ? 'GB' : isoHit[1];
+  }
+  return null;
+}
+
+/** Split free-text geo field into normalized ISO2 list (deduped). */
+export function normalizeGeoList(input) {
+  const parts = Array.isArray(input)
+    ? input
+    : String(input || '')
+        .split(/[,;/|]+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    const code = normalizeGeoToken(p);
+    if (code && !out.includes(code)) out.push(code);
+  }
+  return out;
+}
+
 const AFFILIATE_HOSTS = [
   { re: /leadgid\.(ru|eu|com)|go\.leadgid/i, network: 'LeadGid' },
   { re: /admitad\./i, network: 'Admitad' },
@@ -63,10 +119,21 @@ export function extractGeosFromText(text = '') {
   // Prefer standalone ISO2 tokens (word boundaries)
   for (const code of ISO2) {
     const re = new RegExp(`(?:^|[^A-Za-z])${code}(?:[^A-Za-z]|$)`, 'i');
-    if (re.test(raw)) found.add(code.toUpperCase());
+    if (re.test(raw)) found.add(code.toUpperCase() === 'UK' ? 'GB' : code.toUpperCase());
   }
-  // RU aliases
-  if (/\b(?:РФ|Россия|Russia)\b/i.test(raw)) found.add('RU');
+  // RU / CIS aliases — do NOT rely on \\b (broken for Cyrillic in JS)
+  if (/(?:^|[^A-Za-zА-Яа-яЁё])(?:РФ|Россия|Russia|RUS)(?:[^A-Za-zА-Яа-яЁё]|$)/i.test(raw)) {
+    found.add('RU');
+  }
+  if (/(?:^|[^A-Za-zА-Яа-яЁё])(?:Беларусь|Belarus)(?:[^A-Za-zА-Яа-яЁё]|$)/i.test(raw)) {
+    found.add('BY');
+  }
+  if (/(?:^|[^A-Za-zА-Яа-яЁё])(?:Казахстан|Kazakhstan)(?:[^A-Za-zА-Яа-яЁё]|$)/i.test(raw)) {
+    found.add('KZ');
+  }
+  if (/(?:^|[^A-Za-zА-Яа-яЁё])(?:Узбекистан|Uzbekistan)(?:[^A-Za-zА-Яа-яЁё]|$)/i.test(raw)) {
+    found.add('UZ');
+  }
   return [...found];
 }
 
@@ -101,7 +168,7 @@ export function extractBrand(name = '') {
   const keep = [];
   for (const p of parts) {
     const up = p.toUpperCase();
-    if (ISO2.includes(up)) break;
+    if (ISO2.includes(up) || normalizeGeoToken(p)) break;
     if (/^(CPL|CPA|CPI|CPS|CPC|RSYa|РФ)$/i.test(p)) break;
     keep.push(p);
   }
@@ -130,8 +197,8 @@ export function isJunkPageText(text = '') {
 
 export function regionIdsForGeos(geos = []) {
   const ids = [];
-  for (const g of geos) {
-    for (const id of GEO_REGION_IDS[String(g).toUpperCase()] || []) {
+  for (const g of normalizeGeoList(geos)) {
+    for (const id of GEO_REGION_IDS[g] || []) {
       if (!ids.includes(id)) ids.push(id);
     }
   }
@@ -159,17 +226,12 @@ export function buildOfferFacts(offer = {}, enrich = {}) {
 
   let geos = [];
   if (Array.isArray(offer.geos) && offer.geos.length) {
-    geos = offer.geos.map((g) => String(g).toUpperCase());
-  } else if (offer.geo && String(offer.geo).includes(',')) {
-    geos = String(offer.geo)
-      .split(/[,\s]+/)
-      .map((g) => g.toUpperCase())
-      .filter((g) => ISO2.includes(g) || g === 'RU');
-  } else {
+    geos = normalizeGeoList(offer.geos);
+  } else if (offer.geo) {
+    geos = normalizeGeoList(offer.geo);
+  }
+  if (!geos.length) {
     geos = extractGeosFromText(textBlob);
-    if (!geos.length && offer.geo && String(offer.geo).length === 2) {
-      geos = [String(offer.geo).toUpperCase()];
-    }
   }
 
   const payoutModel = extractPayoutModel(offer);

@@ -111,9 +111,16 @@ export function updateRun(id, patch) {
   const context =
     patch.context !== undefined ? JSON.stringify(patch.context) : row.context;
   const error = patch.error !== undefined ? patch.error : row.error;
+  const offerInput =
+    patch.offer_input !== undefined
+      ? JSON.stringify(patch.offer_input)
+      : row.offer_input;
+  const title = patch.title !== undefined ? patch.title : row.title;
   db.prepare(
-    `UPDATE pipeline_runs SET status = ?, context = ?, error = ?, updated_at = datetime('now') WHERE id = ?`,
-  ).run(status, context, error || '', id);
+    `UPDATE pipeline_runs
+     SET status = ?, title = ?, offer_input = ?, context = ?, error = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+  ).run(status, title, offerInput, context, error || '', id);
 }
 
 export function updateStep(id, patch) {

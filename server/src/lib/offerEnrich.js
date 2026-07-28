@@ -10,6 +10,7 @@ import {
   detectAffiliateNetwork,
   extractGeosFromText,
   isJunkPageText,
+  normalizeGeoList,
 } from './offerFacts.js';
 
 function extractLeadgidOfferId(url) {
@@ -211,20 +212,26 @@ export async function enrichOfferInput(raw = {}) {
   }
 
   // Geo from name first. Soft form default "RU" must not override name tokens (ES/DK/…).
+  // Normalize aliases: РФ / Россия / Russia → RU (otherwise Direct RegionIds stay empty).
   const nameGeos = extractGeosFromText(
     [offer.name, offer.notes, offer.description, offer.network_description]
       .filter(Boolean)
       .join(' '),
   );
-  const explicitGeo = String(offer.geo || '').trim();
-  const explicitIsSoftRu = /^RU$/i.test(explicitGeo) && nameGeos.length && !nameGeos.includes('RU');
+  const explicitGeos = normalizeGeoList(
+    Array.isArray(offer.geos) && offer.geos.length ? offer.geos : offer.geo,
+  );
+  const explicitIsSoftRu =
+    explicitGeos.length === 1 &&
+    explicitGeos[0] === 'RU' &&
+    nameGeos.length &&
+    !nameGeos.includes('RU');
   if (nameGeos.length) {
     offer.geos = nameGeos;
     offer.geo = nameGeos.join(',');
-  } else if (explicitGeo && !explicitIsSoftRu) {
-    const fromField = extractGeosFromText(explicitGeo);
-    offer.geos = fromField.length ? fromField : [explicitGeo.toUpperCase()];
-    offer.geo = offer.geos.join(',');
+  } else if (explicitGeos.length && !explicitIsSoftRu) {
+    offer.geos = explicitGeos;
+    offer.geo = explicitGeos.join(',');
   } else {
     offer.geo = null; // unknown — analyst must not invent RU
     delete offer.geos;

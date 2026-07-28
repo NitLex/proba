@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import { buildAdLinkFields } from '../../lib/adHref.js';
 import { directApiRetry } from '../../lib/directApi.js';
+import { normalizeGeoList, regionIdsForGeos } from '../../lib/offerFacts.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -28,6 +29,32 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../../..');
 
+/** Resolve Yandex RegionIds from playbook / offer facts / geo aliases (РФ→RU→225). */
+export function resolveDirectRegionIds({ playbook = {}, offer = {} } = {}) {
+  const candidates = [
+    playbook.region_ids,
+    offer.facts?.region_ids,
+    regionIdsForGeos(playbook.geos || playbook.geo),
+    regionIdsForGeos(offer.facts?.geos || offer.facts?.geo),
+    regionIdsForGeos(offer.geos || offer.geo),
+  ];
+  for (const c of candidates) {
+    const ids = (Array.isArray(c) ? c : [])
+      .map(Number)
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length) return [...new Set(ids)];
+  }
+  // Last resort: normalized ISO list that maps to Direct regions
+  const geos = normalizeGeoList([
+    ...(Array.isArray(playbook.geos) ? playbook.geos : []),
+    playbook.geo,
+    ...(Array.isArray(offer.geos) ? offer.geos : []),
+    offer.geo,
+    ...(Array.isArray(offer.facts?.geos) ? offer.facts.geos : []),
+    offer.facts?.geo,
+  ]);
+  return regionIdsForGeos(geos);
+}
 /** Direct StartDate must be >= today in Europe/Moscow, not UTC. */
 export function moscowDateISO(d = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -185,21 +212,8 @@ function buildPlan({ offer, context }) {
       bid_ceiling_rub: cpc,
       weekly_spend_limit_rub: weekly,
     },
-    geo: playbook.geo || offer.geo || offer.facts?.geo || null,
-    region_ids:
-      (Array.isArray(playbook.region_ids) && playbook.region_ids.length
-        ? playbook.region_ids
-        : null) ||
-      (Array.isArray(offer.facts?.region_ids) && offer.facts.region_ids.length
-        ? offer.facts.region_ids
-        : null) ||
-      // Only default Russia when geo is explicitly RU / empty unknown kept as [] + warning in QA
-      (String(playbook.geo || offer.geo || '')
-        .toUpperCase()
-        .split(/[,\s]+/)
-        .includes('RU')
-        ? [225]
-        : []),
+    geo: playbook.geo || offer.facts?.geo || offer.geo || null,
+    region_ids: resolveDirectRegionIds({ playbook, offer }),
     tracking_params: DIRECT_RSYA_PLAYBOOK.tracking_params,
     href: defaultLink.href,
     display_domain: defaultLink.display_domain,
@@ -494,8 +508,15 @@ export async function runDirect({ offer, context, apply = false }) {
 
   // Hard stop: empty RegionIds used to create orphan DRAFT campaigns in a retry loop
   if (apply && apiReady && !regionIds.length) {
+    const rawGeo =
+      plan.geo ||
+      offer.facts?.geo ||
+      offer.geo ||
+      (Array.isArray(offer.geos) ? offer.geos.join(',') : '') ||
+      '—';
     const details =
-      'Нет RegionIds (geo оффера пустой). Укажи гео (например RU / UZ / KZ) перед созданием кампании в Директе — иначе API падает и плодит черновики.';
+      `Нет RegionIds для гео «${rawGeo}». Укажи гео ISO-кодом (RU / UZ / KZ) или алиасом РФ/Россия в поле «Гео» и нажми «Применить в Директ» снова. ` +
+      `Пустое гео плодит черновики в API.`;
     return {
       summary: `Директ: ${details}`,
       ready_message: null,
