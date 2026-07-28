@@ -101,6 +101,7 @@ router.get('/overview', (req, res) => {
     roi: cost > 0 ? round((profit / cost) * 100) : null,
     cr: clickCount > 0 ? round((conversions / clickCount) * 100) : 0,
     epc: clickCount > 0 ? round(revenue / clickCount) : 0,
+    cpa: conversions > 0 ? round(cost / conversions) : null,
     currency,
   });
 });
@@ -435,7 +436,22 @@ router.get('/export/:kind', (req, res) => {
 });
 
 router.get('/recent-clicks', (req, res) => {
+  const uid = req.user.id;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const { from, to, q, campaign_id: campaignId } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const params = [uid, ...cf.params];
+  let extra = '';
+  if (campaignId) {
+    extra += ' AND cl.campaign_id = ?';
+    params.push(Number(campaignId));
+  }
+  if (q) {
+    extra += ' AND (cl.clickid LIKE ? OR c.name LIKE ? OR IFNULL(cl.country, "") LIKE ? OR IFNULL(cl.token1, "") LIKE ?)';
+    const like = `%${String(q)}%`;
+    params.push(like, like, like, like);
+  }
+  params.push(limit);
   const rows = db
     .prepare(
       `SELECT cl.*, c.name AS campaign_name, c.currency AS currency,
@@ -444,27 +460,46 @@ router.get('/recent-clicks', (req, res) => {
        JOIN campaigns c ON c.id = cl.campaign_id
        LEFT JOIN offers o ON o.id = cl.offer_id
        LEFT JOIN traffic_sources s ON s.id = cl.traffic_source_id
-       WHERE c.user_id = ?
+       WHERE c.user_id = ? AND ${cf.sql}${extra}
        ORDER BY cl.id DESC
        LIMIT ?`
     )
-    .all(req.user.id, limit);
+    .all(...params);
   res.json(rows);
 });
 
 router.get('/recent-conversions', (req, res) => {
+  const uid = req.user.id;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const { from, to, q, campaign_id: campaignId, status } = req.query;
+  const vf = dateFilter(from, to, 'cv.created_at');
+  const params = [uid, ...vf.params];
+  let extra = '';
+  if (campaignId) {
+    extra += ' AND cv.campaign_id = ?';
+    params.push(Number(campaignId));
+  }
+  if (status) {
+    extra += ' AND cv.status = ?';
+    params.push(String(status));
+  }
+  if (q) {
+    extra += ' AND (cv.clickid LIKE ? OR c.name LIKE ? OR IFNULL(o.name, "") LIKE ? OR IFNULL(cv.txid, "") LIKE ?)';
+    const like = `%${String(q)}%`;
+    params.push(like, like, like, like);
+  }
+  params.push(limit);
   const rows = db
     .prepare(
       `SELECT cv.*, c.name AS campaign_name, o.name AS offer_name
        FROM conversions cv
        JOIN campaigns c ON c.id = cv.campaign_id
        LEFT JOIN offers o ON o.id = cv.offer_id
-       WHERE c.user_id = ?
+       WHERE c.user_id = ? AND ${vf.sql}${extra}
        ORDER BY cv.id DESC
        LIMIT ?`
     )
-    .all(req.user.id, limit);
+    .all(...params);
   res.json(rows);
 });
 
@@ -490,6 +525,7 @@ function enrichRow(row) {
     roi: cost > 0 ? round((profit / cost) * 100) : null,
     cr: clicks > 0 ? round((conversions / clicks) * 100) : 0,
     epc: clicks > 0 ? round(revenue / clicks) : 0,
+    cpa: conversions > 0 ? round(cost / conversions) : null,
   };
 }
 
@@ -506,7 +542,8 @@ function statsColumns(withCampaignMeta = false) {
     { key: 'revenue', label: 'revenue' },
     { key: 'profit', label: 'profit' },
     { key: 'roi', label: 'roi' },
-    { key: 'epc', label: 'epc' }
+    { key: 'epc', label: 'epc' },
+    { key: 'cpa', label: 'cpa' }
   );
   return cols;
 }

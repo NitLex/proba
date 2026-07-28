@@ -50,7 +50,7 @@ export default function Stats() {
       <div className="page-head">
         <div>
           <h1>Статистика</h1>
-          <p>Отчёты: клики, cost, revenue, ROI, CR, EPC, токены</p>
+          <p>Отчёты: клики, cost, revenue, ROI, CR, EPC, CPA, токены</p>
         </div>
         <div className="toolbar">
           <input className="input sm" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -80,6 +80,10 @@ export default function Stats() {
           <div className="metric">
             <div className="metric-label">ROI</div>
             <div className="metric-value">{overview.roi == null ? '—' : pct(overview.roi)}</div>
+          </div>
+          <div className="metric">
+            <div className="metric-label">CPA</div>
+            <div className="metric-value">{overview.cpa == null ? '—' : money(overview.cpa, cur)}</div>
           </div>
         </div>
       )}
@@ -125,6 +129,7 @@ export default function Stats() {
                 <th>Profit</th>
                 <th>ROI</th>
                 <th>EPC</th>
+                <th>CPA</th>
               </tr>
             </thead>
             <tbody>
@@ -144,11 +149,12 @@ export default function Stats() {
                   <td className={r.profit >= 0 ? 'pos' : 'neg'}>{money(r.profit, rowCur)}</td>
                   <td>{r.roi == null ? '—' : pct(r.roi)}</td>
                   <td>{money(r.epc, rowCur)}</td>
+                  <td>{r.cpa == null ? '—' : money(r.cpa, rowCur)}</td>
                 </tr>
               );})}
               {!rows.length && (
                 <tr>
-                  <td colSpan={12}>
+                  <td colSpan={13}>
                     <div className="empty">Нет данных за период</div>
                   </td>
                 </tr>

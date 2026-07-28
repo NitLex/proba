@@ -1,21 +1,47 @@
-import { useEffect, useState } from 'react';
-import { api, money, downloadCsv } from '../api';
+import { useCallback, useEffect, useState } from 'react';
+import { api, money, today, todayMinus, downloadCsv } from '../api';
 
 export default function Logs() {
   const [clicks, setClicks] = useState([]);
   const [conversions, setConversions] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [tab, setTab] = useState('clicks');
+  const [from, setFrom] = useState(todayMinus(6));
+  const [to, setTo] = useState(today());
+  const [q, setQ] = useState('');
+  const [campaignId, setCampaignId] = useState('');
+  const [status, setStatus] = useState('');
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/api/stats/recent-clicks?limit=100'),
-      api.get('/api/stats/recent-conversions?limit=100'),
-    ]).then(([c, v]) => {
-      setClicks(c);
-      setConversions(v);
-    });
+    api.get('/api/campaigns').then(setCampaigns).catch(() => {});
   }, []);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit: '100', from, to });
+    if (q.trim()) params.set('q', q.trim());
+    if (campaignId) params.set('campaign_id', campaignId);
+    const convParams = new URLSearchParams(params);
+    if (status) convParams.set('status', status);
+
+    Promise.all([
+      api.get(`/api/stats/recent-clicks?${params}`),
+      api.get(`/api/stats/recent-conversions?${convParams}`),
+    ])
+      .then(([c, v]) => {
+        setClicks(c);
+        setConversions(v);
+        setErr('');
+      })
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, [from, to, q, campaignId, status]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function exportCsv() {
     try {
@@ -32,8 +58,8 @@ export default function Logs() {
     <div>
       <div className="page-head">
         <div>
-          <h1>Клики и конверсии</h1>
-          <p>Живой лог трафика и постбеков</p>
+          <h1>Логи</h1>
+          <p>Клики и постбеки — фильтры и быстрый просмотр</p>
         </div>
         <div className="toolbar">
           <button
@@ -50,10 +76,46 @@ export default function Logs() {
           >
             Конверсии
           </button>
+          <button className="btn ghost sm" type="button" onClick={load} disabled={loading}>
+            {loading ? '…' : 'Обновить'}
+          </button>
           <button className="btn ghost sm" type="button" onClick={exportCsv}>
             CSV
           </button>
         </div>
+      </div>
+
+      <div className="toolbar" style={{ marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+        <input className="input sm" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <input className="input sm" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <select
+          className="select sm"
+          value={campaignId}
+          onChange={(e) => setCampaignId(e.target.value)}
+        >
+          <option value="">Все кампании</option>
+          {campaigns.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        {tab === 'conversions' && (
+          <select className="select sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="">Все статусы</option>
+            <option value="lead">lead</option>
+            <option value="sale">sale</option>
+            <option value="rejected">rejected</option>
+            <option value="hold">hold</option>
+          </select>
+        )}
+        <input
+          className="input sm"
+          style={{ minWidth: '12rem' }}
+          placeholder="Поиск: clickid, GEO, токен…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
 
       {err && <p className="neg">{err}</p>}
@@ -70,6 +132,7 @@ export default function Logs() {
                   <th>Источник</th>
                   <th>GEO</th>
                   <th>Device</th>
+                  <th>Bot</th>
                   <th>Cost</th>
                   <th>Tokens</th>
                 </tr>
@@ -83,12 +146,20 @@ export default function Logs() {
                     <td>{c.source_name || '—'}</td>
                     <td>{c.country || '—'}</td>
                     <td>{c.device}</td>
+                    <td>{c.is_bot ? 'yes' : '—'}</td>
                     <td>{money(c.cost, c.currency || 'RUB')}</td>
                     <td className="mono">
                       {[c.token1, c.token2, c.token3].filter(Boolean).join(' · ') || '—'}
                     </td>
                   </tr>
                 ))}
+                {!clicks.length && (
+                  <tr>
+                    <td colSpan={9}>
+                      <div className="empty">Нет кликов по фильтру</div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (
@@ -118,6 +189,13 @@ export default function Logs() {
                     <td className="mono">{c.txid || '—'}</td>
                   </tr>
                 ))}
+                {!conversions.length && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="empty">Нет конверсий по фильтру</div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
