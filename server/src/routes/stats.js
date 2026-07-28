@@ -388,15 +388,16 @@ router.get('/by-day', (req, res) => {
   const enriched = enrichTrafficRows(
     [...map.values()]
       .sort((a, b) => a.day.localeCompare(b.day))
-      .map((r) => ({ ...r, currency })),
+      .map((r) => ({
+        ...r,
+        // Stable identity for UI: only a date, never campaign/path labels
+        id: r.day,
+        name: r.day,
+        currency,
+      })),
   );
   if (String(req.query.format || '') === 'csv') {
-    return sendCsv(
-      res,
-      'by-day.csv',
-      enriched.map((r) => ({ ...r, name: r.day })),
-      statsColumns()
-    );
+    return sendCsv(res, 'by-day.csv', enriched, statsColumns());
   }
   res.json(enriched);
 });

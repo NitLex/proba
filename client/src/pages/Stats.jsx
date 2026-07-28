@@ -11,6 +11,16 @@ const groups = [
   { id: 'by-token', label: 'По токенам' },
 ];
 
+function rowLabel(group, r) {
+  if (group === 'by-day') return r.day || r.name || '—';
+  return r.name || r.day || '—';
+}
+
+function rowKey(group, r, idx) {
+  if (group === 'by-day') return `day-${r.day || r.name || idx}`;
+  return `${group}-${r.campaign_id ?? ''}-${r.id ?? ''}-${r.name ?? ''}-${idx}`;
+}
+
 export default function Stats() {
   const [group, setGroup] = useState('by-campaign');
   const [token, setToken] = useState('token1');
@@ -19,20 +29,42 @@ export default function Stats() {
   const [rows, setRows] = useState([]);
   const [overview, setOverview] = useState(null);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const ac = new AbortController();
     const q = new URLSearchParams({ from, to });
     if (group === 'by-token') q.set('token', token);
+
+    setLoading(true);
+    setRows([]);
+    setErr('');
+
     Promise.all([
       api.get(`/api/stats/${group}?${q}`),
       api.get(`/api/stats/overview?${q}`),
     ])
       .then(([r, o]) => {
-        setRows(r);
+        if (ac.signal.aborted) return;
+        const list = Array.isArray(r) ? r : [];
+        // Defense: by-day must only keep dated rows
+        const filtered =
+          group === 'by-day'
+            ? list.filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(String(row.day || row.name || '')))
+            : list;
+        setRows(filtered);
         setOverview(o);
-        setErr('');
       })
-      .catch((e) => setErr(e.message));
+      .catch((e) => {
+        if (ac.signal.aborted) return;
+        setErr(e.message);
+        setRows([]);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setLoading(false);
+      });
+
+    return () => ac.abort();
   }, [group, from, to, token]);
 
   async function exportCsv() {
@@ -113,6 +145,7 @@ export default function Stats() {
       </div>
 
       {err && <p className="neg">{err}</p>}
+      {loading && <p className="hint">Загрузка…</p>}
 
       <div className="panel">
         <div className="table-wrap">
@@ -135,26 +168,27 @@ export default function Stats() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.map((r, idx) => {
                 const rowCur = r.currency || cur;
                 return (
-                <tr key={r.id ?? r.day ?? r.name}>
-                  <td>{r.name || r.day}</td>
-                  {group === 'by-campaign' && <td>{r.source_name}</td>}
-                  {group === 'by-campaign' && <td>{r.offer_name}</td>}
-                  {group === 'by-offer' && <td>{r.network || '—'}</td>}
-                  <td>{num(r.clicks)}</td>
-                  <td>{num(r.conversions)}</td>
-                  <td>{pct(r.cr)}</td>
-                  <td>{money(r.cost, rowCur)}</td>
-                  <td>{money(r.revenue, rowCur)}</td>
-                  <td className={r.profit >= 0 ? 'pos' : 'neg'}>{money(r.profit, rowCur)}</td>
-                  <td>{r.roi == null ? '—' : pct(r.roi)}</td>
-                  <td>{money(r.epc, rowCur)}</td>
-                  <td>{r.cpa == null ? '—' : money(r.cpa, rowCur)}</td>
-                </tr>
-              );})}
-              {!rows.length && (
+                  <tr key={rowKey(group, r, idx)}>
+                    <td>{rowLabel(group, r)}</td>
+                    {group === 'by-campaign' && <td>{r.source_name}</td>}
+                    {group === 'by-campaign' && <td>{r.offer_name}</td>}
+                    {group === 'by-offer' && <td>{r.network || '—'}</td>}
+                    <td>{num(r.clicks)}</td>
+                    <td>{num(r.conversions)}</td>
+                    <td>{pct(r.cr)}</td>
+                    <td>{money(r.cost, rowCur)}</td>
+                    <td>{money(r.revenue, rowCur)}</td>
+                    <td className={r.profit >= 0 ? 'pos' : 'neg'}>{money(r.profit, rowCur)}</td>
+                    <td>{r.roi == null ? '—' : pct(r.roi)}</td>
+                    <td>{money(r.epc, rowCur)}</td>
+                    <td>{r.cpa == null ? '—' : money(r.cpa, rowCur)}</td>
+                  </tr>
+                );
+              })}
+              {!loading && !rows.length && (
                 <tr>
                   <td colSpan={13}>
                     <div className="empty">Нет данных за период</div>
