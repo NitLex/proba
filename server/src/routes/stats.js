@@ -147,7 +147,7 @@ router.get('/by-campaign', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  const enriched = rows.map(enrichRow);
+  const enriched = enrichTrafficRows(rows);
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-campaign.csv', enriched, statsColumns(true));
   }
@@ -192,11 +192,11 @@ router.get('/by-path', (req, res) => {
     )
     .all(...vf.params, uid, ...cf.params);
 
-  const enriched = rows.map((r) =>
-    enrichRow({
+  const enriched = enrichTrafficRows(
+    rows.map((r) => ({
       ...r,
       name: `${r.campaign_name} · ${r.name}`,
-    }),
+    })),
   );
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-path.csv', enriched, statsColumns());
@@ -242,11 +242,11 @@ router.get('/by-rule', (req, res) => {
     )
     .all(...vf.params, uid, ...cf.params);
 
-  const enriched = rows.map((r) =>
-    enrichRow({
+  const enriched = enrichTrafficRows(
+    rows.map((r) => ({
       ...r,
       name: `${r.campaign_name} · ${r.name}`,
-    }),
+    })),
   );
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-rule.csv', enriched, statsColumns());
@@ -289,7 +289,7 @@ router.get('/by-offer', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  const enriched = rows.map(enrichRow);
+  const enriched = enrichTrafficRows(rows);
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-offer.csv', enriched, statsColumns());
   }
@@ -329,7 +329,7 @@ router.get('/by-source', (req, res) => {
     )
     .all(...cf.params, ...vf.params, uid);
 
-  const enriched = rows.map(enrichRow);
+  const enriched = enrichTrafficRows(rows);
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-source.csv', enriched, statsColumns());
   }
@@ -385,9 +385,11 @@ router.get('/by-day', (req, res) => {
     map.set(r.day, cur);
   }
 
-  const enriched = [...map.values()]
-    .sort((a, b) => a.day.localeCompare(b.day))
-    .map((r) => enrichRow({ ...r, currency }));
+  const enriched = enrichTrafficRows(
+    [...map.values()]
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((r) => ({ ...r, currency })),
+  );
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(
       res,
@@ -464,9 +466,11 @@ router.get('/by-token', (req, res) => {
     map.set(r.name, cur);
   }
 
-  const enriched = [...map.values()]
-    .sort((a, b) => b.clicks - a.clicks)
-    .map((r) => enrichRow({ ...r, currency }));
+  const enriched = enrichTrafficRows(
+    [...map.values()]
+      .sort((a, b) => b.clicks - a.clicks)
+      .map((r) => ({ ...r, currency })),
+  );
   if (String(req.query.format || '') === 'csv') {
     return sendCsv(res, 'by-token.csv', enriched, statsColumns());
   }
@@ -475,7 +479,21 @@ router.get('/by-token', (req, res) => {
 
 router.get('/export/:kind', (req, res) => {
   const kind = String(req.params.kind || '');
+  const { from, to, q, campaign_id: campaignId, status } = req.query;
   if (kind === 'clicks') {
+    const cf = dateFilter(from, to, 'cl.created_at');
+    const params = [req.user.id, ...cf.params];
+    let extra = '';
+    if (campaignId) {
+      extra += ' AND cl.campaign_id = ?';
+      params.push(Number(campaignId));
+    }
+    if (q) {
+      extra +=
+        ' AND (cl.clickid LIKE ? OR c.name LIKE ? OR IFNULL(cl.country, "") LIKE ? OR IFNULL(cl.token1, "") LIKE ?)';
+      const like = `%${String(q)}%`;
+      params.push(like, like, like, like);
+    }
     const rows = db
       .prepare(
         `SELECT cl.created_at, cl.clickid, c.name AS campaign_name, o.name AS offer_name,
@@ -485,11 +503,11 @@ router.get('/export/:kind', (req, res) => {
          JOIN campaigns c ON c.id = cl.campaign_id
          LEFT JOIN offers o ON o.id = cl.offer_id
          LEFT JOIN traffic_sources s ON s.id = cl.traffic_source_id
-         WHERE c.user_id = ?
+         WHERE c.user_id = ? AND ${cf.sql}${extra}
          ORDER BY cl.id DESC
-         LIMIT 5000`
+         LIMIT 5000`,
       )
-      .all(req.user.id);
+      .all(...params);
     return sendCsv(res, 'clicks.csv', rows, [
       { key: 'created_at', label: 'created_at' },
       { key: 'clickid', label: 'clickid' },
@@ -509,6 +527,23 @@ router.get('/export/:kind', (req, res) => {
     ]);
   }
   if (kind === 'conversions') {
+    const vf = dateFilter(from, to, 'cv.created_at');
+    const params = [req.user.id, ...vf.params];
+    let extra = '';
+    if (campaignId) {
+      extra += ' AND cv.campaign_id = ?';
+      params.push(Number(campaignId));
+    }
+    if (status) {
+      extra += ' AND cv.status = ?';
+      params.push(String(status));
+    }
+    if (q) {
+      extra +=
+        ' AND (cv.clickid LIKE ? OR c.name LIKE ? OR IFNULL(o.name, "") LIKE ? OR IFNULL(cv.txid, "") LIKE ?)';
+      const like = `%${String(q)}%`;
+      params.push(like, like, like, like);
+    }
     const rows = db
       .prepare(
         `SELECT cv.created_at, cv.clickid, c.name AS campaign_name, o.name AS offer_name,
@@ -516,11 +551,11 @@ router.get('/export/:kind', (req, res) => {
          FROM conversions cv
          JOIN campaigns c ON c.id = cv.campaign_id
          LEFT JOIN offers o ON o.id = cv.offer_id
-         WHERE c.user_id = ?
+         WHERE c.user_id = ? AND ${vf.sql}${extra}
          ORDER BY cv.id DESC
-         LIMIT 5000`
+         LIMIT 5000`,
       )
-      .all(req.user.id);
+      .all(...params);
     return sendCsv(res, 'conversions.csv', rows, [
       { key: 'created_at', label: 'created_at' },
       { key: 'clickid', label: 'clickid' },
@@ -608,6 +643,16 @@ function round(n, d = 2) {
   return Math.round((Number(n) + Number.EPSILON) * p) / p;
 }
 
+/** Hide idle entities with no clicks/conversions/money in the selected period. */
+function hasTraffic(row) {
+  return (
+    Number(row.clicks || 0) > 0 ||
+    Number(row.conversions || 0) > 0 ||
+    Number(row.cost || 0) > 0 ||
+    Number(row.revenue || 0) > 0
+  );
+}
+
 function enrichRow(row) {
   const clicks = Number(row.clicks || 0);
   const cost = Number(row.cost || 0);
@@ -627,6 +672,10 @@ function enrichRow(row) {
     epc: clicks > 0 ? round(revenue / clicks) : 0,
     cpa: conversions > 0 ? round(cost / conversions) : null,
   };
+}
+
+function enrichTrafficRows(rows) {
+  return rows.map(enrichRow).filter(hasTraffic);
 }
 
 function statsColumns(withCampaignMeta = false) {
@@ -649,7 +698,8 @@ function statsColumns(withCampaignMeta = false) {
 }
 
 function sendCsv(res, filename, rows, columns) {
-  const csv = toCsv(rows, columns);
+  // Semicolon + BOM: Excel (RU) opens columns correctly
+  const csv = toCsv(rows, columns, { delimiter: ';' });
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(`\uFEFF${csv}`);

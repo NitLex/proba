@@ -88,6 +88,34 @@ export function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function downloadCsvText(csvText, filename) {
+  const blob = new Blob([`\uFEFF${csvText}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'export.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Build Excel-friendly CSV (semicolon, RU locale). */
+export function rowsToCsv(rows, columns, delimiter = ';') {
+  const escape = (v) => {
+    const s = v == null ? '' : String(v);
+    if (s.includes('"') || s.includes('\n') || s.includes('\r') || s.includes(delimiter)) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+  const header = columns.map((c) => escape(c.label)).join(delimiter);
+  const lines = (rows || []).map((row) =>
+    columns.map((c) => escape(typeof c.key === 'function' ? c.key(row) : row[c.key])).join(delimiter),
+  );
+  return [header, ...lines].join('\r\n');
+}
+
 export async function downloadCsv(path, filename) {
   const token = getAuthToken();
   const res = await fetch(path, {
@@ -103,13 +131,19 @@ export async function downloadCsv(path, filename) {
     }
     throw new Error(msg);
   }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename || 'export.csv';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  const text = await res.text();
+  // If API returned JSON by mistake, surface it
+  if (text.trim().startsWith('{')) {
+    try {
+      const j = JSON.parse(text);
+      throw new Error(j.error || 'CSV export failed');
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        /* fall through */
+      } else {
+        throw e;
+      }
+    }
+  }
+  downloadCsvText(text.replace(/^\uFEFF/, ''), filename);
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, money, today, todayMinus, downloadCsv } from '../api';
+import { api, money, today, todayMinus, downloadCsv, rowsToCsv, downloadCsvText } from '../api';
 
 export default function Logs() {
   const [clicks, setClicks] = useState([]);
@@ -45,12 +45,59 @@ export default function Logs() {
 
   async function exportCsv() {
     try {
-      await downloadCsv(
-        `/api/stats/export/${tab === 'clicks' ? 'clicks' : 'conversions'}`,
-        `${tab}.csv`
-      );
+      setErr('');
+      // Prefer exporting what is on screen (guarantees rows), then fall back to server file
+      if (tab === 'clicks') {
+        if (!clicks.length) {
+          setErr('Нет строк для экспорта по текущему фильтру');
+          return;
+        }
+        const csv = rowsToCsv(clicks, [
+          { key: 'created_at', label: 'created_at' },
+          { key: 'clickid', label: 'clickid' },
+          { key: 'campaign_name', label: 'campaign' },
+          { key: 'source_name', label: 'source' },
+          { key: 'country', label: 'country' },
+          { key: 'device', label: 'device' },
+          { key: (r) => (r.is_bot ? 1 : 0), label: 'bot' },
+          { key: 'cost', label: 'cost' },
+          {
+            key: (r) => [r.token1, r.token2, r.token3, r.token4, r.token5].filter(Boolean).join(' | '),
+            label: 'tokens',
+          },
+        ]);
+        downloadCsvText(csv, `clicks_${from}_${to}.csv`);
+        return;
+      }
+      if (!conversions.length) {
+        setErr('Нет строк для экспорта по текущему фильтру');
+        return;
+      }
+      const csv = rowsToCsv(conversions, [
+        { key: 'created_at', label: 'created_at' },
+        { key: 'clickid', label: 'clickid' },
+        { key: 'campaign_name', label: 'campaign' },
+        { key: 'offer_name', label: 'offer' },
+        { key: 'status', label: 'status' },
+        { key: 'payout', label: 'payout' },
+        { key: 'currency', label: 'currency' },
+        { key: 'txid', label: 'txid' },
+      ]);
+      downloadCsvText(csv, `conversions_${from}_${to}.csv`);
     } catch (e) {
-      setErr(e.message);
+      // fallback to server export with same filters
+      try {
+        const params = new URLSearchParams({ from, to });
+        if (q.trim()) params.set('q', q.trim());
+        if (campaignId) params.set('campaign_id', campaignId);
+        if (tab === 'conversions' && status) params.set('status', status);
+        await downloadCsv(
+          `/api/stats/export/${tab === 'clicks' ? 'clicks' : 'conversions'}?${params}`,
+          `${tab}_${from}_${to}.csv`,
+        );
+      } catch (e2) {
+        setErr(e2.message || e.message);
+      }
     }
   }
 

@@ -90,13 +90,18 @@ export function parseCost(raw, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function toCsv(rows, columns) {
+export function toCsv(rows, columns, opts = {}) {
+  const delimiter = opts.delimiter || ',';
   const escape = (v) => {
     const s = v == null ? '' : String(v);
-    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    if (s.includes('"') || s.includes('\n') || s.includes('\r') || s.includes(delimiter)) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
     return s;
   };
-  const header = columns.map((c) => escape(c.label)).join(',');
-  const lines = rows.map((row) => columns.map((c) => escape(row[c.key])).join(','));
-  return [header, ...lines].join('\n');
+  const header = columns.map((c) => escape(c.label)).join(delimiter);
+  const lines = (rows || []).map((row) =>
+    columns.map((c) => escape(row[c.key])).join(delimiter),
+  );
+  return [header, ...lines].join('\r\n');
 }
