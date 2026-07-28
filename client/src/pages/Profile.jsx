@@ -134,6 +134,26 @@ export default function Profile() {
     }
   }
 
+  async function onToggleAlerts(next) {
+    setAlertSetErr('');
+    setAlertSetMsg('');
+    setAlertsOn(next);
+    try {
+      await updateProfile({
+        email: email.trim(),
+        telegram: telegram.trim(),
+        telegram_chat_id: chatId.trim(),
+        alerts_enabled: next,
+      });
+      const st = await api.get('/api/alerts/status');
+      setAlertStatus(st);
+      setAlertSetMsg(next ? 'Уведомления включены' : 'Уведомления выключены');
+    } catch (err) {
+      setAlertsOn(!next);
+      setAlertSetErr(err.message);
+    }
+  }
+
   async function onPassword(e) {
     e.preventDefault();
     setPassErr('');
@@ -218,24 +238,14 @@ export default function Profile() {
                   placeholder="123456789"
                 />
               </label>
-              <label
-                className="lbl full"
-                style={{ flexDirection: 'row', alignItems: 'center', gap: '0.6rem' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={alertsOn}
-                  onChange={(e) => setAlertsOn(e.target.checked)}
-                />
-                Telegram-алерты (0 конверсий / просадка ROI)
-              </label>
             </div>
             <p className="hint">
               Бот:{' '}
               {alertStatus?.bot_configured
                 ? 'настроен (@info_trekerbot)'
                 : 'не настроен (TELEGRAM_BOT_TOKEN)'}
-              . Напишите боту /start, затем нажмите «Найти chat_id».
+              . Напишите боту /start, затем нажмите «Найти chat_id». Вкл/выкл
+              уведомлений — в блоке «Пороги алертов».
             </p>
             {error && <p className="neg">{error}</p>}
             {msg && <p className="pos">{msg}</p>}
@@ -362,10 +372,29 @@ export default function Profile() {
       {user?.is_admin && alertSettings && (
         <div className="panel" style={{ marginTop: '1rem', maxWidth: 560 }}>
           <div className="panel-head">
-            <h2>Пороги алертов (админ)</h2>
+            <h2>Пороги алертов</h2>
           </div>
           <form onSubmit={onAlertSettings} style={{ padding: '1rem' }}>
-            <div className="form-grid">
+            <div className="alert-toggle-row">
+              <div>
+                <div className="alert-toggle-title">Telegram-уведомления</div>
+                <p className="hint" style={{ margin: '0.25rem 0 0' }}>
+                  Выключите, если трафик не льёте — бот не будет писать.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={`switch ${alertsOn ? 'on' : ''}`}
+                role="switch"
+                aria-checked={alertsOn}
+                onClick={() => onToggleAlerts(!alertsOn)}
+              >
+                <span className="switch-knob" />
+                <span className="switch-label">{alertsOn ? 'Вкл' : 'Выкл'}</span>
+              </button>
+            </div>
+
+            <div className="form-grid" style={{ marginTop: '1rem' }}>
               <label className="lbl">
                 Окно, часов
                 <input
@@ -431,6 +460,37 @@ export default function Profile() {
               Сохранить пороги
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Non-admin: still need alerts toggle */}
+      {!user?.is_admin && (
+        <div className="panel" style={{ marginTop: '1rem', maxWidth: 560 }}>
+          <div className="panel-head">
+            <h2>Telegram-уведомления</h2>
+          </div>
+          <div style={{ padding: '1rem' }}>
+            <div className="alert-toggle-row">
+              <div>
+                <div className="alert-toggle-title">Алерты бота</div>
+                <p className="hint" style={{ margin: '0.25rem 0 0' }}>
+                  Выключите, если трафик не льёте.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={`switch ${alertsOn ? 'on' : ''}`}
+                role="switch"
+                aria-checked={alertsOn}
+                onClick={() => onToggleAlerts(!alertsOn)}
+              >
+                <span className="switch-knob" />
+                <span className="switch-label">{alertsOn ? 'Вкл' : 'Выкл'}</span>
+              </button>
+            </div>
+            {alertSetErr && <p className="neg">{alertSetErr}</p>}
+            {alertSetMsg && <p className="pos">{alertSetMsg}</p>}
+          </div>
         </div>
       )}
 

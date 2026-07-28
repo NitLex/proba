@@ -10,7 +10,7 @@
 | Bot/antifraud на `/click` | да (UA + datacenter IP + частота) |
 | JWT auth | да |
 | Rate limit login/register | да (приложение, ~20/мин с IP) |
-| Демо на orkestr | отключено |
+| Демо на orkestr / трекере | отключено |
 | Регистрация на orkestr | закрыта по умолчанию при seed |
 
 ## Нет (и это важно)

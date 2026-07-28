@@ -6,6 +6,49 @@ function round(n, d = 2) {
   return Math.round((Number(n) + Number.EPSILON) * p) / p;
 }
 
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function fmtNum(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '—';
+  return x.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+}
+
+function fmtMoney(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '—';
+  return `${fmtNum(x)} ₽`;
+}
+
+function fmtPct(n) {
+  if (n == null || !Number.isFinite(Number(n))) return '—';
+  return `${fmtNum(n)}%`;
+}
+
+/** Shared ArbTrack Telegram card header. */
+export function tgHeader(kindLabel) {
+  return `<b>Arb</b><b>Track</b>  ·  ${escHtml(kindLabel)}`;
+}
+
+export function formatTestAlertHtml({ username, alertsEnabled }) {
+  const status = alertsEnabled
+    ? '🟢 <b>уведомления включены</b>'
+    : '⚪️ <b>уведомления выключены</b>';
+  return [
+    tgHeader('тест'),
+    '',
+    status,
+    `аккаунт  <code>@${escHtml(username || 'user')}</code>`,
+    '',
+    '<i>Если трафик не льёте — выключите уведомления в Профиле → Пороги алертов.</i>',
+  ].join('\n');
+}
+
 export function alertThresholds() {
   return {
     minClicks: Math.max(1, Number(getSetting('alert_min_clicks', '50')) || 50),
@@ -92,19 +135,44 @@ export function buildAlertMessages(overview, campaigns, thresholds) {
   if (overview.clicks >= t.minClicks && overview.conversions === 0) {
     out.push({
       key: 'zero_conv',
-      text: `ArbTrack: ${overview.clicks} кликов за ${t.windowHours}ч, конверсий 0. Проверь постбек/оффер.`,
+      text: [
+        tgHeader('0 конверсий'),
+        '',
+        '🔴 <b>Клики есть, лидов нет</b>',
+        `клики     <code>${fmtNum(overview.clicks)}</code>`,
+        `конверсии <code>0</code>`,
+        `расход    <code>${fmtMoney(overview.cost)}</code>`,
+        `окно      <code>${t.windowHours}ч</code>`,
+        '',
+        '<i>Проверь постбек и оффер.</i>',
+      ].join('\n'),
     });
   }
   if (overview.roi != null && overview.roi < t.roiThreshold && overview.cost > 0) {
     out.push({
       key: 'roi_drop',
-      text: `ArbTrack: ROI ${overview.roi}% за ${t.windowHours}ч (порог ${t.roiThreshold}%). Cost ${overview.cost}, revenue ${overview.revenue}.`,
+      text: [
+        tgHeader('просадка ROI'),
+        '',
+        `🟠 <b>ROI ${escHtml(fmtPct(overview.roi))}</b>  ·  порог <code>${escHtml(fmtPct(t.roiThreshold))}</code>`,
+        `расход  <code>${fmtMoney(overview.cost)}</code>`,
+        `доход   <code>${fmtMoney(overview.revenue)}</code>`,
+        `профит  <code>${fmtMoney(overview.profit)}</code>`,
+        `окно    <code>${t.windowHours}ч</code>`,
+      ].join('\n'),
     });
   }
   for (const c of campaigns || []) {
     out.push({
       key: `camp_zero_${c.id}`,
-      text: `ArbTrack: кампания «${c.name}» — ${c.clicks} кликов без конверсий (${t.windowHours}ч).`,
+      text: [
+        tgHeader('кампания'),
+        '',
+        `🟡 <b>${escHtml(c.name)}</b>`,
+        `клики     <code>${fmtNum(c.clicks)}</code>`,
+        `конверсии <code>0</code>`,
+        `окно      <code>${t.windowHours}ч</code>`,
+      ].join('\n'),
     });
   }
   return out;
@@ -162,7 +230,9 @@ export async function runOpsAlerts({ force = false } = {}) {
         details.push({ user_id: user.id, key: msg.key, skipped: 'cooldown' });
         continue;
       }
-      const r = await sendTelegramMessage(user.telegram_chat_id, msg.text);
+      const r = await sendTelegramMessage(user.telegram_chat_id, msg.text, {
+        parse_mode: 'HTML',
+      });
       details.push({ user_id: user.id, key: msg.key, ...r });
       if (r.ok) {
         markSent(user.id, msg.key);

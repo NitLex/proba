@@ -8,14 +8,16 @@ loadEnv();
 
 const DEMO_USER = 'demo';
 const DEMO_PASS = 'demo123';
+// Demo is disabled on tracker and orchestrator (set DISABLE_DEMO_USER=0 only for local tests).
 const disableDemo =
-  isOrchestratorMode() ||
-  String(process.env.DISABLE_DEMO_USER || '').trim() === '1';
+  String(process.env.DISABLE_DEMO_USER || '1').trim() !== '0';
 
 function ensureDemoUser() {
   if (disableDemo) {
     db.prepare(`DELETE FROM users WHERE lower(username) = 'demo'`).run();
-    setSetting('registration_enabled', '0');
+    if (isOrchestratorMode()) {
+      setSetting('registration_enabled', '0');
+    }
     const existing =
       db.prepare(`SELECT * FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1`).get() ||
       db.prepare(`SELECT * FROM users ORDER BY id ASC LIMIT 1`).get();

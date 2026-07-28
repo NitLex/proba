@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { alertThresholds, runOpsAlerts } from '../lib/opsAlerts.js';
+import { alertThresholds, formatTestAlertHtml, runOpsAlerts } from '../lib/opsAlerts.js';
 import {
   discoverChatIdFromUpdates,
   sendTelegramMessage,
@@ -71,9 +71,11 @@ router.post('/test', async (req, res) => {
     }
     const r = await sendTelegramMessage(
       row.telegram_chat_id,
-      `ArbTrack: тест уведомлений для @${req.user.username || 'user'}. Алерты ${
-        row.alerts_enabled ? 'включены' : 'выключены'
-      }.`,
+      formatTestAlertHtml({
+        username: req.user.username,
+        alertsEnabled: !!row.alerts_enabled,
+      }),
+      { parse_mode: 'HTML' },
     );
     if (!r.ok) {
       return res.status(400).json({ error: r.error || r.reason || 'Не удалось отправить' });

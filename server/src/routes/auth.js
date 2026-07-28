@@ -12,7 +12,7 @@ import {
   isDemoUser,
 } from '../lib/auth.js';
 import { requireAuth } from '../middleware/auth.js';
-import { appMeta, isOrchestratorMode } from '../lib/appMode.js';
+import { appMeta } from '../lib/appMode.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
@@ -98,9 +98,9 @@ router.post('/login', authLimiter, (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
 
-  if (isOrchestratorMode() && isDemoUser(username)) {
+  if (isDemoUser(username)) {
     return res.status(403).json({
-      error: 'Демо-доступ на оркестраторе отключён. Войдите своим аккаунтом.',
+      error: 'Демо-доступ отключён. Войдите своим аккаунтом.',
     });
   }
 
@@ -109,9 +109,9 @@ router.post('/login', authLimiter, (req, res) => {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
   }
 
-  if (isOrchestratorMode() && isDemoUser(row)) {
+  if (isDemoUser(row)) {
     return res.status(403).json({
-      error: 'Демо-доступ на оркестраторе отключён. Войдите своим аккаунтом.',
+      error: 'Демо-доступ отключён. Войдите своим аккаунтом.',
     });
   }
 

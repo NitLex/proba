@@ -192,14 +192,13 @@ describe('api integration', () => {
     assert.equal(body.unmatched, true);
   });
 
-  it('demo user cannot access orchestrator API', async () => {
+  it('demo login is disabled', async () => {
     const { db } = await import('../src/db.js');
     const { hashPassword } = await import('../src/lib/auth.js');
     db.prepare(
       `INSERT OR IGNORE INTO users (username, password_hash, email, telegram, is_admin)
        VALUES ('demo', ?, 'demo@arbtrack.local', '@arbtrack_demo', 1)`,
     ).run(hashPassword('demo123'));
-    // ensure password is demo123 even if row existed
     db.prepare(`UPDATE users SET password_hash = ? WHERE username = 'demo'`).run(
       hashPassword('demo123'),
     );
@@ -209,16 +208,9 @@ describe('api integration', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'demo', password: 'demo123' }),
     });
-    assert.equal(login.status, 200);
-    const { token: demoToken, user } = await login.json();
-    assert.equal(user.is_demo, true);
-
-    const res = await fetch(`${base}/api/pipeline/roles`, {
-      headers: { Authorization: `Bearer ${demoToken}` },
-    });
-    assert.equal(res.status, 403);
-    const body = await res.json();
-    assert.match(String(body.error || ''), /демо|зарегистрир/i);
+    assert.equal(login.status, 403);
+    const body = await login.json();
+    assert.match(String(body.error || ''), /демо/i);
   });
 
   it('records site visit and shows admin stats', async () => {
