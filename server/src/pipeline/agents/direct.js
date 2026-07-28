@@ -14,6 +14,7 @@ import { formatLabel, resolveAdFormat } from '../../lib/adFormat.js';
 import { buildAdLinkFields } from '../../lib/adHref.js';
 import { directApiRetry } from '../../lib/directApi.js';
 import { normalizeGeoList, regionIdsForGeos } from '../../lib/offerFacts.js';
+import { isOfficeDocumentJunk } from '../../lib/junkLexicon.js';
 import {
   buildDirectOperatorChecklist,
   directAgentSystemPrompt,
@@ -204,7 +205,14 @@ export function keywordsForAngle(angle, semantics = {}, playbook = {}) {
     const pool = (semantics.keywords || []).map((k) => k.phrase).filter(Boolean);
     kws = [...hooks, ...(ANGLE_KEYWORD_FALLBACK[id] || ANGLE_KEYWORD_FALLBACK.generic), ...pool.slice(0, 8)];
   }
-  return [...new Set(kws.map((p) => String(p).trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      kws
+        .map((p) => String(p).trim())
+        .filter(Boolean)
+        .filter((p) => !isOfficeDocumentJunk(p)),
+    ),
+  ];
 }
 
 function countAddOk(res) {
@@ -425,8 +433,32 @@ async function applyDraft(plan) {
         {
           Name: plan.name.slice(0, 255),
           StartDate: moscowDateISO(),
+<<<<<<< HEAD
           TextCampaign: textCampaign,
           NegativeKeywords: { Items: (plan.negatives || []).slice(0, 20) },
+=======
+          TextCampaign: {
+            BiddingStrategy: {
+              Search: { BiddingStrategyType: 'SERVING_OFF' },
+              Network: {
+                BiddingStrategyType: 'WB_MAXIMUM_CLICKS',
+                WbMaximumClicks: {
+                  WeeklySpendLimit: weeklyMicros,
+                  BidCeiling: cpcMicros,
+                },
+              },
+            },
+            Settings: [
+              { Option: 'ENABLE_SITE_MONITORING', Value: 'YES' },
+              { Option: 'ENABLE_COMPANY_INFO', Value: 'NO' },
+              { Option: 'ENABLE_AREA_OF_INTEREST_TARGETING', Value: 'NO' },
+              { Option: 'ALTERNATIVE_TEXTS_ENABLED', Value: 'NO' },
+              { Option: 'ADD_METRICA_TAG', Value: 'NO' },
+            ],
+            TrackingParams: plan.tracking_params,
+          },
+          NegativeKeywords: { Items: (plan.negatives || []).slice(0, 60) },
+>>>>>>> e33db6d (Filter Wordstat office/PDF junk from loan keywords.)
           TimeZone: 'Europe/Moscow',
         },
       ],

@@ -20,3 +20,16 @@ test('keywordsForAngle uses semantics.groups when present', () => {
   );
   assert.deepEqual(kws, ['оплата за границей', 'карта для поездок']);
 });
+
+test('keywordsForAngle drops PDF/Word document junk', () => {
+  const kws = keywordsForAngle(
+    { id: 'passport', hooks: ['минимум документов'] },
+    {
+      groups: {
+        passport: ['минимум документов', 'преобразовать документ в пдф', 'папка для документов'],
+      },
+    },
+    {},
+  );
+  assert.deepEqual(kws, ['минимум документов']);
+});
