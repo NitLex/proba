@@ -173,10 +173,12 @@ router.get('/click/:key', (req, res) => {
   db.prepare(
     `INSERT INTO clicks (
       clickid, campaign_id, offer_id, landing_id, traffic_source_id,
+      path_id, rule_id,
       ip, user_agent, country, city, device, os, browser, referer,
       cost, is_unique, is_bot, token1, token2, token3, token4, token5, query_string
     ) VALUES (
       @clickid, @campaign_id, @offer_id, @landing_id, @traffic_source_id,
+      @path_id, @rule_id,
       @ip, @user_agent, @country, @city, @device, @os, @browser, @referer,
       @cost, @is_unique, @is_bot, @token1, @token2, @token3, @token4, @token5, @query_string
     )`
@@ -186,6 +188,8 @@ router.get('/click/:key', (req, res) => {
     offer_id: offerId,
     landing_id: landingId,
     traffic_source_id: campaign.traffic_source_id,
+    path_id: route.path_id || null,
+    rule_id: route.rule_id || null,
     ip,
     user_agent: ua,
     country: routeCtx.country,

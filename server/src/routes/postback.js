@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { parseCost } from '../lib/tracking.js';
+import { fireSourcePostback } from '../lib/sourcePostback.js';
 
 const router = Router();
 
@@ -93,6 +94,7 @@ function handlePostback(req, res) {
     return res.json({ ok: true, duplicate: true, id: existing.id });
   }
 
+  const currency = String(q.currency || click.offer_currency || 'RUB');
   const info = db
     .prepare(
       `INSERT INTO conversions (
@@ -106,10 +108,15 @@ function handlePostback(req, res) {
       click.offer_id,
       status,
       payout,
-      String(q.currency || click.offer_currency || 'RUB'),
+      currency,
       txid,
       new URLSearchParams(q).toString(),
     );
+
+  // Outbound to ad network / source — async, do not block affiliate response
+  fireSourcePostback({ click, status, payout, currency, txid }).catch((err) => {
+    console.warn('[postback] source notify failed', err.message);
+  });
 
   res.json({ ok: true, id: Number(info.lastInsertRowid), payout, status });
 }

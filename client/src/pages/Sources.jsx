@@ -67,6 +67,7 @@ export default function Sources() {
                 <th>ID</th>
                 <th>Название</th>
                 <th>Cost param</th>
+                <th>Postback</th>
                 <th>Tokens</th>
                 <th></th>
               </tr>
@@ -77,6 +78,9 @@ export default function Sources() {
                   <td className="mono">{r.id}</td>
                   <td>{r.name}</td>
                   <td className="mono">{r.cost_param}</td>
+                  <td className="mono" title={r.postback_url || ''}>
+                    {r.postback_url ? 'yes' : '—'}
+                  </td>
                   <td className="mono">
                     {[r.token1, r.token2, r.token3, r.token4, r.token5].filter(Boolean).join(', ') ||
                       '—'}
@@ -138,6 +142,17 @@ export default function Sources() {
                 <CurrencySelect
                   value={form.currency || 'RUB'}
                   onChange={(currency) => setForm({ ...form, currency })}
+                />
+              </label>
+              <label className="lbl full">
+                <LabelWithHint hint="S2S URL рекламного кабинета. Макросы: {clickid} {payout} {status} {txid} {token1}… ArbTrack дергает его при конверсии.">
+                  Postback URL (исходящий)
+                </LabelWithHint>
+                <input
+                  className="input mono"
+                  value={form.postback_url}
+                  onChange={(e) => setForm({ ...form, postback_url: e.target.value })}
+                  placeholder="https://ads.example/postback?cid={clickid}&sum={payout}&status={status}"
                 />
               </label>
               {['token1', 'token2', 'token3', 'token4', 'token5'].map((t) => (

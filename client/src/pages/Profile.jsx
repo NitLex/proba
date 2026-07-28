@@ -7,9 +7,14 @@ export default function Profile() {
   const { user, updateProfile, changePassword } = useAuth();
   const [email, setEmail] = useState(user?.email || '');
   const [telegram, setTelegram] = useState(user?.telegram || '');
+  const [chatId, setChatId] = useState(user?.telegram_chat_id || '');
+  const [alertsOn, setAlertsOn] = useState(user?.alerts_enabled !== false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [alertStatus, setAlertStatus] = useState(null);
+  const [testMsg, setTestMsg] = useState('');
+  const [testErr, setTestErr] = useState('');
 
   const [curPass, setCurPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -22,10 +27,22 @@ export default function Profile() {
   const [setMsg2, setSetMsg2] = useState('');
   const [setErr, setSetErr] = useState('');
   const [siteStats, setSiteStats] = useState(null);
+  const [alertSettings, setAlertSettings] = useState(null);
+  const [alertSetMsg, setAlertSetMsg] = useState('');
+  const [alertSetErr, setAlertSetErr] = useState('');
 
   useEffect(() => {
     setEmail(user?.email || '');
     setTelegram(user?.telegram || '');
+    setChatId(user?.telegram_chat_id || '');
+    setAlertsOn(user?.alerts_enabled !== false);
+  }, [user]);
+
+  useEffect(() => {
+    api
+      .get('/api/alerts/status')
+      .then(setAlertStatus)
+      .catch(() => setAlertStatus(null));
   }, [user]);
 
   useEffect(() => {
@@ -41,6 +58,10 @@ export default function Profile() {
       .get('/api/analytics/site')
       .then(setSiteStats)
       .catch(() => setSiteStats(null));
+    api
+      .get('/api/alerts/settings')
+      .then(setAlertSettings)
+      .catch(() => setAlertSettings(null));
   }, [user]);
 
   async function onSubmit(e) {
@@ -49,12 +70,43 @@ export default function Profile() {
     setMsg('');
     setBusy(true);
     try {
-      await updateProfile({ email: email.trim(), telegram: telegram.trim() });
+      await updateProfile({
+        email: email.trim(),
+        telegram: telegram.trim(),
+        telegram_chat_id: chatId.trim(),
+        alerts_enabled: alertsOn,
+      });
       setMsg('Данные сохранены');
+      const st = await api.get('/api/alerts/status');
+      setAlertStatus(st);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onTestAlert() {
+    setTestErr('');
+    setTestMsg('');
+    try {
+      await api.post('/api/alerts/test', {});
+      setTestMsg('Тестовое сообщение отправлено в Telegram');
+    } catch (err) {
+      setTestErr(err.message);
+    }
+  }
+
+  async function onAlertSettings(e) {
+    e.preventDefault();
+    setAlertSetErr('');
+    setAlertSetMsg('');
+    try {
+      const s = await api.put('/api/alerts/settings', alertSettings);
+      setAlertSettings(s);
+      setAlertSetMsg('Пороги алертов сохранены');
+    } catch (err) {
+      setAlertSetErr(err.message);
     }
   }
 
@@ -133,12 +185,43 @@ export default function Profile() {
                   required
                 />
               </label>
+              <label className="lbl full">
+                Telegram chat_id (для алертов)
+                <input
+                  className="input mono"
+                  value={chatId}
+                  onChange={(e) => setChatId(e.target.value)}
+                  placeholder="123456789"
+                />
+              </label>
+              <label
+                className="lbl full"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: '0.6rem' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={alertsOn}
+                  onChange={(e) => setAlertsOn(e.target.checked)}
+                />
+                Telegram-алерты (0 конверсий / просадка ROI)
+              </label>
             </div>
+            <p className="hint">
+              Бот: {alertStatus?.bot_configured ? 'настроен на сервере' : 'не настроен (TELEGRAM_BOT_TOKEN)'}
+              . Напишите боту /start, узнайте chat_id (@userinfobot) и сохраните здесь.
+            </p>
             {error && <p className="neg">{error}</p>}
             {msg && <p className="pos">{msg}</p>}
-            <button className="btn" type="submit" disabled={busy} style={{ marginTop: '0.75rem' }}>
-              Сохранить
-            </button>
+            <div className="toolbar" style={{ marginTop: '0.75rem' }}>
+              <button className="btn" type="submit" disabled={busy}>
+                Сохранить
+              </button>
+              <button className="btn ghost" type="button" onClick={onTestAlert}>
+                Тест в Telegram
+              </button>
+            </div>
+            {testErr && <p className="neg">{testErr}</p>}
+            {testMsg && <p className="pos">{testMsg}</p>}
           </form>
         </div>
 
@@ -243,6 +326,81 @@ export default function Profile() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {user?.is_admin && alertSettings && (
+        <div className="panel" style={{ marginTop: '1rem', maxWidth: 560 }}>
+          <div className="panel-head">
+            <h2>Пороги алертов (админ)</h2>
+          </div>
+          <form onSubmit={onAlertSettings} style={{ padding: '1rem' }}>
+            <div className="form-grid">
+              <label className="lbl">
+                Окно, часов
+                <input
+                  className="input"
+                  type="number"
+                  value={alertSettings.alert_window_hours}
+                  onChange={(e) =>
+                    setAlertSettings({ ...alertSettings, alert_window_hours: e.target.value })
+                  }
+                />
+              </label>
+              <label className="lbl">
+                Мин. кликов (общий 0 conv)
+                <input
+                  className="input"
+                  type="number"
+                  value={alertSettings.alert_min_clicks}
+                  onChange={(e) =>
+                    setAlertSettings({ ...alertSettings, alert_min_clicks: e.target.value })
+                  }
+                />
+              </label>
+              <label className="lbl">
+                ROI порог %
+                <input
+                  className="input"
+                  type="number"
+                  value={alertSettings.alert_roi_threshold}
+                  onChange={(e) =>
+                    setAlertSettings({ ...alertSettings, alert_roi_threshold: e.target.value })
+                  }
+                />
+              </label>
+              <label className="lbl">
+                Мин. кликов на кампанию
+                <input
+                  className="input"
+                  type="number"
+                  value={alertSettings.alert_campaign_min_clicks}
+                  onChange={(e) =>
+                    setAlertSettings({
+                      ...alertSettings,
+                      alert_campaign_min_clicks: e.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="lbl">
+                Cooldown, часов
+                <input
+                  className="input"
+                  type="number"
+                  value={alertSettings.alert_cooldown_hours}
+                  onChange={(e) =>
+                    setAlertSettings({ ...alertSettings, alert_cooldown_hours: e.target.value })
+                  }
+                />
+              </label>
+            </div>
+            {alertSetErr && <p className="neg">{alertSetErr}</p>}
+            {alertSetMsg && <p className="pos">{alertSetMsg}</p>}
+            <button className="btn" type="submit" style={{ marginTop: '0.75rem' }}>
+              Сохранить пороги
+            </button>
+          </form>
         </div>
       )}
 

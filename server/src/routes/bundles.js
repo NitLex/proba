@@ -136,6 +136,7 @@ router.post('/:id/launch', (req, res) => {
   if (!bundle) return res.status(404).json({ error: 'Not found' });
 
   const override = req.body || {};
+  const uid = req.user.id;
   const payout = Number(override.payout ?? 40);
   const costValue = Number(override.cost_value ?? parseBid(bundle.bid_hint) ?? 0.25);
   const offerUrl =
@@ -149,18 +150,21 @@ router.post('/:id/launch', (req, res) => {
     let sourceId = override.traffic_source_id ? Number(override.traffic_source_id) : null;
     if (!sourceId) {
       const existing = db
-        .prepare(`SELECT id FROM traffic_sources WHERE name = ? COLLATE NOCASE`)
-        .get(bundle.source);
+        .prepare(
+          `SELECT id FROM traffic_sources WHERE user_id = ? AND name = ? COLLATE NOCASE`,
+        )
+        .get(uid, bundle.source);
       if (existing) {
         sourceId = existing.id;
       } else {
         const tokens = sourceTokens(bundle.source);
         const info = db
           .prepare(
-            `INSERT INTO traffic_sources (name, cost_param, currency, token1, token2, token3, notes)
-             VALUES (@name, 'cost', 'USD', @token1, @token2, @token3, @notes)`
+            `INSERT INTO traffic_sources (user_id, name, cost_param, currency, token1, token2, token3, notes)
+             VALUES (@user_id, @name, 'cost', 'USD', @token1, @token2, @token3, @notes)`,
           )
           .run({
+            user_id: uid,
             name: bundle.source,
             ...tokens,
             notes: `Авто из связки #${bundle.id}`,
@@ -171,10 +175,11 @@ router.post('/:id/launch', (req, res) => {
 
     const offerInfo = db
       .prepare(
-        `INSERT INTO offers (name, url, payout, currency, geo, network, status, notes)
-         VALUES (@name, @url, @payout, 'USD', @geo, @network, 'active', @notes)`
+        `INSERT INTO offers (user_id, name, url, payout, currency, geo, network, status, notes)
+         VALUES (@user_id, @name, @url, @payout, 'USD', @geo, @network, 'active', @notes)`,
       )
       .run({
+        user_id: uid,
         name: override.offer_name || `${bundle.vertical} · ${bundle.geo}`,
         url: offerUrl,
         payout,
@@ -188,11 +193,16 @@ router.post('/:id/launch', (req, res) => {
     const funnel = String(bundle.funnel || '').toLowerCase();
     if (funnel !== 'direct' && funnel !== 'direct-to-offer') {
       const landInfo = db
-        .prepare(`INSERT INTO landings (name, url, notes) VALUES (@name, @url, @notes)`)
+        .prepare(
+          `INSERT INTO landings (user_id, name, url, notes) VALUES (@user_id, @name, @url, @notes)`,
+        )
         .run({
+          user_id: uid,
           name: override.landing_name || `Preland ${bundle.vertical} ${bundle.geo}`,
           url: landingUrl,
-          notes: [bundle.landing_notes, 'CTA → /to-offer?clickid={clickid}'].filter(Boolean).join('\n'),
+          notes: [bundle.landing_notes, 'CTA → /to-offer?clickid={clickid}']
+            .filter(Boolean)
+            .join('\n'),
         });
       landingId = Number(landInfo.lastInsertRowid);
     }
@@ -200,10 +210,11 @@ router.post('/:id/launch', (req, res) => {
     const key = makeCampaignKey();
     const campInfo = db
       .prepare(
-        `INSERT INTO campaigns (name, key, traffic_source_id, offer_id, landing_id, cost_model, cost_value, status, notes)
-         VALUES (@name, @key, @traffic_source_id, @offer_id, @landing_id, 'cpc', @cost_value, 'active', @notes)`
+        `INSERT INTO campaigns (user_id, name, key, traffic_source_id, offer_id, landing_id, cost_model, cost_value, status, notes)
+         VALUES (@user_id, @name, @key, @traffic_source_id, @offer_id, @landing_id, 'cpc', @cost_value, 'active', @notes)`,
       )
       .run({
+        user_id: uid,
         name: override.campaign_name || `${bundle.source} → ${bundle.vertical} ${bundle.geo}`,
         key,
         traffic_source_id: sourceId,

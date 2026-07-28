@@ -40,6 +40,8 @@ export function publicUser(row) {
     username: row.username,
     email: row.email || '',
     telegram: row.telegram || '',
+    telegram_chat_id: row.telegram_chat_id || '',
+    alerts_enabled: row.alerts_enabled == null ? true : !!row.alerts_enabled,
     is_admin: !!row.is_admin,
     is_demo: isDemoUser(row),
     created_at: row.created_at,

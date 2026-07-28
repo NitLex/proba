@@ -154,6 +154,106 @@ router.get('/by-campaign', (req, res) => {
   res.json(enriched);
 });
 
+router.get('/by-path', (req, res) => {
+  const uid = req.user.id;
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const rows = db
+    .prepare(
+      `SELECT
+        COALESCE(p.id, 0) AS id,
+        COALESCE(p.name, '(no path)') AS name,
+        c.id AS campaign_id,
+        c.name AS campaign_name,
+        COALESCE(NULLIF(c.currency, ''), 'RUB') AS currency,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(cv.conversions, 0) AS conversions,
+        COALESCE(cv.revenue, 0) AS revenue
+      FROM clicks cl
+      JOIN campaigns c ON c.id = cl.campaign_id
+      LEFT JOIN campaign_paths p ON p.id = cl.path_id
+      LEFT JOIN (
+        SELECT
+          COALESCE(cl2.path_id, 0) AS path_key,
+          cl2.campaign_id,
+          COUNT(*) AS conversions,
+          SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END) AS revenue
+        FROM conversions cv
+        JOIN clicks cl2 ON cl2.id = cv.click_row_id
+        WHERE ${vf.sql}
+        GROUP BY COALESCE(cl2.path_id, 0), cl2.campaign_id
+      ) cv ON cv.path_key = COALESCE(cl.path_id, 0) AND cv.campaign_id = cl.campaign_id
+      WHERE c.user_id = ? AND ${cf.sql}
+      GROUP BY c.id, COALESCE(p.id, 0)
+      ORDER BY clicks DESC`,
+    )
+    .all(...vf.params, uid, ...cf.params);
+
+  const enriched = rows.map((r) =>
+    enrichRow({
+      ...r,
+      name: `${r.campaign_name} · ${r.name}`,
+    }),
+  );
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-path.csv', enriched, statsColumns());
+  }
+  res.json(enriched);
+});
+
+router.get('/by-rule', (req, res) => {
+  const uid = req.user.id;
+  const { from, to } = req.query;
+  const cf = dateFilter(from, to, 'cl.created_at');
+  const vf = dateFilter(from, to, 'cv.created_at');
+
+  const rows = db
+    .prepare(
+      `SELECT
+        COALESCE(r.id, 0) AS id,
+        COALESCE(r.name, '(default / no rule)') AS name,
+        c.id AS campaign_id,
+        c.name AS campaign_name,
+        COALESCE(NULLIF(c.currency, ''), 'RUB') AS currency,
+        COUNT(cl.id) AS clicks,
+        COALESCE(SUM(cl.cost), 0) AS cost,
+        COALESCE(cv.conversions, 0) AS conversions,
+        COALESCE(cv.revenue, 0) AS revenue
+      FROM clicks cl
+      JOIN campaigns c ON c.id = cl.campaign_id
+      LEFT JOIN campaign_rules r ON r.id = cl.rule_id
+      LEFT JOIN (
+        SELECT
+          COALESCE(cl2.rule_id, 0) AS rule_key,
+          cl2.campaign_id,
+          COUNT(*) AS conversions,
+          SUM(CASE WHEN cv.status IN ('lead','sale') THEN cv.payout ELSE 0 END) AS revenue
+        FROM conversions cv
+        JOIN clicks cl2 ON cl2.id = cv.click_row_id
+        WHERE ${vf.sql}
+        GROUP BY COALESCE(cl2.rule_id, 0), cl2.campaign_id
+      ) cv ON cv.rule_key = COALESCE(cl.rule_id, 0) AND cv.campaign_id = cl.campaign_id
+      WHERE c.user_id = ? AND ${cf.sql}
+      GROUP BY c.id, COALESCE(r.id, 0)
+      ORDER BY clicks DESC`,
+    )
+    .all(...vf.params, uid, ...cf.params);
+
+  const enriched = rows.map((r) =>
+    enrichRow({
+      ...r,
+      name: `${r.campaign_name} · ${r.name}`,
+    }),
+  );
+  if (String(req.query.format || '') === 'csv') {
+    return sendCsv(res, 'by-rule.csv', enriched, statsColumns());
+  }
+  res.json(enriched);
+});
+
 router.get('/by-offer', (req, res) => {
   const uid = req.user.id;
   const { from, to } = req.query;

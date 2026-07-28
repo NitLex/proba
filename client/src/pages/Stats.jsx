@@ -3,6 +3,8 @@ import { api, money, num, pct, today, todayMinus, downloadCsv } from '../api';
 
 const groups = [
   { id: 'by-campaign', label: 'По кампаниям' },
+  { id: 'by-path', label: 'По путям' },
+  { id: 'by-rule', label: 'По правилам' },
   { id: 'by-offer', label: 'По офферам' },
   { id: 'by-source', label: 'По источникам' },
   { id: 'by-day', label: 'По дням' },
