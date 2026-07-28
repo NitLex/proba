@@ -1,9 +1,11 @@
+import { buildMetrikaOperatorPlan, METRIKA_DOC_SOURCES } from './metrika-playbook.js';
+
 /**
  * Knowledge pack for the Direct agent — grounded in official Yandex Direct Help.
  * Source root: https://yandex.ru/support/direct/ru/
  *
  * Sections: strategies, bid modifiers, excluded placements, creative rules,
- * finance/payment moderation docs.
+ * finance/payment moderation docs, Metrika goals / retarget.
  *
  * This is NOT model fine-tuning.
  */
@@ -66,6 +68,7 @@ export const DIRECT_HARD_RULES = [
   'Кампанию создаём как черновик OFF; ads.moderate НЕ вызываем — модерацию и запуск делает пользователь.',
   'StartDate только в таймзоне Europe/Moscow (не UTC).',
   'Для арбитража РСЯ: поиск SERVING_OFF, сеть WB_MAXIMUM_CLICKS с потолком ставки и недельным лимитом.',
+  'Метрику и ретаргет подключаем сразу (CounterIds). Оплату за конверсии — только после порога статистики (≥40 soft или ≥25 hard / нед).',
   'Neuro Ads / авторекомендации / альтернативные тексты — выключены.',
   'Посадочная (click URL трекера) должна открываться для YandexBot / YaDirectFetcher (не 403).',
   'Графическое = ImageAd (текст на баннере). Товарное/ТГО = TextAd (текст в полях, картинка без текста).',
@@ -236,14 +239,26 @@ export const DIRECT_RSYA_PLAYBOOK = {
   recommended_strategy: {
     search: 'SERVING_OFF',
     network: 'WB_MAXIMUM_CLICKS',
-    why: 'Для теста связки важны контролируемые клики и потолок CPC; конверсионные стратегии — после накопления статистики.',
+    why: 'Для теста связки важны контролируемые клики и потолок CPC; конверсионные стратегии — после накопления статистики (см. Metrika playbook).',
+    after_stats: {
+      soft: 'WB_MAXIMUM_CONVERSION_RATE по soft lead',
+      hard: 'оплата за конверсии / макс. конверсий по hard goal с потолком CPA',
+      min_soft_per_week: 40,
+      min_hard_per_week: 25,
+      min_days: 7,
+    },
   },
   settings_defaults: {
     ENABLE_SITE_MONITORING: 'YES',
     ENABLE_COMPANY_INFO: 'NO',
     ENABLE_AREA_OF_INTEREST_TARGETING: 'NO',
     ALTERNATIVE_TEXTS_ENABLED: 'NO',
-    ADD_METRICA_TAG: 'NO',
+    ADD_METRICA_TAG: 'YES', // если есть counter_id — YES; иначе agent ставит NO
+  },
+  metrika: {
+    sources: METRIKA_DOC_SOURCES,
+    soft_goal: 'lead / thank-you',
+    hard_goal: 'approved / sale через постбек',
   },
   tracking_params: 'utm_campaign={campaign_id}&utm_content={ad_id}&utm_term={gbid}&source={source}',
   moderation: {
@@ -303,11 +318,26 @@ function looksForeignCard(offer = {}, playbook = {}) {
 }
 
 /** Checklist returned in Direct agent output for the human operator. */
-export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } = {}) {
+export function buildDirectOperatorChecklist({
+  plan,
+  offer,
+  playbook,
+  tracker,
+  metrika,
+} = {}) {
   const fin = looksFinancial(offer, playbook);
   const foreignCard = looksForeignCard(offer, playbook);
   const loan = playbook.vertical_key === 'fintech_loans' || /займ|мфо/i.test(`${offer.name} ${offer.notes}`);
   const postback = tracker?.postback_url || '';
+  const metrikaPlan =
+    metrika ||
+    buildMetrikaOperatorPlan({
+      counterId: plan?.metrika?.counter_id || offer?.metrika_counter_id,
+      softGoalId: plan?.metrika?.soft_goal_id || offer?.metrika_soft_goal_id,
+      hardGoalId: plan?.metrika?.hard_goal_id || offer?.metrika_hard_goal_id,
+      offer,
+      playbook,
+    });
   const items = [
     {
       id: 'leadgid_postback',
@@ -317,6 +347,7 @@ export function buildDirectOperatorChecklist({ plan, offer, playbook, tracker } 
       required: true,
       copy: postback || null,
     },
+    ...metrikaPlan.checklist,
     {
       id: 'review_draft',
       text: 'Открой черновик в Директе и проверь группы/объявления/минус-слова',
@@ -391,9 +422,10 @@ export function getDirectKnowledgeBrief() {
     creative_rules: DIRECT_CREATIVE_RULES,
     finance_docs: DIRECT_FINANCE_DOCS,
     rsya: DIRECT_RSYA_PLAYBOOK,
+    metrika: METRIKA_DOC_SOURCES,
     help_root: 'https://yandex.ru/support/direct/ru/',
     note:
-      'Агент использует handbook из официальной справки Директа. Это knowledge-pack, не fine-tune модели.',
+      'Агент использует handbook из официальной справки Директа + Metrika playbook. Это knowledge-pack, не fine-tune модели.',
   };
 }
 
