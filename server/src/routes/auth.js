@@ -9,14 +9,18 @@ import {
   normalizeTelegram,
   isValidEmail,
   isValidTelegram,
+  isDemoUser,
 } from '../lib/auth.js';
 import { requireAuth } from '../middleware/auth.js';
-import { appMeta } from '../lib/appMode.js';
+import { appMeta, isOrchestratorMode } from '../lib/appMode.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
 
 const USER_RE = /^[a-zA-Z0-9_]{3,32}$/;
 const USER_SELECT = `id, username, email, telegram, telegram_chat_id, alerts_enabled, is_admin, created_at`;
+
+const authLimiter = rateLimit({ windowMs: 60_000, max: 20, keyFn: (_req, ip) => `auth:${ip}` });
 
 router.get('/registration-status', (_req, res) => {
   const enabled = getSetting('registration_enabled', '1') === '1';
@@ -27,7 +31,7 @@ router.get('/registration-status', (_req, res) => {
   });
 });
 
-router.post('/register', (req, res) => {
+router.post('/register', authLimiter, (req, res) => {
   if (getSetting('registration_enabled', '1') !== '1') {
     return res.status(403).json({ error: 'Регистрация закрыта' });
   }
@@ -90,13 +94,25 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token, user: publicUser(user), app: appMeta() });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', authLimiter, (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
+
+  if (isOrchestratorMode() && isDemoUser(username)) {
+    return res.status(403).json({
+      error: 'Демо-доступ на оркестраторе отключён. Войдите своим аккаунтом.',
+    });
+  }
 
   const row = db.prepare(`SELECT * FROM users WHERE username = ?`).get(username);
   if (!row || !verifyPassword(password, row.password_hash)) {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
+
+  if (isOrchestratorMode() && isDemoUser(row)) {
+    return res.status(403).json({
+      error: 'Демо-доступ на оркестраторе отключён. Войдите своим аккаунтом.',
+    });
   }
 
   const user = publicUser(row);

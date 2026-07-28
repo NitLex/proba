@@ -1,11 +1,27 @@
-import { db } from './db.js';
+import { db, setSetting } from './db.js';
 import { makeCampaignKey } from './lib/tracking.js';
 import { hashPassword } from './lib/auth.js';
+import { loadEnv } from './lib/env.js';
+import { isOrchestratorMode } from './lib/appMode.js';
+
+loadEnv();
 
 const DEMO_USER = 'demo';
 const DEMO_PASS = 'demo123';
+const disableDemo =
+  isOrchestratorMode() ||
+  String(process.env.DISABLE_DEMO_USER || '').trim() === '1';
 
 function ensureDemoUser() {
+  if (disableDemo) {
+    db.prepare(`DELETE FROM users WHERE lower(username) = 'demo'`).run();
+    setSetting('registration_enabled', '0');
+    const existing =
+      db.prepare(`SELECT * FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1`).get() ||
+      db.prepare(`SELECT * FROM users ORDER BY id ASC LIMIT 1`).get();
+    return existing || null;
+  }
+
   let user = db.prepare(`SELECT * FROM users WHERE username = ?`).get(DEMO_USER);
   if (!user) {
     const info = db
@@ -41,10 +57,17 @@ function ensureDemoUser() {
 }
 
 const user = ensureDemoUser();
+if (!user) {
+  console.log('No users in DB (demo disabled). Create an admin account first.');
+  process.exit(0);
+}
+if (disableDemo) {
+  console.log(`Demo user disabled. Owner: ${user.username}. Registration closed.`);
+}
 const count = db.prepare('SELECT COUNT(*) AS c FROM campaigns WHERE user_id = ?').get(user.id).c;
 if (count > 0) {
   console.log('Database already seeded, skipping campaigns.');
-  console.log(`Login: ${DEMO_USER} / ${DEMO_PASS}`);
+  if (!disableDemo) console.log(`Login: ${DEMO_USER} / ${DEMO_PASS}`);
   seedBundles();
   process.exit(0);
 }

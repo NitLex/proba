@@ -142,6 +142,12 @@ router.post('/runs', async (req, res, next) => {
     if (rawOffer.reference_batch_id) {
       offer.reference_batch_id = rawOffer.reference_batch_id;
     }
+    if (rawOffer.creative_mode) {
+      offer.creative_mode = String(rawOffer.creative_mode);
+    }
+    if (rawOffer.ad_format) {
+      offer.ad_format = rawOffer.ad_format;
+    }
     const runId = startPipeline(offer, {
       title: title || `Оффер: ${offer.name || offer.url}`,
     });
@@ -154,13 +160,16 @@ router.post('/runs', async (req, res, next) => {
         run_id: runId,
         owner_user_id: req.user?.id || null,
         reference_batch_id: offer.reference_batch_id || null,
+        creative_mode: offer.creative_mode || 'upload',
       },
     });
 
     const execOpts = {
       dryRun,
       applyDirect,
-      spawnCursorAgents,
+      // Upload mode never auto-spawns Cursor creative agent
+      spawnCursorAgents:
+        String(offer.creative_mode || 'upload') === 'upload' ? false : spawnCursorAgents,
       cursorAgents: Array.isArray(cursorAgents) ? cursorAgents : undefined,
       ownerUserId: req.user?.id || null,
     };

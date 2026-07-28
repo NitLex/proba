@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { api } from '../api';
 import { trackSiteVisit } from '../analytics';
 
 export default function Login() {
@@ -10,10 +11,18 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [regEnabled, setRegEnabled] = useState(false);
   const orchestrator = app?.mode === 'orchestrator';
 
   useEffect(() => {
     trackSiteVisit('/login');
+  }, []);
+
+  useEffect(() => {
+    api
+      .get('/api/auth/registration-status')
+      .then((s) => setRegEnabled(Boolean(s.enabled)))
+      .catch(() => setRegEnabled(false));
   }, []);
 
   if (user) return <Navigate to={homePath} replace />;
@@ -47,7 +56,7 @@ export default function Login() {
               </>
             )}
           </div>
-          <div className="brand-sub">Вход в трекер</div>
+          <div className="brand-sub">{orchestrator ? 'Вход в оркестратор' : 'Вход в трекер'}</div>
         </div>
 
         <label className="lbl">
@@ -78,12 +87,15 @@ export default function Login() {
           {busy ? 'Входим…' : 'Войти'}
         </button>
 
-        <p className="hint" style={{ marginTop: '1rem', textAlign: 'center' }}>
-          Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
-        </p>
-        <p className="hint" style={{ textAlign: 'center' }}>
-          Демо: <span className="mono">demo / demo123</span>
-        </p>
+        {regEnabled ? (
+          <p className="hint" style={{ marginTop: '1rem', textAlign: 'center' }}>
+            Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+          </p>
+        ) : (
+          <p className="hint" style={{ marginTop: '1rem', textAlign: 'center' }}>
+            Регистрация закрыта. Доступ только по приглашению владельца.
+          </p>
+        )}
       </form>
     </div>
   );

@@ -30,6 +30,20 @@ export default function Register() {
 
   if (user) return <Navigate to={homePath} replace />;
 
+  if (status && status.enabled === false) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1 style={{ marginTop: 0 }}>Регистрация закрыта</h1>
+          <p className="hint">Доступ только по приглашению владельца.</p>
+          <p className="hint">
+            <Link to="/login">Войти</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   function setField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
