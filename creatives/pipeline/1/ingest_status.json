@@ -1,0 +1,22 @@
+{
+  "ok": false,
+  "run_id": 1,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "mode": "per_angle_prefer_jpeg_if_large",
+  "token_hint": "6Ab9OO…",
+  "note": "403 = Неверный ingest token (часто race: токен уже погашен другим агентом/шагом). Картинки готовы локально; retry через UI/новый token.",
+  "uploads": [
+    {
+      "angle_id": "travel",
+      "file": "travel-agent-0.jpg",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "angle_id": "services",
+      "file": "services-agent-0.jpg",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ]
+}
