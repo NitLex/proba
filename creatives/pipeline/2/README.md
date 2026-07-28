@@ -27,3 +27,5 @@ python3 creatives/pipeline/2/upload_ingest.py \
 ```
 
 Статус последней попытки: `ingest_status.json`.
+
+> **Ingest 403:** токен из брифа шага отклонён оркестратором (`Неверный ingest token` — race/`creative_ingest.hash`). Локальные PNG/JPG готовы; повторите upload со свежим токеном из UI пайплайна.

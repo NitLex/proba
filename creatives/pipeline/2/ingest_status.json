@@ -1,0 +1,60 @@
+{
+  "ok": false,
+  "run_id": 2,
+  "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+  "token_prefix": "S35JmtsV",
+  "error": "Неверный ingest token",
+  "note": "Endpoint reachable (HTTP 403). Token from pipeline brief rejected — creative_ingest.hash on run does not match prompt token (race / rotated). Local GenerateImage product creatives are ready. Re-run: python3 creatives/pipeline/2/upload_ingest.py --batch --prefer-jpeg --token <FRESH_TOKEN>",
+  "probed": [
+    {
+      "url": "https://orkestr.online/api/pipeline/ingest-creatives",
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    },
+    {
+      "url": "https://trekerarbitrag.ru/api/pipeline/ingest-creatives",
+      "status": 404,
+      "body": "Pipeline disabled on tracker host; use orchestrator"
+    }
+  ],
+  "uploads": [
+    {
+      "mode": "batch",
+      "files": [
+        "generic-agent-0.jpg",
+        "generic-agent-1.jpg",
+        "generic-agent-2.jpg"
+      ],
+      "status": 403,
+      "body": "{\"error\":\"Неверный ingest token\"}"
+    }
+  ],
+  "local_assets": [
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-0.png",
+      "jpg": "generic-agent-0.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "qa": "blank face, no text/logos, 1024x1024"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-1.png",
+      "jpg": "generic-agent-1.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "qa": "blank face, no text/logos, 1024x1024"
+    },
+    {
+      "angle_id": "generic",
+      "file": "generic-agent-2.png",
+      "jpg": "generic-agent-2.jpg",
+      "format": "product",
+      "size": "1024x1024",
+      "qa": "blank face, no text/logos, 1024x1024"
+    }
+  ],
+  "copy_ready": true,
+  "textad": "TEXTAD_PRODUCT.json"
+}
