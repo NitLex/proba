@@ -16,11 +16,18 @@ SEO-лендинг «Документы для иностранных гражд
 ```bash
 rsync -avz prelands/finmi-docs-inostrancam.html root@168.222.203.142:/var/www/migrantportal/index.html
 rsync -avz prelands/assets/svoy-chelovek-*.jpg root@168.222.203.142:/var/www/migrantportal/assets/
-# robots/sitemap при необходимости:
-# scp prelands/migrantportal-robots.txt root@...:/var/www/migrantportal/robots.txt
+rsync -avz prelands/favicon.ico prelands/favicon.svg prelands/apple-touch-icon.png \
+  root@168.222.203.142:/var/www/migrantportal/
+scp prelands/migrantportal-robots.txt root@168.222.203.142:/var/www/migrantportal/robots.txt
+scp prelands/migrantportal-sitemap.xml root@168.222.203.142:/var/www/migrantportal/sitemap.xml
 ```
 
-После правки `index.html` на сервере проверь canonical → `https://migrantportal.online/`.
+После правки `index.html` на сервере проверь:
+- canonical → `https://migrantportal.online/`
+- `https://migrantportal.online/favicon.ico` → 200
+- `https://migrantportal.online/sitemap.xml` → 200
+- в Яндекс.Вебмастере: **Индексирование → Файлы Sitemap → добавить** `https://migrantportal.online/sitemap.xml`
+  (запись в `robots.txt` есть, но Яндекс часто ждёт ручного добавления).
 
 ## DNS
 

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Служебные архивы не для индекса
+Disallow: /*.zip$
+Disallow: /arbtrack-logos/
+Disallow: /novakredit-creatives/
+
+Sitemap: https://migrantportal.online/sitemap.xml
