@@ -17,6 +17,12 @@ import {
   frequencyLimit,
   frequencyThresholdHours,
 } from '../lib/antifraud.js';
+import {
+  renderMetrikaBridgeHtml,
+  resolveMetrikaCounterId,
+  resolveMetrikaSoftGoalName,
+  shouldServeMetrikaBridge,
+} from '../lib/metrikaBridge.js';
 
 const router = Router();
 
@@ -243,15 +249,37 @@ router.get('/click/:key', (req, res) => {
   if (landingUrl) {
     const dest = applyMacros(landingUrl, ctx);
     const sep = dest.includes('?') ? '&' : '?';
-    return res.redirect(
-      302,
-      `${dest}${sep}clickid=${encodeURIComponent(clickid)}&ck=${encodeURIComponent(campaign.key)}`
-    );
+    const finalUrl = `${dest}${sep}clickid=${encodeURIComponent(clickid)}&ck=${encodeURIComponent(campaign.key)}`;
+    if (shouldServeMetrikaBridge(req, { isAdReview: adReview })) {
+      return res
+        .status(200)
+        .type('html')
+        .send(
+          renderMetrikaBridgeHtml({
+            counterId: resolveMetrikaCounterId(),
+            redirectUrl: finalUrl,
+            softGoalName: resolveMetrikaSoftGoalName(),
+          }),
+        );
+    }
+    return res.redirect(302, finalUrl);
   }
 
   const offerUrl = route.offer_url || campaign.offer_url;
   if (!offerUrl) return res.status(400).send('No offer or landing configured');
   const dest = ensureLeadgidAffSubOnRedirect(applyMacros(offerUrl, ctx), clickid);
+  if (shouldServeMetrikaBridge(req, { isAdReview: adReview })) {
+    return res
+      .status(200)
+      .type('html')
+      .send(
+        renderMetrikaBridgeHtml({
+          counterId: resolveMetrikaCounterId(),
+          redirectUrl: dest,
+          softGoalName: resolveMetrikaSoftGoalName(),
+        }),
+      );
+  }
   return res.redirect(302, dest);
 });
 
