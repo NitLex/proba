@@ -79,72 +79,118 @@ async function direct(service, body) {
 function priorityGoals() {
   const items = [];
   if (Number.isFinite(softGoalId) && softGoalId > 0) {
-    items.push({ GoalId: softGoalId, Value: 100_000_000, IsMetrikaSourceOfValue: 'NO' });
+    items.push({
+      GoalId: softGoalId,
+      Value: 100_000_000,
+      IsMetrikaSourceOfValue: 'NO',
+      Operation: 'SET',
+    });
   }
   if (Number.isFinite(hardGoalId) && hardGoalId > 0) {
-    items.push({ GoalId: hardGoalId, Value: 500_000_000, IsMetrikaSourceOfValue: 'NO' });
+    items.push({
+      GoalId: hardGoalId,
+      Value: 500_000_000,
+      IsMetrikaSourceOfValue: 'NO',
+      Operation: 'SET',
+    });
   }
   return items.length ? { Items: items } : undefined;
 }
 
 async function patchCampaign() {
-  const textCampaign = {
-    CounterIds: { Items: [counterId] },
-    Settings: [{ Option: 'ADD_METRICA_TAG', Value: 'YES' }],
-  };
-  const goals = priorityGoals();
-  if (goals) textCampaign.PriorityGoals = goals;
-
+  // CounterIds + metrica tag first (PriorityGoals must be a separate update in API)
   const upd = await direct('campaigns', {
     method: 'update',
     params: {
       Campaigns: [
         {
           Id: campaignId,
-          TextCampaign: textCampaign,
+          TextCampaign: {
+            CounterIds: { Items: [counterId] },
+            Settings: [{ Option: 'ADD_METRICA_TAG', Value: 'YES' }],
+          },
         },
       ],
     },
   });
-  console.log('campaigns.update', JSON.stringify(upd?.result?.UpdateResults?.[0] || upd, null, 2));
+  console.log('campaigns.update counters', JSON.stringify(upd?.result?.UpdateResults?.[0] || upd, null, 2));
+
+  const goals = priorityGoals();
+  if (!goals) return;
+  const gUpd = await direct('campaigns', {
+    method: 'update',
+    params: {
+      Campaigns: [
+        {
+          Id: campaignId,
+          TextCampaign: { PriorityGoals: goals },
+        },
+      ],
+    },
+  });
+  console.log('campaigns.update goals', JSON.stringify(gUpd?.result?.UpdateResults?.[0] || gUpd, null, 2));
 }
 
 async function rewriteAdHrefs() {
   if (!hrefHost) return;
-  const ads = await direct('ads', {
-    method: 'get',
-    params: {
-      SelectionCriteria: { CampaignIds: [campaignId] },
-      FieldNames: ['Id', 'Type'],
-      TextAdFieldNames: ['Href'],
+  // Ad Ids exceed Number.MAX_SAFE_INTEGER — parse as digit strings from raw JSON
+  const res = await fetch(`https://api.direct.yandex.com/json/v5/ads`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Client-Login': login,
+      'Accept-Language': 'ru',
+      'Content-Type': 'application/json; charset=utf-8',
     },
+    body: JSON.stringify({
+      method: 'get',
+      params: {
+        SelectionCriteria: { CampaignIds: [campaignId] },
+        FieldNames: ['Id', 'Type'],
+        TextAdFieldNames: ['Href'],
+      },
+    }),
   });
-  const list = ads?.result?.Ads || [];
+  const raw = await res.text();
+  const ads = [];
+  const re = /"Id"\s*:\s*(\d+)[\s\S]*?"Href"\s*:\s*"([^"]+)"/g;
+  let m;
+  while ((m = re.exec(raw))) {
+    ads.push({ Id: m[1], Href: m[2].replace(/\\u0026/g, '&') });
+  }
   const updates = [];
-  for (const ad of list) {
-    const href = ad.TextAd?.Href;
-    if (!href) continue;
+  for (const ad of ads) {
     let u;
     try {
-      u = new URL(href);
+      u = new URL(ad.Href);
     } catch {
       continue;
     }
     if (u.hostname === hrefHost) continue;
-    // Keep path/query ( /click/KEY?... ), swap host
     u.protocol = 'https:';
     u.hostname = hrefHost;
-    updates.push({ Id: ad.Id, TextAd: { Href: u.toString() } });
+    updates.push({ Id: ad.Id, Href: u.toString() });
   }
   if (!updates.length) {
     console.log('ads: no Href rewrites needed');
     return;
   }
-  // Direct allows batches; keep small
-  const chunk = updates.slice(0, 50);
-  const res = await direct('ads', { method: 'update', params: { Ads: chunk } });
-  const ok = (res?.result?.UpdateResults || []).filter((r) => r.Id).length;
-  console.log(`ads.update: ${ok}/${chunk.length} → https://${hrefHost}/click/...`);
+  const adsJson = updates
+    .map((a) => `{"Id":${a.Id},"TextAd":{"Href":${JSON.stringify(a.Href)}}}`)
+    .join(',');
+  const updRes = await fetch(`https://api.direct.yandex.com/json/v5/ads`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Client-Login': login,
+      'Accept-Language': 'ru',
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: `{"method":"update","params":{"Ads":[${adsJson}]}}`,
+  });
+  const out = await updRes.json();
+  const ok = (out?.result?.UpdateResults || []).filter((r) => r.Id && !(r.Errors || []).length).length;
+  console.log(`ads.update: ${ok}/${updates.length} → https://${hrefHost}/click/...`);
 }
 
 async function verify() {
