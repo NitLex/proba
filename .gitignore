@@ -17,3 +17,8 @@ prelands/*
 !prelands/assets/**
 !prelands/README.md
 !prelands/.nojekyll
+!prelands/favicon.ico
+!prelands/favicon.svg
+!prelands/apple-touch-icon.png
+!prelands/migrantportal-robots.txt
+!prelands/migrantportal-sitemap.xml
