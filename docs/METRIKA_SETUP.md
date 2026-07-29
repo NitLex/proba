@@ -11,14 +11,17 @@
 
 Без страницы со счётчиком Метрика «не видит» визиты, Директ не показывает конверсии.
 
-## Целевая схема
+## Целевая схема (оплата за CTA)
 
 ```
-Директ (yclid + CounterIds)
-  → https://finexpert24.online/click/9dJYdFd5?...&yclid=…
-  → HTML-мост Метрики (tag.js + soft_lead)
-  → LeadGid / оффер
+Директ (yclid)
+  → https://finexpert24.online/karta/abroad?...&yclid=…
+  → преленд (Метрика pageview)
+  → клик «Выпустить карту» → reachGoal(soft_lead)  ← сюда PAY_FOR_CONVERSION
+  → /click/9dJYdFd5?nometrika=1 → LeadGid
 ```
+
+Цель `soft_lead` (ID 590344795) бьётся **только** по кнопке «Выпустить карту», не при каждом заходе.
 
 ## Что сделать вручную в Метрике (1 раз)
 

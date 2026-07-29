@@ -14,11 +14,13 @@ export function resolveMetrikaCounterId() {
 }
 
 export function resolveMetrikaSoftGoalName() {
+  // Bridge must NOT fire paid goals by default (use preland CTA instead).
+  // Set YANDEX_METRIKA_BRIDGE_FIRE_GOAL=1 to re-enable reachGoal on /click hop.
+  if (String(process.env.YANDEX_METRIKA_BRIDGE_FIRE_GOAL || '') !== '1') return null;
   const fromEnv = String(process.env.YANDEX_METRIKA_SOFT_GOAL_NAME || '').trim();
   if (fromEnv) return fromEnv;
   const fromDb = String(getSetting('yandex_metrika_soft_goal_name', '') || '').trim();
   if (fromDb) return fromDb;
-  // Default JS goal name we ask the operator to create in Metrika
   return 'soft_lead';
 }
 

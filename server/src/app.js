@@ -88,6 +88,16 @@ export function createApp() {
       if (!file) return res.status(404).send('Preland not found');
       res.type('html').sendFile(file);
     });
+    // Brand paths for PPM / card offers (DisplayUrlPath + Metrika CTA preland)
+    const servePpmCard = (_req, res) => {
+      const file = prelandFilePath('ppm-card');
+      if (!file) return res.status(404).send('Preland not found');
+      res.type('html').sendFile(file);
+    };
+    app.get('/karta/abroad', servePpmCard);
+    app.get('/karta/poezdki', servePpmCard);
+    app.get('/karta/servisy', servePpmCard);
+    app.get('/karta/sbp', servePpmCard);
   }
 
   // Protected dashboard API
@@ -161,7 +171,8 @@ export function createApp() {
         req.path.startsWith('/click') ||
         req.path.startsWith('/postback') ||
         req.path.startsWith('/to-offer') ||
-        req.path.startsWith('/preland')
+        req.path.startsWith('/preland') ||
+        req.path.startsWith('/karta')
       ) {
         return next();
       }

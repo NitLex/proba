@@ -30,3 +30,13 @@ test('shouldServeMetrikaBridge respects nometrika and ad-review', () => {
     else process.env.YANDEX_METRIKA_COUNTER_ID = prev;
   }
 });
+
+test('bridge HTML omits firing when softGoalName is null', () => {
+  const html = renderMetrikaBridgeHtml({
+    counterId: 111135286,
+    redirectUrl: 'https://go.example/x',
+    softGoalName: null,
+  });
+  assert.match(html, /ym\(111135286/);
+  assert.match(html, /var goal = null/);
+});
